@@ -9,6 +9,7 @@
   --bg:#f5f6fa; --surface:#ffffff; --surface-2:#eef0f6; --line:#e3e6ef;
   --text:#1f2330; --muted:#7b8194; --violet:#7c5cff; --violet-2:#9d86ff;
   --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --blue:#3b82f6;
+  --teal:#14b8a6; --rose:#f43f5e;
   --shadow:0 8px 30px rgba(40,40,80,.08); --radius:16px;
   --sun:#fbbf24; --cloud:#94a3b8; --rain:#60a5fa; --storm:#6366f1;
 }
@@ -26,7 +27,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .between{justify-content:space-between}
 .wrap{flex-wrap:wrap}
 
-/* 图标 */
 .icon{width:18px;height:18px;display:inline-block;vertical-align:middle;flex:none}
 .icon.sm{width:15px;height:15px}
 .icon.lg{width:26px;height:26px}
@@ -34,15 +34,15 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 /* 布局 */
 #app{display:flex;min-height:100vh}
 .sidebar{
-  width:230px;flex:none;background:var(--surface);border-right:1px solid var(--line);
-  padding:22px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;
+  width:236px;flex:none;background:var(--surface);border-right:1px solid var(--line);
+  padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;
 }
 .brand{display:flex;align-items:center;gap:10px;padding:6px 10px 18px}
 .brand .logo{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--violet),var(--violet-2));display:flex;align-items:center;justify-content:center}
 .brand .name{font-weight:800;font-size:18px;letter-spacing:.5px}
 .brand .sub{font-size:11px;color:var(--muted)}
 .nav-item{
-  display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:12px;
+  display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:12px;
   color:var(--muted);font-weight:600;font-size:14px;transition:.15s;text-align:left;width:100%;
 }
 .nav-item:hover{background:var(--surface-2);color:var(--text)}
@@ -54,19 +54,19 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 }
 .topbar h1{font-size:17px;font-weight:800}
 .topbar .actions{display:flex;gap:8px}
-#view{padding:22px;max-width:920px;width:100%;margin:0 auto}
+#view{padding:22px;max-width:960px;width:100%;margin:0 auto}
 
-/* 移动端 */
+/* 移动端 tabbar */
 .tabbar{
   display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);
-  border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);padding:6px 2px calc(6px + env(safe-area-inset-bottom));
   z-index:30;overflow-x:auto;
 }
-.tabbar .nav-item{flex:none;flex-direction:column;gap:3px;font-size:11px;padding:6px 12px;border-radius:10px}
+.tabbar .nav-item{flex:none;flex-direction:column;gap:3px;font-size:11px;padding:6px 10px;border-radius:10px}
 .tabbar .nav-item .icon{width:22px;height:22px}
 .fab{
-  display:none;position:fixed;right:18px;bottom:74px;width:56px;height:56px;border-radius:50%;
-  background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;font-size:24px;
+  display:none;position:fixed;right:18px;bottom:74px;width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;font-size:22px;
   box-shadow:0 10px 24px rgba(124,92,255,.4);z-index:31;align-items:center;justify-content:center;
 }
 
@@ -74,8 +74,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
 .card h2{font-size:15px;font-weight:800;margin-bottom:4px}
 .card .hint{color:var(--muted);font-size:13px;margin-bottom:12px}
-.grid{display:grid;gap:16px}
-.empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:14px}
+.empty{text-align:center;color:var(--muted);padding:34px 10px;font-size:14px}
 
 /* 按钮 */
 .btn{padding:10px 16px;border-radius:11px;font-weight:700;font-size:14px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
@@ -86,6 +85,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .btn.danger{background:var(--red);color:#fff}
 .btn.sm{padding:6px 11px;font-size:13px;border-radius:9px}
 .btn.block{width:100%;justify-content:center}
+.btn.teal{background:linear-gradient(135deg,#14b8a6,#06b6d4);color:#fff}
 
 /* 表单 */
 .field{margin-bottom:14px}
@@ -93,31 +93,63 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .field input,.field textarea,.field select{
   width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px;background:var(--surface);color:var(--text);
 }
-.field textarea{resize:vertical;min-height:84px}
+.field textarea{resize:vertical;min-height:80px}
 .field .muted{font-size:12px;margin-top:4px;display:block}
+
+/* 推送区（首页日报提示） */
+.push{
+  background:linear-gradient(135deg,rgba(124,92,255,.12),rgba(20,184,166,.08));
+  border:1px solid rgba(124,92,255,.25);border-radius:14px;padding:14px 16px;margin-bottom:16px;
+  display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:.15s;
+}
+.push:hover{background:linear-gradient(135deg,rgba(124,92,255,.18),rgba(20,184,166,.12))}
+.push .pulse{width:9px;height:9px;border-radius:50%;background:var(--violet);flex:none;margin-top:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(124,92,255,.5)}70%{box-shadow:0 0 0 10px rgba(124,92,255,0)}}
+.push .ptitle{font-weight:800;font-size:14px}
+.push .pbody{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.45}
+
+/* 任务卡 */
+.task{
+  display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);
+  border-radius:14px;margin-bottom:10px;background:var(--surface);transition:.12s;
+}
+.task:hover{border-color:var(--violet-2)}
+.task .tinfo{flex:1;min-width:0}
+.task .tname{font-weight:800;font-size:15px}
+.task .tmeta{color:var(--muted);font-size:12px;margin-top:2px}
+.bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:7px}
+.bar>div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--violet),var(--violet-2));transition:width .35s}
+.paused{opacity:.58}
+.badge-done{font-size:11px;font-weight:800;color:var(--green);background:rgba(34,197,94,.14);padding:3px 9px;border-radius:999px}
+.badge-pause{font-size:11px;font-weight:800;color:var(--amber);background:rgba(245,158,11,.16);padding:3px 9px;border-radius:999px}
+
+/* 分类标签 */
+.cat{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(124,92,255,.12);color:var(--violet)}
+.cat.health{background:rgba(34,197,94,.14);color:#16a34a}
+.cat.edu{background:rgba(59,130,246,.14);color:#2563eb}
+.cat.create{background:rgba(168,85,247,.14);color:#9333ea}
+.cat.life{background:rgba(245,158,11,.16);color:#d97706}
+.cat.nature{background:rgba(20,184,166,.14);color:#0d9488}
+.cat.recharge{background:rgba(251,191,36,.16);color:#b45309}
+
+/* 今天一件 */
+.one-thing{border:2px dashed var(--violet);text-align:center;padding:26px 18px}
+.one-thing .big{font-size:19px;font-weight:800;margin:8px 0}
+.one-thing .done-state{color:var(--green);font-weight:800}
+
+/* 快捷打卡区 */
+.quick-checkin{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.qci{display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;transition:.12s}
+.qci:hover{border-color:var(--violet);background:rgba(124,92,255,.06)}
+.qci.done{border-color:var(--green);background:rgba(34,197,94,.08);color:#16a34a}
 
 /* 倾倒台 */
 .dump{border-left:4px solid var(--violet)}
-.dump .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.dump .text{white-space:pre-wrap;word-break:break-word;margin-top:6px}
 .tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
 .tag.do{background:rgba(34,197,94,.14);color:#16a34a}
 .tag.drop{background:rgba(148,163,184,.18);color:#64748b}
 .tag.feel{background:rgba(245,158,11,.16);color:#d97706}
-.dump .acts{display:flex;gap:6px;margin-top:12px}
-.dump .text{white-space:pre-wrap;word-break:break-word;margin-top:6px}
-
-/* 今天一件 */
-.one-thing{border:2px dashed var(--violet);text-align:center;padding:30px 18px}
-.one-thing .big{font-size:20px;font-weight:800;margin:10px 0}
-.one-thing .done-state{color:var(--green);font-weight:800}
-.kind{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.kind button{flex:1;min-width:90px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:700}
-.kind button.on{background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;border-color:transparent}
-
-/* 方向罗盘 */
-.compass-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.compass-row textarea{min-height:70px}
-.deviate{font-weight:800;padding:10px 14px;border-radius:12px;margin-top:10px}
 
 /* 情绪气象 */
 .weather-pick{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:14px 0}
@@ -126,19 +158,42 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 .wbtn.on{border-color:transparent;color:#fff}
 .wbtn.sun.on{background:var(--sun)} .wbtn.cloud.on{background:var(--cloud)}
 .wbtn.rain.on{background:var(--rain)} .wbtn.storm.on{background:var(--storm)}
-.trend{display:flex;align-items:flex-end;gap:4px;height:120px;margin-top:12px;padding:0 4px}
-.trend .bar{flex:1;background:linear-gradient(180deg,var(--violet-2),var(--violet));border-radius:6px 6px 0 0;min-height:4px;position:relative}
-.trend .bar span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted)}
-.trend .bar i{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:11px;font-style:normal;font-weight:700}
 
 /* AI 陪伴 */
-.chat{display:flex;flex-direction:column;gap:12px;max-height:56vh;overflow-y:auto;padding:4px}
+.chat{display:flex;flex-direction:column;gap:12px;max-height:54vh;overflow-y:auto;padding:4px}
 .bubble{max-width:82%;padding:12px 15px;border-radius:16px;font-size:14px;white-space:pre-wrap;word-break:break-word}
 .bubble.ai{background:var(--surface-2);align-self:flex-start;border-bottom-left-radius:4px}
 .bubble.me{background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .companion-input{display:flex;gap:8px;margin-top:12px}
 .companion-input textarea{flex:1;min-height:46px}
-.typing{font-size:12px;color:var(--muted);padding:4px 2px}
+
+/* 日报 */
+.digest-cat{margin-bottom:16px}
+.digest-cat .ch{font-weight:800;font-size:14px;margin-bottom:8px;color:var(--violet);display:flex;align-items:center;gap:6px}
+.repo{border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;background:var(--surface)}
+.repo .rn{font-weight:700;font-size:14px}
+.repo .rd{color:var(--muted);font-size:12px;margin-top:3px}
+.repo .rm{color:var(--amber);font-size:12px;margin-top:3px;font-weight:700}
+.repo a{color:var(--blue);text-decoration:none}
+
+/* 看板/周报 */
+.kanban{display:flex;flex-direction:column;gap:6px}
+.kb-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.kb-row .kl{width:96px;font-size:13px;font-weight:700;flex:none}
+.kb-row .kt{flex:1;height:24px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.kb-row .kt>div{height:100%;border-radius:6px;transition:width .4s}
+.kb-row .kv{width:64px;text-align:right;font-size:12px;color:var(--muted);flex:none}
+.stat-row{display:flex;gap:12px;text-align:center}
+.stat-col{flex:1;padding:14px 8px;border-radius:14px;background:var(--surface-2)}
+.stat-num{font-size:28px;font-weight:900}
+.stat-label{font-size:12px;color:var(--muted);margin-top:2px}
+.day-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:var(--surface)}
+.day-card .dc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.day-card .dc-mood{font-size:20px}
+.day-card .dc-stats{display:flex;gap:16px;font-size:13px;margin-bottom:8px}
+.day-card .dc-bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.day-card .dc-bar>div{height:100%;border-radius:999px}
+.day-card .dc-comment{font-size:13px;color:var(--green);font-weight:600;margin-top:6px}
 
 /* 树洞 */
 .post{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;background:var(--surface)}
@@ -148,17 +203,23 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 /* 模态 */
 .sheet-mask{position:fixed;inset:0;background:rgba(20,22,35,.45);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0}
 .sheet-mask.show{display:flex}
-.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:22px;max-height:92vh;overflow-y:auto;animation:up .22s ease}
+.sheet{background:var(--surface);width:100%;max-width:580px;border-radius:20px 20px 0 0;padding:22px;max-height:92vh;overflow-y:auto;animation:up .22s ease}
 @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
 .sheet h2{font-size:18px;font-weight:800;margin-bottom:4px}
 .sheet-actions{display:flex;gap:10px;margin-top:18px}
 .sheet-actions .btn{flex:1;justify-content:center}
 
+/* 分类选择器（量力风格） */
+.cat-grid{display:flex;gap:8px;flex-wrap:wrap}
+.cat-chip{padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:13px;cursor:pointer;transition:.12s}
+.cat-chip.on{background:linear-gradient(135deg,var(--violet),var(--violet-2));color:#fff;border-color:transparent}
+.sub-grid{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sub-chip{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:12px;cursor:pointer}
+.sub-chip.on{background:var(--violet);color:#fff;border-color:transparent}
+
 /* toast */
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1f2330;color:#fff;padding:11px 20px;border-radius:12px;font-size:14px;z-index:80;box-shadow:var(--shadow);animation:fade .2s}
 @keyframes fade{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
-
-/* 设置里的版本 */
 .ver{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
 .ver a{color:var(--violet);text-decoration:none}
 
@@ -167,30 +228,37 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   .tabbar{display:flex}
   .fab{display:flex}
   #view{padding:16px 14px 90px}
-  .compass-row{grid-template-columns:1fr}
   .topbar{padding:14px 16px}
+  .kb-row .kl{width:72px}
+  .stat-row{gap:8px}
+  .stat-num{font-size:22px}
 }
 </style>
 </head>
 <body>
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-plus" viewBox="0 0 24 24"><path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></symbol>
-  <symbol id="i-edit" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></symbol>
-  <symbol id="i-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 7h12l-1 14H7zM9 4h6l1 2H8z"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></symbol>
-  <symbol id="i-cloud" viewBox="0 0 24 24"><path fill="currentColor" d="M19 18H6a4 4 0 0 1 .9-7.9A5.5 5.5 0 0 1 18 9.5 4 4 0 0 1 19 18z"/></symbol>
-  <symbol id="i-chat" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/></symbol>
-  <symbol id="i-compass" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm3.5 6.5-2 5-5 2 2-5z"/></symbol>
-  <symbol id="i-leaf" viewBox="0 0 24 24"><path fill="currentColor" d="M17 8C8 10 5.5 16 5.5 16S11 14.5 14 11.5C17 8.5 17 8 17 8zM5 19c0-4 3-7 7-8"/></symbol>
-  <symbol id="i-people" viewBox="0 0 24 24"><path fill="currentColor" d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.7 0-6 1.3-6 4v2h7v-2c0-1 .4-1.9 1-2.6A10 10 0 0 0 8 13zm8 0c-2.7 0-6 1.3-6 4v2h12v-2c0-2.7-3.3-4-6-4z"/></symbol>
-  <symbol id="i-x" viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3 10.6 10.6 17 4.3z" transform="translate(1 0)"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 14 10 22 12 14 14 12 22 10 14 2 12 10 10z"/></symbol>
-  <symbol id="i-target" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
-  <symbol id="i-warn" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 21h22zm0 6 7.5 12h-15zM11 10v5h2v-5zm0 7v2h2v-2z"/></symbol>
-  <symbol id="i-refresh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 6V3L8 7l4 4V8a4 4 0 1 1-4 4H6a6 6 0 1 0 6-6z"/></symbol>
-  <symbol id="i-cog" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4a7 7 0 0 0-.1-1.3l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2.3-1.3L15.5 2h-4l-.4 2.6A7 7 0 0 0 8.8 5.9l-2.4-1-2 3.5 2 1.5A7 7 0 0 0 6.3 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2.3 1.3l.4 2.6h4l.4-2.6a7 7 0 0 0 2.3-1.3l2.4 1 2-3.5-2-1.5c.1-.4.1-.9.1-1.3z"/></symbol>
-  <symbol id="i-send" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3l18 9-18 9 4-9z"/></symbol>
-  <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z"/></symbol>
+<symbol id="i-trending" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17l6-6 4 4 8-8v6h-2V9l-6 6-4-4-6 6z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 7h12l-1 14H7zM9 4h6l1 2H8z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 14 10 22 12 14 14 12 22 10 14 2 12 10 10z"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 6V3L8 7l4 4V8a4 4 0 1 1-4 4H6a6 6 0 1 0 6-6z"/></symbol>
+<symbol id="i-cog" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4a7 7 0 0 0-.1-1.3l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2.3-1.3L15.5 2h-4l-.4 2.6A7 7 0 0 0 8.8 5.9l-2.4-1-2 3.5 2 1.5A7 7 0 0 0 6.3 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2.3 1.3l.4 2.6h4l.4-2.6a7 7 0 0 0 2.3-1.3l2.4 1 2-3.5-2-1.5c.1-.4.1-.9.1-1.3z"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3l18 9-18 9 4-9z"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 24 24"><path fill="currentColor" d="M19 18H6a4 4 0 0 1 .9-7.9A5.5 5.5 0 0 1 18 9.5 4 4 0 0 1 19 18z"/></symbol>
+<symbol id="i-leaf" viewBox="0 0 24 24"><path fill="currentColor" d="M17 8C8 10 5.5 16 5.5 16S11 14.5 14 11.5C17 8.5 17 8 17 8zM5 19c0-4 3-7 7-8"/></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><path fill="currentColor" d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.7 0-6 1.3-6 4v2h7v-2c0-1 .4-1.9 1-2.6A10 10 0 0 0 8 13zm8 0c-2.7 0-6 1.3-6 4v2h12v-2c0-2.7-3.3-4-6-4z"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 21h22zm0 6 7.5 12h-15zM11 10v5h2v-5zm0 7v2h2v-2z"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3 10.6 10.6 17 4.3z" transform="translate(1 0)"/></symbol>
 </svg>
 
 <div id="app">
@@ -199,19 +267,19 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
       <div class="logo"><svg class="icon" style="color:#fff" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9 9 9 0 0 0-9-9zm0 4 5 5-5 5-5-5z"/></svg></div>
       <div><div class="name">着陆</div><div class="sub">把焦虑变成下一步</div></div>
     </div>
-    <button class="nav-item active" data-tab="dump"><svg class="icon"><use href="#i-cloud"/></svg>倾倒台</button>
-    <button class="nav-item" data-tab="today"><svg class="icon"><use href="#i-target"/></svg>今天一件</button>
-    <button class="nav-item" data-tab="compass"><svg class="icon"><use href="#i-compass"/></svg>方向罗盘</button>
-    <button class="nav-item" data-tab="weather"><svg class="icon"><use href="#i-leaf"/></svg>情绪气象</button>
-    <button class="nav-item" data-tab="companion"><svg class="icon"><use href="#i-chat"/></svg>AI 陪伴</button>
-    <button class="nav-item" data-tab="community"><svg class="icon"><use href="#i-people"/></svg>树洞</button>
+    <button class="nav-item active" data-tab="today"><svg class="icon"><use href="#i-home"/></svg>今日</button>
+    <button class="nav-item" data-tab="tasks"><svg class="icon"><use href="#i-list"/></svg>任务</button>
+    <button class="nav-item" data-tab="weekly"><svg class="icon"><use href="#i-chart"/></svg>周报</button>
+    <button class="nav-item" data-tab="digest"><svg class="icon"><use href="#i-trending"/></svg>日报</button>
+    <button class="nav-item" data-tab="companion"><svg class="icon"><use href="#i-chat"/></svg>陪伴</button>
+    <button class="nav-item" data-tab="me"><svg class="icon"><use href="#i-user"/></svg>我的</button>
   </aside>
 
   <div class="main">
     <header class="topbar">
-      <h1 id="viewTitle">倾倒台</h1>
+      <h1 id="viewTitle">今日</h1>
       <div class="actions">
-        <button class="btn ghost sm" id="topNew"><svg class="icon sm"><use href="#i-plus"/></svg>新想法</button>
+        <button class="btn ghost sm" id="topNew"><svg class="icon sm"><use href="#i-plus"/></svg>新建</button>
         <button class="btn ghost sm" id="topSettings"><svg class="icon sm"><use href="#i-cog"/></svg>设置</button>
       </div>
     </header>
@@ -219,12 +287,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
   </div>
 
   <nav class="tabbar">
-    <button class="nav-item active" data-tab="dump"><svg class="icon"><use href="#i-cloud"/></svg>倾倒台</button>
-    <button class="nav-item" data-tab="today"><svg class="icon"><use href="#i-target"/></svg>今天一件</button>
-    <button class="nav-item" data-tab="compass"><svg class="icon"><use href="#i-compass"/></svg>罗盘</button>
-    <button class="nav-item" data-tab="weather"><svg class="icon"><use href="#i-leaf"/></svg>气象</button>
+    <button class="nav-item active" data-tab="today"><svg class="icon"><use href="#i-home"/></svg>今日</button>
+    <button class="nav-item" data-tab="tasks"><svg class="icon"><use href="#i-list"/></svg>任务</button>
+    <button class="nav-item" data-tab="weekly"><svg class="icon"><use href="#i-chart"/></svg>周报</button>
+    <button class="nav-item" data-tab="digest"><svg class="icon"><use href="#i-trending"/></svg>日报</button>
     <button class="nav-item" data-tab="companion"><svg class="icon"><use href="#i-chat"/></svg>陪伴</button>
-    <button class="nav-item" data-tab="community"><svg class="icon"><use href="#i-people"/></svg>树洞</button>
+    <button class="nav-item" data-tab="me"><svg class="icon"><use href="#i-user"/></svg>我的</button>
   </nav>
 </div>
 
@@ -232,6 +300,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}
 <div class="sheet-mask hidden" id="sheet"></div>
 <div class="toast hidden" id="toast"></div>
 
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
