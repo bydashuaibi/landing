@@ -1,0 +1,6 @@
+node_modules/
+dist/
+community-backend/community.json
+*.log
+.env
+.DS_Store

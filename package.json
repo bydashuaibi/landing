@@ -1,0 +1,23 @@
+{
+  "name": "landing",
+  "version": "1.0.0",
+  "description": "着陆 · 把焦虑变成下一步 —— 一个帮你从「有想法不干事」里着陆的 AI 陪伴工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "server": "node community-backend/server.js",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.landing.app",
+    "productName": "着陆",
+    "files": ["index.html", "app.js", "main.js", "preload.js"],
+    "win": [{ "target": ["nsis", "portable"] }],
+    "mac": [{ "target": "dmg" }],
+    "linux": [{ "target": "AppImage" }]
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}
