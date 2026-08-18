@@ -65,6 +65,7 @@ function catName(key){ var c=CATEGORIES.find(function(x){return x.key===key;}); 
 /* ================= 数据模型 ================= */
 var STATE = null;
 var CUR_TAB = 'today';
+var _digestFilter = '全部';  /* 日报分类筛选（瞬态，不持久化） */
 
 function blankState(){
   return {
@@ -206,7 +207,16 @@ function fetchDigest(force){
   });
 
   return Promise.all(promises).then(function(){
-    STATE.digest[dt] = {fetchedAt:Date.now(), categories:results};
+    /* 保存上次快照（用于计算增长） */
+    var prevSnapshot = {};
+    if(STATE.digest[dt] && STATE.digest[dt].categories){
+      Object.keys(STATE.digest[dt].categories).forEach(function(lbl){
+        (STATE.digest[dt].categories[lbl]||[]).forEach(function(r){
+          prevSnapshot[r.name] = r.stars||0;
+        });
+      });
+    }
+    STATE.digest[dt] = {fetchedAt:Date.now(), categories:results, _prev:prevSnapshot};
     save();
     return STATE.digest[dt];
   });
@@ -215,8 +225,12 @@ function fetchDigest(force){
 function renderDigestView(){
   var dt = today();
   var dg = STATE.digest[dt];
-  var h = '<div class="card"><h2>'+icon('trending')+' 技术日报 · '+dt+'</h2>'
-    +'<div class="hint">每天自动拉取近 3 天各领域 GitHub 热门开源项目。点击「刷新」手动更新。</div>'
+  var h = '<div class="mod-head"><div class="kicker">Module 04 · Digest</div><h2>日报</h2>'
+    + '<p>每天首次打开，自动用 GitHub 搜索拉取近几天各品类开源热度项目，帮你跟上技术时代。按领域主题分类。</p></div>';
+
+  /* 工具栏：标题 + 刷新 */
+  h += '<div class="digest-toolbar"><div class="digest-toolbar-left"><h2>'+icon('trending')+' 技术日报 · '+dt+'</h2>'
+    +'<span class="hint">每天自动拉取近 3 天各领域热门项目</span></div>'
     +'<button class="btn primary sm" data-act="refreshDigest">'+icon('refresh')+' 刷新</button></div>';
 
   if(!dg || !dg.categories){
@@ -224,22 +238,60 @@ function renderDigestView(){
     return h;
   }
 
-  Object.keys(dg.categories).forEach(function(catLabel){
+  var catLabels = Object.keys(dg.categories);
+  var activeCat = _digestFilter || '全部';
+
+  /* 分类筛选 pill 行 */
+  h += '<div class="digest-filters">';
+  var allPill = (activeCat==='全部') ? 'dg-pill on' : 'dg-pill';
+  h += '<button class="'+allPill+'" data-act="filterDigest" data-cat="全部">全部</button>';
+  catLabels.forEach(function(lbl){
+    var cls = (activeCat===lbl) ? 'dg-pill on' : 'dg-pill';
+    h += '<button class="'+cls+'" data-act="filterDigest" data-cat="'+esc(lbl)+'">'+esc(lbl)+'</button>';
+  });
+  h += '</div>';
+
+  /* 项目列表（按筛选条件） */
+  var catsToShow = (activeCat==='全部') ? catLabels : [activeCat];
+  catsToShow.forEach(function(catLabel){
     var repos = dg.categories[catLabel];
-    h += '<div class="digest-cat"><div class="ch">'+icon('spark')+' '+esc(catLabel)+' <span class="muted" style="font-weight:400;font-size:12px">'+repos.length+' 项</span></div>';
+    if(!repos || !repos.length) return;
+
+    h += '<div class="digest-section" data-dg-cat="'+esc(catLabel)+'">';
+    h += '<div class="digest-section-head"><span class="dsh-title">'+icon('spark')+' '+esc(catLabel)+'</span>'
+      + '<span class="dsh-trend">近 3 天热度上升</span></div>';
+
     repos.forEach(function(r){
-      h += '<div class="repo">'
-        +'<div class="row between"><span class="rn">'+esc(r.name)+'</span><span class="rm">★ '+r.stars+'</span></div>'
-        +(r.desc?'<div class="rd">'+esc(r.desc)+'</div>':'')
-        +(r.lang?'<span class="tag do" style="margin-right:6px">'+r.lang+'</span>':'')
-        +' <a href="'+r.url+'" target="_blank">查看</a>'
-        +'</div>';
+      /* 增长计算：如果有上次快照则算差值 */
+      var growth = '';
+      var growthVal = 0;
+      if(dg._prev && dg._prev[r.name]){
+        growthVal = (r.stars||0) - dg._prev[r.name];
+        if(growthVal > 0) growth = '<span class="dg-growth">⭐ 近3天 +' + fmtNum(growthVal) + '</span>';
+        else if(growthVal < 0) growth = '<span class="dg-growth neg">⭐ 近3天 ' + fmtNum(growthVal) + '</span>';
+        else growth = '<span class="dg-growth flat">⭐ 近3天 持平</span>';
+      }
+
+      h += '<div class="dg-card">'
+        + '<div class="dg-card-top"><a class="dg-name" href="'+r.url+'" target="_blank">'+esc(r.name)+'</a>'
+        + '<span class="dg-stars">★ '+fmtNum(r.stars||0)+'</span></div>'
+        + (r.desc ? '<div class="dg-desc">'+esc(r.desc)+'</div>' : '')
+        + '<div class="dg-meta">' + (growth ? growth : '<span class="muted">首次收录</span>')
+        + (r.lang ? '<span class="tag do dg-lang">'+esc(r.lang)+'</span>' : '')
+        + '</div></div>';
     });
-    h += '</div>';
+    h += '</div>'; /* end digest-section */
   });
 
-  h += '<div class="card hint" style="font-size:12px">数据来源：GitHub Search API · 缓存时间 '+new Date(dg.fetchedAt).toLocaleTimeString()+'</div>';
+  h += '<div class="card hint" style="font-size:12px;margin-top:16px">数据来源：GitHub Search API · 缓存时间 '+new Date(dg.fetchedAt).toLocaleTimeString()+'</div>';
   return h;
+}
+
+/* 格式化数字：52.3k / 980 / 1.2k */
+function fmtNum(n){
+  if(n>=10000) return (n/10000).toFixed(1)+'w';
+  if(n>=1000) return (n/1000).toFixed(1)+'k';
+  return String(n);
 }
 
 /* ================= 长周期任务 ================= */
@@ -357,23 +409,34 @@ function renderDailyTaskCard(dt){
 function viewToday(){
   var h = '';
 
-  /* 推送区：如果有今天的日报就显示摘要 */
+  /* 首页主视觉（结构化蓝图：主张 + 主视觉占位） */
+  h += '<div class="mod-head">'
+    + '<div class="kicker">Module 01 · 首页</div>'
+    + '<h2>把焦虑，变成下一步。</h2>'
+    + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
+    + '</div>';
+  h += '<div class="ph big"><span class="tag">图片占位</span>'
+    + '<div class="need"><b>首页主视觉</b><br/>极光 / 着陆意象大图（1600×900）<br/>建议：暗色天空 + 一个人静坐/远眺的剪影，传达"被接住、平静"</div></div>';
+
+  /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
   if(dg && dg.categories){
-    var catCount = Object.keys(dg.categories).length;
-    var totalRepos = 0;
-    Object.keys(dg.categories).forEach(function(k){ totalRepos+=dg.categories[k].length; });
-    h+='<div class="push" data-act="goDigest">'
-      +'<div class="pulse"></div><div>'
-      +'<div class="ptitle">📡 今日技术日报已就绪</div>'
-      +'<div class="pbody">覆盖 '+catCount+' 个领域、'+totalRepos+' 个热门项目。点击查看详情 →</div>'
-      +'</div></div>';
+    var cats = Object.keys(dg.categories).filter(function(k){ return dg.categories[k].length>0; });
+    var top2 = cats.slice(0,2).map(function(k){ return k.replace(' /','').replace('/IoT',''); }).join(' / ');
+    var trendText = top2 ? top2 + ' · 近 3 天热度上升' : '各领域热门项目已就绪';
+    h+='<div class="push">'
+      +'<div class="pulse"></div><div class="push-body">'
+      +'<div class="ptitle">📡 今日技术日报已送达</div>'
+      +'<div class="pbody">'+esc(trendText)+'</div>'
+      +'</div>'
+      +'<div class="push-actions"><button class="btn ghost sm" data-act="goDigest">查看</button></div></div>';
   } else {
-    h+='<div class="push" data-act="goDigest">'
-      +'<div class="pulse"></div><div>'
+    h+='<div class="push">'
+      +'<div class="pulse"></div><div class="push-body">'
       +'<div class="ptitle">📡 技术日报待拉取</div>'
       +'<div class="pbody">每天自动获取 GitHub 各领域热门开源项目，帮你跟上时代进度。</div>'
-      +'</div></div>';
+      +'</div>'
+      +'<div class="push-actions"><button class="btn primary sm" data-act="refreshDigest">刷新</button></div></div>';
   }
 
   /* 今日一件 */
@@ -424,6 +487,13 @@ function viewToday(){
 /* ================= 视图：任务 ================= */
 function viewTasks(){
   var h = '';
+
+  /* 模块头（结构化蓝图） */
+  h += '<div class="mod-head">'
+    + '<div class="kicker">Module 02 · Tasks</div>'
+    + '<h2>任务</h2>'
+    + '<p>两套并行：<b>长周期（导入型）</b>有终点有总量，到 50%/100% 自动鼓励，连续两天没打卡先暂停等你回来；<b>日常循环（提升型）</b>按类别每天做、不中断，可自由开关。</p>'
+    + '</div>';
 
   /* 长周期 */
   h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 长周期任务</h2>'
@@ -546,7 +616,9 @@ function generateWeeklyReport(){
 function viewWeekly(){
   var rpt = generateWeeklyReport();
   var wk = weekKey();
-  var h = '<div class="card"><h2>'+icon('chart')+' 复盘 · 本周</h2>'
+  var h = '<div class="mod-head"><div class="kicker">Module 03 · Weekly</div><h2>周报</h2>'
+    + '<p>每周首次打开自动生成。看板按<b>投入时间占比</b>展示各类日常；长周期进度告知；最后用温柔复盘接住你，而不是评判。</p></div>';
+  h += '<div class="card"><h2>'+icon('chart')+' 复盘 · 本周</h2>'
     + '<div class="hint">回顾你的一周。每周首次打开自动生成。</div></div>';
 
   /* 本周概况三数字 */
@@ -567,7 +639,10 @@ function viewWeekly(){
   var ds = rpt.dailyStats;
   var catKeys = Object.keys(ds);
   if(catKeys.length){
-    h += '<div class="card"><h2>本周投入分布</h2><div class="kanban">';
+    h += '<div class="card"><h2>本周投入分布</h2>'
+      + '<div class="ph" style="min-height:120px;margin-bottom:14px"><span class="tag">可视化占位</span>'
+      + '<div class="need"><b>周报看板图</b><br/>各类日常投入分钟占比环形图 / 堆叠条<br/>（此处将接入真实 SVG 图表，按 5 大类别着色）</div></div>'
+      + '<div class="kanban">';
     var maxMin = 1;
     catKeys.forEach(function(k){ if(ds[k].minutes>maxMin) maxMin=ds[k].minutes; });
 
@@ -619,19 +694,26 @@ function callAI(messages){
 
 function viewCompanion(){
   var msgs = STATE.companion.messages;
-  var h = '<div class="card"><h2>'+icon('chat')+' AI 陪伴</h2>'
+  var h = '<div class="mod-head"><div class="kicker">Module 05 · Companion</div><h2>陪伴</h2>'
+    + '<p>云端 AI 真在听你说话、接住你。可一键生成「近三日跟进」，把散落的记录变成你能看懂的方向。</p></div>';
+  h += '<div class="card"><h2>'+icon('chat')+' AI 陪伴</h2>'
     + '<div class="hint">不评判、不催促。把闷在心里的话说出来。'+(STATE.settings.aiKey?'':'<span style="color:var(--amber)"> 未配置 AI → 设置</span>')+'</div>'
     + '<button class="btn ghost sm" data-act="followup3">'+icon('refresh')+' 近三日跟进</button></div>'
     + '<div class="card"><div class="chat" id="chat">';
   if(!msgs.length) h+='<div class="empty">说点什么，或者点「近三日跟进」。</div>';
   msgs.forEach(function(m){ h+='<div class="bubble '+(m.role==='user'?'me':'ai')+'">'+esc(m.content)+'</div>'; });
   h+='</div><div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea><button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
+  h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
+    + '<div class="ph" style="min-height:140px"><span class="tag">图片占位</span>'
+    + '<div class="need"><b>陪伴角色形象</b><br/>赛博小猫 / 着陆伙伴 IP 立绘（透明 PNG，约 400×400）<br/>随情绪状态变化表情</div></div></div>';
   return h;
 }
 
 /* ================= 视图：我的（设置+树洞） ================= */
 function viewMe(){
-  var h = '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存本地浏览器。</div>'
+  var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><h2>我的</h2>'
+    + '<p>设置 GitHub Token（拉取日报）与 AI 配置（陪伴）；查看数据概览；匿名树洞，说不敢对别人说的话。</p></div>';
+  h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存本地浏览器。</div>'
     + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
 
   /* 数据概览 */
@@ -639,7 +721,9 @@ function viewMe(){
     + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
     + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
     + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
-    + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div></div></div>';
+    + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div></div>'
+    + '<div class="ph" style="min-height:130px;margin-top:14px"><span class="tag">图片占位</span>'
+    + '<div class="need"><b>情绪气象图</b><br/>30 秒选晴/阴/雨/暴 + 周轨迹曲线<br/>（约 600×200，标注"情绪气象"可视化位）</div></div></div>';
 
   /* 树洞 */
   h += '<div class="card"><h2>'+icon('people')+' 匿名树洞</h2>'
@@ -970,6 +1054,7 @@ document.addEventListener('click',function(e){
   /* 日报 */
   else if(act==='goDigest') App.goDigest();
   else if(act==='refreshDigest') App.refreshDigest();
+  else if(act==='filterDigest'){ var cat=el.dataset.cat||'全部'; _digestFilter=cat; render(); }
 
   /* AI */
   else if(act==='sendAI') App.sendAI();
