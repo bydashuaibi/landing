@@ -184,7 +184,6 @@ function save(){
 function fetchDigest(force){
   force = force || false;
   var token = (STATE.settings.githubToken || '').trim();
-  if(!token){ toast('先在「设置」里填写 GitHub Token'); return Promise.resolve(null); }
 
   var dt = today();
   if(!force && STATE.digest[dt] && STATE.digest[dt].fetchedAt){
@@ -192,10 +191,13 @@ function fetchDigest(force){
   }
 
   var results = {};
+  /* 无 token 也能拉取（GitHub 未认证限速 60 次/小时，日报一天一次够用）；配了 token 限速更高更稳 */
+  var headers = {'Accept':'application/vnd.github+json'};
+  if(token) headers['Authorization'] = 'Bearer '+token;
   var promises = DIGEST_TOPICS.map(function(tp){
     var q = tp.q+' created:>='+addDays(dt,-3)+' stars:>50 sort:stars';
     var url = 'https://api.github.com/search/repositories?q='+encodeURIComponent(q)+'&per_page=3';
-    return fetch(url,{headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'}})
+    return fetch(url,{headers:headers})
       .then(function(r){ return r.ok ? r.json() : {items:[]}; })
       .then(function(j){
         var items = (j.items||[]).map(function(item){
@@ -234,7 +236,7 @@ function renderDigestView(){
     +'<button class="btn primary sm" data-act="refreshDigest">'+icon('refresh')+' 刷新</button></div>';
 
   if(!dg || !dg.categories){
-    h += '<div class="empty">暂无数据。点「刷新」拉取（需在设置中配置 GitHub Token）。</div>';
+    h += '<div class="empty">暂无数据。点「刷新」拉取（无需 Token，自动获取 GitHub 热门开源项目）。</div>';
     return h;
   }
 
@@ -712,7 +714,7 @@ function viewCompanion(){
 /* ================= 视图：我的（设置+树洞） ================= */
 function viewMe(){
   var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><h2>我的</h2>'
-    + '<p>设置 GitHub Token（拉取日报）与 AI 配置（陪伴）；查看数据概览；匿名树洞，说不敢对别人说的话。</p></div>';
+    + '<p>设置 AI 配置（陪伴）与 GitHub Token（可选，提升日报拉取限额）；查看数据概览；匿名树洞，说不敢对别人说的话。</p></div>';
   h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存本地浏览器。</div>'
     + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
 
@@ -1000,7 +1002,7 @@ var App = {
   openSettings:function(){
     var s=STATE.settings;
     openSheet('<h2>'+icon('cog')+' 设置</h2>'
-      + '<div class="field"><label>GitHub Token（用于拉取日报）</label><input id="s_gh" type="password" value="'+esc(s.githubToken||'')+'" placeholder="ghp_... 或 PAT"></div>'
+      + '<div class="field"><label>GitHub Token（可选，提升日报拉取限额）</label><input id="s_gh" type="password" value="'+esc(s.githubToken||'')+'" placeholder="不填也能拉取日报"></div>'
       + '<div class="field"><label>AI 接口地址（baseUrl）</label><input id="s_base" value="'+esc(s.aiBaseUrl||'')+'" placeholder="https://api.openai.com/v1"></div>'
       + '<div class="field"><label>API Key</label><input id="s_key" type="password" value="'+esc(s.aiKey||'')+'" placeholder="sk-..."></div>'
       + '<div class="field"><label>模型名</label><input id="s_model" value="'+esc(s.aiModel||'')+'" placeholder="gpt-4o-mini"></div>'
@@ -1092,8 +1094,8 @@ function init(){
   window.App=App;
   render();
 
-  /* 自动拉取日报（如果配了 token 且今天还没拉过） */
-  if(STATE.settings.githubToken && (!STATE.digest[today()])){
+  /* 自动拉取日报（今天还没拉过就静默拉取；无 token 也能拉，未认证限速 60 次/小时足够日报用） */
+  if(!STATE.digest[today()]){
     fetchDigest(false).then(function(){ /* 静默拉取，不弹提示 */ });
   }
 }
