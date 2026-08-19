@@ -417,11 +417,8 @@ function viewToday(){
     + '<h2>把焦虑，变成下一步。</h2>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
-  h += '<div class="hero-img" style="margin-bottom:16px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);position:relative">'
-    + '<img src="assets/hero.jpg" alt="极光夜空" style="width:100%;height:auto;display:block;object-fit:cover;max-height:360px">'
-    + '<div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(46,36,25,.42) 100%);"></div>'
-    + '<div style="position:absolute;bottom:14px;left:18px;right:18px;color:#fff;font-size:13px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,.5)">着陆 · 被接住的感觉</div>'
-    + '</div>';
+  h += '<div class="ph big"><span class="tag">图片占位</span>'
+    + '<div class="need"><b>首页主视觉</b><br/>极光 / 着陆意象大图（1600×900）<br/>建议：暗色天空 + 一个人静坐/远眺的剪影，传达"被接住、平静"</div></div>';
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -733,10 +730,8 @@ function viewCompanion(){
   msgs.forEach(function(m){ h+='<div class="bubble '+(m.role==='user'?'me':'ai')+'">'+esc(m.content)+'</div>'; });
   h+='</div><div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea><button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
   h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
-    + '<div style="text-align:center;padding:10px 0">'
-    + '<img src="assets/companion.jpg" alt="着陆伙伴" style="width:200px;height:auto;border-radius:18px;box-shadow:var(--shadow-soft);display:block;margin:0 auto">'
-    + '<div style="font-size:12px;color:var(--muted);margin-top:8px">橘猫 · 你的着陆伙伴</div>'
-    + '</div></div>';
+    + '<div class="ph" style="min-height:140px"><span class="tag">图片占位</span>'
+    + '<div class="need"><b>陪伴角色形象</b><br/>赛博小猫 / 着陆伙伴 IP 立绘（透明 PNG，约 400×400）<br/>随情绪状态变化表情</div></div></div>';
   return h;
 }
 
