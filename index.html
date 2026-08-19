@@ -41,7 +41,7 @@ body{
   background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
-body::before{content:"";position:fixed;inset:0;z-index:-2;
+body::before{content:"";position:fixed;inset:0;z-index:-3;
   background:
     radial-gradient(58% 48% at 18% 10%, rgba(194,168,120,.34), transparent 62%),
     radial-gradient(52% 44% at 86% 18%, rgba(31,158,142,.16), transparent 62%),
@@ -49,6 +49,16 @@ body::before{content:"";position:fixed;inset:0;z-index:-2;
     radial-gradient(40% 30% at 80% 80%, rgba(214,98,122,.10), transparent 60%),
     #f3ece0;
 }
+/* Grainient 暖色颗粒背景（由 grainient.js 注入 canvas） */
+#bg-grain{position:fixed;inset:0;z-index:-2;pointer-events:none;background:var(--bg);}
+/* 背景图占位：30% 透明度叠加在暖色颗粒背景之上 */
+.bg-ph{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.3;
+  background-image:none;background-size:cover;background-position:center;background-repeat:no-repeat;
+  display:flex;align-items:center;justify-content:center;}
+.bg-ph:not([style*="background-image"])::after{content:"背景图占位 · 30% 叠加";
+  font-family:var(--font-display);font-size:13px;letter-spacing:.06em;
+  color:rgba(46,36,25,.22);border:1px dashed rgba(46,36,25,.18);
+  padding:10px 16px;border-radius:12px;}
 body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:linear-gradient(180deg, rgba(46,36,25,.04), transparent 28%),
              linear-gradient(0deg, rgba(46,36,25,.06), transparent 42%);}
@@ -372,6 +382,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </head>
 <body>
 
+<!-- 全屏背景层：grainient 暖色颗粒背景 + 30% 背景图占位 -->
+<div id="bg-grain"></div>
+<div id="bg-ph" class="bg-ph" aria-hidden="true"></div>
+
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></symbol>
@@ -435,6 +449,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <div class="sheet-mask hidden" id="sheet"></div>
 <div class="toast hidden" id="toast"></div>
 
+<script src="grainient.js?v=1"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="app.js?v=13"></script>
 <script src="click-feedback.js?v=2"></script>
