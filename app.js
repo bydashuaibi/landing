@@ -417,8 +417,11 @@ function viewToday(){
     + '<h2>把焦虑，变成下一步。</h2>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
-  h += '<div class="ph big"><span class="tag">图片占位</span>'
-    + '<div class="need"><b>首页主视觉</b><br/>极光 / 着陆意象大图（1600×900）<br/>建议：暗色天空 + 一个人静坐/远眺的剪影，传达"被接住、平静"</div></div>';
+  h += '<div class="hero-img" style="margin-bottom:16px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);position:relative">'
+    + '<img src="assets/hero.jpg" alt="极光夜空" style="width:100%;height:auto;display:block;object-fit:cover;max-height:360px">'
+    + '<div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(46,36,25,.42) 100%);"></div>'
+    + '<div style="position:absolute;bottom:14px;left:18px;right:18px;color:#fff;font-size:13px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,.5)">着陆 · 被接住的感觉</div>'
+    + '</div>';
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -641,9 +644,33 @@ function viewWeekly(){
   var ds = rpt.dailyStats;
   var catKeys = Object.keys(ds);
   if(catKeys.length){
+    /* SVG 环形图：各类别投入占比 */
+    var totalMin = catKeys.reduce(function(a,k){return a+ds[k].minutes;},0);
+    var pieColors = {health:'#22c55e',edu:'#3b82f6',create:'#9333ea',life:'#f59e0b',nature:'#14b8a6'};
+    var pieData = catKeys.map(function(k){ return {k:k, min:ds[k].minutes, pct:ds[k].minutes/totalMin, col:pieColors[k]||'#8b6dff'}; });
+    var svgW=220, svgH=120, cx=60, cy=60, r=50, hole=30;
+    var acc=0, arcs='';
+    pieData.forEach(function(d){
+      var start=acc, end=acc+d.pct;
+      var x1=cx+r*Math.cos((start-.25)*Math.PI*2), y1=cy+r*Math.sin((start-.25)*Math.PI*2);
+      var x2=cx+r*Math.cos((end-.25)*Math.PI*2), y2=cy+r*Math.sin((end-.25)*Math.PI*2);
+      var large=d.pct>.5?1:0;
+      arcs += '<path d="M'+x1+' '+y1+' A'+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+' L'+cx+' '+cy+' Z" fill="'+d.col+'" opacity=".92"/>';
+      acc=end;
+    });
+    var legend='';
+    pieData.forEach(function(d,i){
+      legend += '<g transform="translate(130,'+(18+i*22)+')">'
+        + '<rect width="10" height="10" rx="3" fill="'+d.col+'"/>'
+        + '<text x="16" y="9" font-size="11" fill="var(--ink)" font-family="Inter,sans-serif">'+catName(d.k)+' '+Math.round(d.pct*100)+'%</text>'
+        + '</g>';
+    });
     h += '<div class="card"><h2>本周投入分布</h2>'
-      + '<div class="ph" style="min-height:120px;margin-bottom:14px"><span class="tag">可视化占位</span>'
-      + '<div class="need"><b>周报看板图</b><br/>各类日常投入分钟占比环形图 / 堆叠条<br/>（此处将接入真实 SVG 图表，按 5 大类别着色）</div></div>'
+      + '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px">'
+      + '<svg width="'+svgW+'" height="'+svgH+'" viewBox="0 0 '+svgW+' '+svgH+'" style="overflow:visible">'
+      + '<circle cx="'+cx+'" cy="'+cy+'" r="'+hole+'" fill="var(--bg)"/>'
+      + arcs + legend
+      + '</svg></div>'
       + '<div class="kanban">';
     var maxMin = 1;
     catKeys.forEach(function(k){ if(ds[k].minutes>maxMin) maxMin=ds[k].minutes; });
@@ -706,8 +733,10 @@ function viewCompanion(){
   msgs.forEach(function(m){ h+='<div class="bubble '+(m.role==='user'?'me':'ai')+'">'+esc(m.content)+'</div>'; });
   h+='</div><div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea><button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
   h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
-    + '<div class="ph" style="min-height:140px"><span class="tag">图片占位</span>'
-    + '<div class="need"><b>陪伴角色形象</b><br/>赛博小猫 / 着陆伙伴 IP 立绘（透明 PNG，约 400×400）<br/>随情绪状态变化表情</div></div></div>';
+    + '<div style="text-align:center;padding:10px 0">'
+    + '<img src="assets/companion.jpg" alt="着陆伙伴" style="width:200px;height:auto;border-radius:18px;box-shadow:var(--shadow-soft);display:block;margin:0 auto">'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:8px">橘猫 · 你的着陆伙伴</div>'
+    + '</div></div>';
   return h;
 }
 
@@ -718,14 +747,40 @@ function viewMe(){
   h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存本地浏览器。</div>'
     + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
 
-  /* 数据概览 */
+  /* 情绪气象 SVG */
+  var wData = STATE.weather.slice(-7);
+  var moodMap = {sun:4, cloud:3, rain:2, storm:1};
+  var moodColors = {sun:'#e0a93b', cloud:'#7a8a99', rain:'#4f86c6', storm:'#7c6fd6'};
+  var moodLabels = {sun:'晴', cloud:'阴', rain:'雨', storm:'暴'};
+  var svgW2=600, svgH2=160, pad2=30;
+  var chartW2=svgW2-pad2*2, chartH2=svgH2-pad2*2;
+  var pts2='';
+  if(wData.length){
+    wData.forEach(function(w,i){
+      var x=pad2+i*(chartW2/Math.max(wData.length-1,1));
+      var y=pad2+(4-(moodMap[w.mood]||3))/3*chartH2;
+      pts2 += (i?',':'') + x + ',' + y;
+    });
+  }
+  var svgMood = '<svg width="100%" height="'+svgH2+'" viewBox="0 0 '+svgW2+' '+svgH2+'" style="margin-top:14px">'
+    + '<rect width="'+svgW2+'" height="'+svgH2+'" rx="12" fill="rgba(255,255,255,.35)"/>'
+    + '<line x1="'+pad2+'" y1="'+pad2+'" x2="'+pad2+'" y2="'+(pad2+chartH2)+'" stroke="var(--line)" stroke-width="1"/>'
+    + '<line x1="'+pad2+'" y1="'+(pad2+chartH2)+'" x2="'+(pad2+chartW2)+'" y2="'+(pad2+chartH2)+'" stroke="var(--line)" stroke-width="1"/>'
+    + (pts2?'<polyline points="'+pts2+'" fill="none" stroke="var(--terracotta)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>':'')
+    + (wData.length?wData.map(function(w,i){
+      var x=pad2+i*(chartW2/Math.max(wData.length-1,1));
+      var y=pad2+(4-(moodMap[w.mood]||3))/3*chartH2;
+      var c=moodColors[w.mood]||'#7a8a99';
+      return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+c+'" stroke="#fff" stroke-width="1.5"/>'
+        + '<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="Inter,sans-serif">'+(moodLabels[w.mood]||'?')+'</text>';
+    }).join(''):'<text x="'+svgW2/2+'" y="'+svgH2/2+'" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="Inter,sans-serif">暂无记录，去「今日」选心情</text>')
+    + '</svg>';
   h += '<div class="card"><h2>数据概览</h2>'
     + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
     + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
     + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
     + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div></div>'
-    + '<div class="ph" style="min-height:130px;margin-top:14px"><span class="tag">图片占位</span>'
-    + '<div class="need"><b>情绪气象图</b><br/>30 秒选晴/阴/雨/暴 + 周轨迹曲线<br/>（约 600×200，标注"情绪气象"可视化位）</div></div></div>';
+    + svgMood + '</div>';
 
   /* 树洞 */
   h += '<div class="card"><h2>'+icon('people')+' 匿名树洞</h2>'
