@@ -624,9 +624,9 @@ function viewWeekly(){
     + '<div class="hint">回顾你的一周。每周首次打开自动生成。</div></div>';
 
   /* 本周概况三数字 */
-  h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)">'+rpt.summary.completionRate+'%</div><div class="stat-label">完成率</div></div>'
-    + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)">'+rpt.summary.avgLoad+'</div><div class="stat-label">日均投入(分钟)</div></div>'
-    + '<div class="stat-num" style="color:var(--teal);font-size:28px;font-weight:900;display:block">'+rpt.summary.totalDailyMin+'</div><div class="stat-label" style="text-align:center">本周总计(分钟)</div>'
+  h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)" data-count="'+rpt.summary.completionRate+'" data-decimals="0" data-suffix="%">0</div><div class="stat-label">完成率</div></div>'
+    + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)" data-count="'+rpt.summary.avgLoad+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">日均投入(分钟)</div></div>'
+    + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div>'
     + '</div>';
 
   /* 心情轨迹 */
@@ -748,8 +748,49 @@ function render(){
     b.classList.toggle('active', b.dataset.tab===CUR_TAB);
   });
 
+  /* 卡片入场动画：staggered reveal */
+  var cards = document.querySelectorAll('#view .card, #view .task, #view .dg-card, #view .stat-col, #view .mod-head');
+  cards.forEach(function(el,i){
+    el.classList.add('anim');
+    el.style.setProperty('--d',(0.04*i+0.08)+'s');
+  });
+
+  /* 周报统计 count-up */
+  if(CUR_TAB==='weekly'){ initCountUp(); }
+
   if(CUR_TAB==='me'){ App.loadCommunity(); }
   if(CUR_TAB==='companion'){ var c=$('chat'); if(c) c.scrollTop=c.scrollHeight; }
+}
+
+/* ================= 统计数字 count-up ================= */
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+function countUp(el){
+  var target=parseFloat(el.dataset.count)||0;
+  var dec=parseInt(el.dataset.decimals||'0',10);
+  var suffix=el.dataset.suffix||'';
+  var duration=1500;
+  var start=performance.now();
+  function tick(now){
+    var p=Math.min((now-start)/duration,1);
+    var v=target*easeOutCubic(p);
+    el.textContent=v.toFixed(dec)+suffix;
+    if(p<1) requestAnimationFrame(tick);
+    else el.textContent=target.toFixed(dec)+suffix;
+  }
+  requestAnimationFrame(tick);
+}
+var _countUpObserver=null;
+function initCountUp(){
+  if(_countUpObserver) _countUpObserver.disconnect();
+  _countUpObserver=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        countUp(e.target);
+        _countUpObserver.unobserve(e.target);
+      }
+    });
+  },{threshold:0.25});
+  document.querySelectorAll('[data-count]').forEach(function(el){ _countUpObserver.observe(el); });
 }
 
 /* ================= 模态框 ================= */
