@@ -17,7 +17,7 @@
     + 'in vec2 uv;\n'
     + 'out vec2 vUv;\n'
     + 'void main() {\n'
-    + '  vUv = uv;\n'
+    + '  vUv = vec2(uv.x, 1.0 - uv.y);\n'
     + '  gl_Position = vec4(position, 0.0, 1.0);\n'
     + '}\n';
 

@@ -147,8 +147,8 @@
     var color = themeColor();
     gl.uniform3fv(U.uColor, color);
     gl.uniform1i(U.uShapeType, 1);          // circle
-    gl.uniform1f(U.uRippleSpeed, 0.7);
-    gl.uniform1f(U.uRippleThickness, 0.11);
+    gl.uniform1f(U.uRippleSpeed, 0.35);
+    gl.uniform1f(U.uRippleThickness, 0.055);
     gl.uniform1f(U.uRippleIntensity, 1.35);
     gl.uniform1f(U.uLife, LIFE);
 
