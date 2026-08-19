@@ -227,7 +227,7 @@ function fetchDigest(force){
 function renderDigestView(){
   var dt = today();
   var dg = STATE.digest[dt];
-  var h = '<div class="mod-head"><div class="kicker">Module 04 · Digest</div><h2>日报</h2>'
+  var h = '<div class="mod-head"><div class="kicker">Module 04 · Digest</div><div class="warp-head" data-warp><h2>日报</h2></div>'
     + '<p>每天首次打开，自动用 GitHub 搜索拉取近几天各品类开源热度项目，帮你跟上技术时代。按领域主题分类。</p></div>';
 
   /* 工具栏：标题 + 刷新 */
@@ -412,9 +412,9 @@ function viewToday(){
   var h = '';
 
   /* 首页主视觉（结构化蓝图：主张 + 主视觉占位） */
-  h += '<div class="mod-head">'
+  h += '<div class="mod-head hero">'
     + '<div class="kicker">Module 01 · 首页</div>'
-    + '<h2>把焦虑，变成下一步。</h2>'
+    + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
   h += '<div class="ph big"><span class="tag">图片占位</span>'
@@ -493,7 +493,7 @@ function viewTasks(){
   /* 模块头（结构化蓝图） */
   h += '<div class="mod-head">'
     + '<div class="kicker">Module 02 · Tasks</div>'
-    + '<h2>任务</h2>'
+    + '<div class="warp-head" data-warp><h2>任务</h2></div>'
     + '<p>两套并行：<b>长周期（导入型）</b>有终点有总量，到 50%/100% 自动鼓励，连续两天没打卡先暂停等你回来；<b>日常循环（提升型）</b>按类别每天做、不中断，可自由开关。</p>'
     + '</div>';
 
@@ -618,7 +618,7 @@ function generateWeeklyReport(){
 function viewWeekly(){
   var rpt = generateWeeklyReport();
   var wk = weekKey();
-  var h = '<div class="mod-head"><div class="kicker">Module 03 · Weekly</div><h2>周报</h2>'
+  var h = '<div class="mod-head"><div class="kicker">Module 03 · Weekly</div><div class="warp-head" data-warp><h2>周报</h2></div>'
     + '<p>每周首次打开自动生成。看板按<b>投入时间占比</b>展示各类日常；长周期进度告知；最后用温柔复盘接住你，而不是评判。</p></div>';
   h += '<div class="card"><h2>'+icon('chart')+' 复盘 · 本周</h2>'
     + '<div class="hint">回顾你的一周。每周首次打开自动生成。</div></div>';
@@ -720,7 +720,7 @@ function callAI(messages){
 
 function viewCompanion(){
   var msgs = STATE.companion.messages;
-  var h = '<div class="mod-head"><div class="kicker">Module 05 · Companion</div><h2>陪伴</h2>'
+  var h = '<div class="mod-head"><div class="kicker">Module 05 · Companion</div><div class="warp-head" data-warp><h2>陪伴</h2></div>'
     + '<p>云端 AI 真在听你说话、接住你。可一键生成「近三日跟进」，把散落的记录变成你能看懂的方向。</p></div>';
   h += '<div class="card"><h2>'+icon('chat')+' AI 陪伴</h2>'
     + '<div class="hint">不评判、不催促。把闷在心里的话说出来。'+(STATE.settings.aiKey?'':'<span style="color:var(--amber)"> 未配置 AI → 设置</span>')+'</div>'
@@ -737,7 +737,7 @@ function viewCompanion(){
 
 /* ================= 视图：我的（设置+树洞） ================= */
 function viewMe(){
-  var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><h2>我的</h2>'
+  var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><div class="warp-head" data-warp><h2>我的</h2></div>'
     + '<p>设置 AI 配置（陪伴）与 GitHub Token（可选，提升日报拉取限额）；查看数据概览；匿名树洞，说不敢对别人说的话。</p></div>';
   h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存本地浏览器。</div>'
     + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
@@ -791,6 +791,7 @@ function viewMe(){
 var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',me:'我的'};
 function render(){
   var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,me:viewMe};
+  if(window.WarpText) WarpText.disposeAll();
   $('view').innerHTML = views[CUR_TAB]();
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
 
@@ -810,6 +811,9 @@ function render(){
 
   if(CUR_TAB==='me'){ App.loadCommunity(); }
   if(CUR_TAB==='companion'){ var c=$('chat'); if(c) c.scrollTop=c.scrollHeight; }
+
+  /* 玻璃折射标题 */
+  if(window.WarpText) WarpText.apply($('view'));
 }
 
 /* ================= 统计数字 count-up ================= */

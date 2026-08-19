@@ -324,6 +324,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mod-head h2{font-size:25px;font-weight:800;margin:5px 0 7px;font-family:'Inter Tight','Inter',sans-serif;letter-spacing:-.01em;color:var(--ink)}
 .mod-head p{color:var(--muted);max-width:680px;font-size:14px;line-height:1.55}
 
+/* WarpText 玻璃折射标题 */
+.warp-head{position:relative;display:flex;align-items:center;overflow:hidden;isolation:isolate;min-height:64px;margin:6px 0 8px}
+.warp-head h2{font-size:clamp(26px,3.4vw,38px);font-weight:800;margin:0;font-family:'Inter Tight','Inter',sans-serif;letter-spacing:-.02em;color:var(--ink);line-height:1.05}
+.mod-head.hero .warp-head{min-height:96px;margin:8px 0 10px}
+.mod-head.hero .warp-head h2{font-size:clamp(32px,5vw,56px)}
+.warp-head[data-warp-mounted] h2{visibility:hidden}
+.warp-head canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+
 /* 图片占位符（蓝图要求：需要图的地方先占位并标注） */
 .ph{position:relative;border:1.5px dashed rgba(168,138,91,.45);border-radius:14px;
   background:repeating-linear-gradient(45deg, rgba(194,168,120,.06) 0 12px, transparent 12px 24px);
@@ -427,6 +435,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <div class="sheet-mask hidden" id="sheet"></div>
 <div class="toast hidden" id="toast"></div>
 
-<script src="app.js?v=11"></script>
+<script src="warp-text.js?v=1"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
