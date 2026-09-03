@@ -407,6 +407,48 @@ function renderDailyTaskCard(dt){
     +'</div>';
 }
 
+/* ================= 赛博伙伴：活力全部来自你已经做的事 ================= */
+/* 设计原则：不新增「喂猫」任务。你倾倒、打卡、完成一件，它自然长。
+   你没来，它不惩罚，只是「有点想你」。底线 12 分，永远不会归零或枯萎。 */
+function catLandingDays(){
+  var days = {};
+  STATE.dumps.forEach(function(d){
+    if(d.createdAt) days[ymd(new Date(d.createdAt))] = 1;
+  });
+  STATE.dailyTasks.forEach(function(t){
+    (t.records||[]).forEach(function(r){ if(r.date) days[r.date] = 1; });
+  });
+  STATE.weather.forEach(function(w){ if(w.date) days[w.date] = 1; });
+  var n = 0, cur = today();
+  while(days[cur]){ n++; cur = addDays(cur,-1); }
+  return n;
+}
+
+function catVitality(){
+  var v = 12;                                    /* 底线：它一直在 */
+  var ts0 = new Date(); ts0.setHours(0,0,0,0);
+  var dumped = STATE.dumps.filter(function(d){ return d.createdAt >= ts0.getTime(); }).length;
+  v += Math.min(dumped*12, 24);                  /* 倾倒焦虑 */
+  var checked = STATE.dailyTasks.filter(function(d){ return d.enabled && isDailyCheckedToday(d); }).length;
+  v += Math.min(checked*11, 33);                 /* 日常打卡 */
+  if(STATE.oneThing && STATE.oneThing.date===today() && STATE.oneThing.done) v += 20;
+  v += Math.min(catLandingDays()*4, 20);         /* 连续着陆 */
+  var w = STATE.weather.filter(function(x){ return x.date===today(); }).pop();
+  if(w) v += ({sun:6,cloud:0,rain:-5,storm:-10})[w.mood] || 0;   /* 情绪同步 */
+  return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+var CAT_LINES = {
+  low:  ['我在呢。','不想动也没关系。','你来了就好。','先歇会儿，我不催。'],
+  mid:  ['今天的下一步是什么？','我在这儿等你。','慢慢来，一件就够。','倒出来会好受点。'],
+  high: ['你今天真不错。','能量满了。','要走下一步吗？','我看好你。']
+};
+function catTierText(t){ return t==='low' ? '有点想你' : (t==='high' ? '精神十足' : '状态平稳'); }
+function catSpeak(t){
+  var arr = CAT_LINES[t] || CAT_LINES.mid;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
 /* ================= 视图：今日 ================= */
 function viewToday(){
   var h = '';
@@ -417,8 +459,16 @@ function viewToday(){
     + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
-  h += '<div class="ph big"><span class="tag">图片占位</span>'
-    + '<div class="need"><b>首页主视觉</b><br/>极光 / 着陆意象大图（1600×900）<br/>建议：暗色天空 + 一个人静坐/远眺的剪影，传达"被接住、平静"</div></div>';
+  /* 赛博伙伴：状态由你已经做的事驱动，不需要额外照料 */
+  var cv = catVitality();
+  var ct = window.CyberCat ? CyberCat.tierOf(cv) : (cv<40?'low':(cv>70?'high':'mid'));
+  h += '<div class="card cat-card">'
+    + '<div class="cc-top"><h2>着陆伙伴</h2><span class="cc-badge t-'+ct+'">'+catTierText(ct)+'</span></div>'
+    + '<div class="cc-stage"><div class="cyber-cat" id="cyberCat" data-v="'+cv+'"></div></div>'
+    + '<div class="cc-meta"><div class="cc-bar"><i style="width:'+cv+'%"></i></div>'
+    + '<div class="cc-foot"><span>活力 '+cv+' / 100</span><span>连续着陆 '+catLandingDays()+' 天</span></div></div>'
+    + '<div class="cc-talk" id="ccTalk">'+esc(catSpeak(ct))+'</div>'
+    + '</div>';
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -792,6 +842,7 @@ var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',c
 function render(){
   var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
+  if(window.CyberCat) CyberCat.disposeAll();
   $('view').innerHTML = views[CUR_TAB]();
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
 
@@ -814,6 +865,25 @@ function render(){
 
   /* 玻璃折射标题 */
   if(window.WarpText) WarpText.apply($('view'));
+
+  /* 赛博伙伴 */
+  mountCyberCat();
+}
+
+function mountCyberCat(){
+  if(!window.CyberCat) return;
+  var el = $('cyberCat');
+  if(!el) return;
+  var v = parseFloat(el.dataset.v);
+  if(isNaN(v)) v = 50;
+  var tier = CyberCat.tierOf(v);
+  CyberCat.mount(el, {
+    vitality: v,
+    onPoke: function(){
+      var talk = $('ccTalk');
+      if(talk) talk.textContent = catSpeak(tier);
+    }
+  });
 }
 
 /* ================= 统计数字 count-up ================= */
