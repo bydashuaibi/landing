@@ -49,9 +49,9 @@ body::before{content:"";position:fixed;inset:0;z-index:-3;
     radial-gradient(40% 30% at 80% 80%, rgba(214,98,122,.10), transparent 60%),
     #f3ece0;
 }
-/* Grainient 暖色颗粒背景（由 grainient.js 注入 canvas） */
-#bg-grain{position:fixed;inset:0;z-index:-2;pointer-events:none;background:var(--bg);}
-/* 背景图占位：30% 透明度叠加在暖色颗粒背景之上 */
+/* GradientWaves 暖色渐变波浪背景（gradient-waves.js 注入 canvas，远处淡出透出底层渐变） */
+#bg-waves{position:fixed;inset:0;z-index:-2;pointer-events:none;}
+/* 可选背景图叠层：30% 透明度，留空则不显示 */
 .bg-ph{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.3;
   background-image:none;background-size:cover;background-position:center;background-repeat:no-repeat;
   display:flex;align-items:center;justify-content:center;}
@@ -403,7 +403,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <body>
 
 <!-- 全屏背景层：grainient 暖色颗粒背景 + 30% 背景图占位 -->
-<div id="bg-grain"></div>
+<div id="bg-waves"></div>
 <div id="bg-ph" class="bg-ph" aria-hidden="true"></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -469,7 +469,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <div class="sheet-mask hidden" id="sheet"></div>
 <div class="toast hidden" id="toast"></div>
 
-<script src="grainient.js?v=1"></script>
+<script src="gradient-waves.js?v=1"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=1"></script>
 <script src="app.js?v=14"></script>
