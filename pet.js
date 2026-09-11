@@ -63,12 +63,14 @@
     if (!p.chat) p.chat = [];
     if (!p.fishLog) p.fishLog = [];
     if (!p.stats) p.stats = { fed: 0, patted: 0, chats: 0, bought: 0 };
-    if (!p.widget) p.widget = { x: null, y: null, collapsed: false, hidden: false, quiet: false };
+    if (!p.widget) p.widget = { x: null, y: null, collapsed: false, hidden: false, quiet: false, size: 'M' };
     if (p.widget.x === undefined) p.widget.x = null;
     if (p.widget.y === undefined) p.widget.y = null;
     if (p.widget.collapsed === undefined) p.widget.collapsed = false;
     if (p.widget.hidden === undefined) p.widget.hidden = false;
     if (p.widget.quiet === undefined) p.widget.quiet = false;
+    if (p.widget.size === undefined) p.widget.size = 'M';
+    if (p.noHunger === undefined) p.noHunger = false;
     if (!p.lastTickAt) p.lastTickAt = Date.now();
     if (!p.lastPatAt) p.lastPatAt = 0;
     if (!p.lastChatAt) p.lastChatAt = 0;
@@ -84,9 +86,11 @@
     return p;
   }
 
-  /* 饱食衰减：每 2 小时 -1.5（每天约 -18），单次最多 -22。饿只影响表情和台词。 */
+  /* 饱食衰减：每 2 小时 -1.5（每天约 -18），单次最多 -22。饿只影响表情和台词。
+     开了「不要让它饿」就完全不衰减——它一直在，不催你。 */
   function decay() {
     var p = ensure(), now = Date.now();
+    if (p.noHunger) { p.lastTickAt = now; return; }
     var hrs = (now - p.lastTickAt) / 3600000;
     if (hrs < 0.4) return;
     p.hunger = Math.max(0, p.hunger - Math.min(22, hrs * 0.75));
@@ -240,8 +244,9 @@
     if (p.chat.length > 140) p.chat.splice(0, p.chat.length - 140);
     L.addMemory('chat', p.name + '：' + text, ['对话']);
     L.save();
-    renderPanel(); refresh();
     say(text, 5400);
+    if ($('petPage')) { L.render(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
+    renderPanel(); refresh();
   }
 
   function aiReply() {
@@ -400,7 +405,37 @@
     '.pp-todo.done{opacity:.55;text-decoration:line-through}',
     '.pp-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}',
     '.pp-switch{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);margin-bottom:8px}',
-    '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}}'
+    /* ===== 伙伴页（侧栏「伙伴」栏目） ===== */
+    '.pg-hero{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}',
+    '.pg-stage{position:relative;flex:1 1 250px;min-width:230px;min-height:234px;border-radius:20px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px;background:linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.46));border:1px solid var(--line)}',
+    '.pg-cat{width:100%;height:234px}',
+    '.pg-cat canvas{display:block;width:100%;height:100%}',
+    '.pg-badge{position:absolute;top:10px;right:10px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.86);border:1px solid var(--line);color:#5b4a35}',
+    '.pg-side{flex:1 1 280px;min-width:250px;display:flex;flex-direction:column;gap:11px}',
+    '.pg-name{font-size:19px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--ink)}',
+    '.pg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}',
+    '.pg-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed rgba(46,36,25,.10);font-size:13.5px;flex-wrap:wrap}',
+    '.pg-row:last-child{border-bottom:none}',
+    '.pg-row .lb{flex:1;min-width:150px;color:var(--ink)}',
+    '.pg-row .lb small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;line-height:1.45}',
+    '.pg-switch{position:relative;width:46px;height:25px;border-radius:99px;background:rgba(46,36,25,.16);flex:none;transition:.2s;cursor:pointer}',
+    '.pg-switch.on{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d))}',
+    '.pg-switch i{position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 4px rgba(46,36,25,.3)}',
+    '.pg-switch.on i{left:23px}',
+    '.pg-chips{display:flex;gap:6px;flex-wrap:wrap}',
+    '.pg-chip{padding:6px 12px;border-radius:10px;font-size:12.5px;font-weight:700;border:1px solid var(--line);background:rgba(255,255,255,.7);color:var(--muted)}',
+    '.pg-chip.on{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;border-color:transparent}',
+    '.pg-chip.lock{opacity:.5}',
+    '.pg-inp{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.82);color:var(--ink);font-family:inherit;font-size:13.5px}',
+    '.pg-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px}',
+    '.pg-stat{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.62)}',
+    '.pg-stat b{display:block;font-family:var(--font-display);font-size:23px;font-weight:400;color:var(--ink);line-height:1.15}',
+    '.pg-stat span{font-size:11.5px;color:var(--muted)}',
+    '.pg-ledger{display:flex;flex-direction:column;gap:7px;max-height:210px;overflow:auto}',
+    '.pg-led{display:flex;gap:10px;font-size:12.5px;color:var(--muted);align-items:baseline}',
+    '.pg-led b{color:#8a5a12;min-width:34px;text-align:right;flex:none}',
+    '.pg-danger{display:flex;gap:8px;flex-wrap:wrap}',
+    '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:190px}}'
   ].join('\n');
 
   function injectCSS() {
@@ -453,11 +488,17 @@
   }
 
   /* ================= 交互：拖动 / 点击 / 收起 ================= */
+  /* 挂件大小档位 */
+  var SIZES = { S: 0.86, M: 1, L: 1.18 };
+
   function applyPos() {
     var p = ensure(), root = $('petWidget');
     if (!root) return;
     root.classList.toggle('collapsed', !!p.widget.collapsed);
     root.classList.toggle('hidden', !!p.widget.hidden);
+    var k = SIZES[p.widget.size] || 1;
+    root.style.transform = k === 1 ? '' : 'scale(' + k + ')';
+    root.style.transformOrigin = 'bottom right';
     if (p.widget.x == null || p.widget.hidden) {
       root.style.left = ''; root.style.top = '';
       root.style.right = ''; root.style.bottom = '';
@@ -595,6 +636,7 @@
       + '<button class="btn ghost sm" data-pact="tab" data-tab="feed" style="flex:1">🐟 喂食</button>'
       + '<button class="btn ghost sm" data-pact="tab" data-tab="chat" style="flex:1">💬 说话</button>'
       + '</div>'
+      + '<button class="btn ghost sm block" data-pact="goto-page" style="margin-top:9px">🐾 详情设定与全部数据 →</button>'
       + '<div class="pp-sec" style="margin-top:12px">'
       + '· 单次完成 <b>≥60 分钟</b>的任务，就能领 1~3 条小鱼干（60-119:1 / 120-179:2 / ≥180:3）<br/>'
       + '· 鱼干可以买吃的、玩具、装扮，也可以兑换你自己定的现实奖励<br/>'
@@ -745,6 +787,246 @@
     return h;
   }
 
+  /* ================= 伙伴页（侧栏栏目 · 详情与设定） ================= */
+  var pageCat = null;
+
+  function renderPage() {
+    if (!booted) { boot(); if (!booted) return; }   /* 伙伴页可能比挂件先要渲染 */
+    var root = $('petPage');
+    if (!root) {
+      if (pageCat) { try { pageCat.dispose(); } catch (e) {} pageCat = null; }
+      return;
+    }
+    var p = ensure();
+    var v = L.vitality(), T = L.tierOf(v), lv = levelName(p.intimacy);
+    var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    var earnedToday = (p.fishLog || []).filter(function (x) { return x.at >= t0.getTime(); })
+      .reduce(function (a, x) { return a + (x.n || 0); }, 0);
+    var days = Math.max(1, Math.round((Date.now() - p.bornAt) / 86400000) + 1);
+
+    function bar(label, val, cls) {
+      return '<div class="pp-bar-row"><span class="lb">' + label + '</span>'
+        + '<span class="pp-bar"><i class="' + cls + '" style="width:' + Math.round(val) + '%"></i></span>'
+        + '<span class="vv">' + Math.round(val) + '</span></div>';
+    }
+    function swRow(label, sub, on, act) {
+      return '<div class="pg-row"><span class="lb">' + label + (sub ? '<small>' + sub + '</small>' : '') + '</span>'
+        + '<div class="pg-switch' + (on ? ' on' : '') + '" data-pact="' + act + '"><i></i></div></div>';
+    }
+    function stat(n, label) {
+      return '<div class="pg-stat"><b>' + n + '</b><span>' + label + '</span></div>';
+    }
+
+    var h = '';
+
+    /* 主视觉 + 状态 + 快捷互动 */
+    h += '<div class="pg-hero">'
+      + '<div class="pg-stage"><div class="pg-cat" id="pgCat"></div>'
+      + '<div class="pg-badge">' + L.tierText(T) + ' · 活力 ' + Math.round(v) + '</div></div>'
+      + '<div class="pg-side">'
+      + '<div class="pg-name">' + L.esc(p.name) + '<span class="pp-lv">' + lv + '</span></div>'
+      + '<div class="pp-bars">' + bar('🍚 饱食', p.hunger, 'h') + bar('💗 亲密', p.intimacy, 'i')
+      + '<div class="pp-bar-row"><span class="lb">🐟 小鱼干</span><span class="pp-bar"><i class="h" style="width:' + Math.min(100, p.fish) + '%"></i></span><span class="vv">' + p.fish + ' 条</span></div>'
+      + '</div>'
+      + '<div class="pp-sec" style="margin:0">连续着陆 ' + L.landingDays() + ' 天 · 相伴 ' + days + ' 天 · 今天赚到 ' + earnedToday + ' 🐟</div>'
+      + '<div class="pg-actions">'
+      + '<button class="btn primary sm" data-pact="pat">🤚 抚摸</button>'
+      + '<button class="btn ghost sm" data-pact="panel-shop">🛒 商城</button>'
+      + '<button class="btn ghost sm" data-pact="panel-mem">📖 记忆库</button>'
+      + '</div></div></div>';
+
+    /* 喂它 */
+    h += '<div class="card"><h2>🍚 喂它</h2><div class="hint">食物用小鱼干在商城买，买完存在仓库里。'
+      + '单次完成 ≥60 分钟的任务就能赚到 1~3 条。</div>';
+    ITEMS.filter(function (it) { return it.kind === 'food'; }).forEach(function (it) {
+      var own = p.owned[it.id] || 0;
+      h += '<div class="pp-item"><span class="pp-emo">' + it.emoji + '</span>'
+        + '<div class="pp-ib"><div class="pp-in">' + it.name + ' <span class="pp-cost">' + it.cost + ' 🐟</span></div>'
+        + '<div class="pp-id">' + (own ? '库存 ' + own + ' 份' : '库存 0') + ' · 饱食 +' + it.hunger + ' · 亲密 +' + (it.intimacy || 0) + '</div></div>'
+        + '<span class="pp-acts">'
+        + (own ? '<button class="btn primary sm" data-pact="feed" data-id="' + it.id + '">喂</button>' : '')
+        + '<button class="btn ghost sm" data-pact="buy" data-id="' + it.id + '">买</button>'
+        + '</span></div>';
+    });
+    h += '</div>';
+
+    /* 说说话 */
+    h += '<div class="card"><h2>💬 说说话</h2><div class="hint">'
+      + (ST().settings.aiKey ? 'AI 模式：它会带着对你的记忆回你。' : '本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。')
+      + '每一句都会归到记忆库。</div>';
+    h += '<div class="pp-chat" id="pgChat">';
+    if (!p.chat.length) h += '<div class="pp-sec">还没说过话。试试「今天好累」。</div>';
+    p.chat.slice(-30).forEach(function (m) {
+      h += '<div class="pp-msg ' + (m.role === 'user' ? 'me' : 'pet') + '">' + L.esc(m.text) + '</div>';
+    });
+    h += '</div><div class="pp-inrow"><input id="pgChatIn" placeholder="跟它说点什么…" maxlength="200">'
+      + '<button class="btn primary sm" data-pact="send">发送</button></div></div>';
+
+    /* 详情设定 */
+    h += '<div class="card"><h2>⚙️ 详情设定</h2><div class="hint">改完立即生效，全部只存在本地。</div>';
+    h += '<div class="pg-row"><span class="lb">它的名字<small>挂件气泡、对话、记忆里都用这个名字</small></span>'
+      + '<input class="pg-inp" id="pgName" value="' + L.esc(p.name) + '" maxlength="12" style="width:132px">'
+      + '<button class="btn ghost sm" data-pact="rename">保存</button></div>';
+    h += swRow('挂件常驻显示', '关掉后右下角挂件会消失，随时可以在这里打开', !p.widget.hidden, 'tg-hide');
+    h += '<div class="pg-row"><span class="lb">挂件大小<small>位置可以直接拖动挂件来换</small></span>'
+      + '<span class="pg-chips">' + ['S', 'M', 'L'].map(function (k) {
+        return '<button class="pg-chip' + ((p.widget.size || 'M') === k ? ' on' : '') + '" data-pact="size" data-id="' + k + '">' + k + '</button>';
+      }).join('') + '</span><button class="btn ghost sm" data-pact="reset-pos">归位</button></div>';
+    h += swRow('它主动说话', '关掉后它只在有事情时冒泡——不是不说话，是不打扰', !p.widget.quiet, 'tg-quiet');
+    h += swRow('不要让它饿', '打开后饱食度不再随时间下降。它一直在，不催你喂', !!p.noHunger, 'tg-nohunger');
+
+    /* 装扮（按部位切换） */
+    [['neck', '脖子上'], ['face', '脸上'], ['head', '头顶']].forEach(function (slot) {
+      var sid = slot[0];
+      h += '<div class="pg-row"><span class="lb">' + slot[1] + '</span><span class="pg-chips">'
+        + '<button class="pg-chip' + (!p.gear[sid] ? ' on' : '') + '" data-pact="gear" data-slot="' + sid + '" data-id="">不戴</button>';
+      ITEMS.filter(function (it) { return it.kind === 'gear' && it.slot === sid; }).forEach(function (it) {
+        var has = !!p.owned[it.id];
+        h += '<button class="pg-chip' + (p.gear[sid] === it.id ? ' on' : '') + (has ? '' : ' lock')
+          + '" data-pact="gear" data-slot="' + sid + '" data-id="' + it.id + '">' + it.emoji + ' ' + it.name + (has ? '' : ' · ' + it.cost + '🐟') + '</button>';
+      });
+      h += '</span></div>';
+    });
+    h += '</div>';
+
+    /* 数据 */
+    h += '<div class="card"><h2>📊 它的数据</h2><div class="pg-stats">'
+      + stat(days, '相伴天数')
+      + stat(p.stats.fed, '喂食次数')
+      + stat(p.stats.patted, '抚摸次数')
+      + stat(p.stats.chats, '对话轮次')
+      + stat(p.earned || 0, '累计赚到 🐟')
+      + stat(p.spent || 0, '累计花掉 🐟')
+      + stat(earnedToday, '今天赚到 🐟')
+      + stat((ST().memories || []).length, '记忆条数')
+      + '</div></div>';
+
+    /* 鱼干账本 */
+    var led = (p.fishLog || []).slice(-14).reverse();
+    h += '<div class="card"><h2>🐟 小鱼干账本</h2><div class="hint">只有收入和支出，没有罚。</div>';
+    if (!led.length) h += '<div class="empty">还没有账。</div>';
+    else {
+      h += '<div class="pg-ledger">';
+      led.forEach(function (x) {
+        h += '<div class="pg-led"><b>' + (x.n > 0 ? '+' + x.n : x.n) + '</b>'
+          + '<span style="flex:1;min-width:0">' + L.esc(x.reason || '') + '</span>'
+          + '<span style="flex:none">' + new Date(x.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+
+    /* 记忆 */
+    var mems = (ST().memories || []).slice(-8).reverse();
+    h += '<div class="card"><div class="row between"><h2>📖 最近记忆</h2>'
+      + '<button class="btn ghost sm" data-pact="panel-mem">全部 ' + (ST().memories || []).length + ' 条</button></div>';
+    if (!mems.length) h += '<div class="empty">还没有记忆。</div>';
+    else {
+      h += '<div class="mem-list">';
+      mems.forEach(function (m) {
+        h += '<div class="mem-item"><span class="mem-kind k-' + (m.kind || 'note') + '">' + (L.MEM_KIND[m.kind] || '记录') + '</span>'
+          + '<div class="mem-body">' + L.esc(m.text)
+          + '<span class="mem-time">' + new Date(m.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+
+    /* 危险操作 */
+    h += '<div class="card"><h2>🧯 重置</h2><div class="hint">只影响伙伴，不动你的任务、倾倒和情绪记录。</div>'
+      + '<div class="pg-danger">'
+      + '<button class="btn ghost sm" data-pact="clear-chat">只清对话记录</button>'
+      + '<button class="btn ghost sm" data-pact="clear-mem">清空全部记忆</button>'
+      + '<button class="btn danger sm" data-pact="reset-pet">重置伙伴（回到刚认识）</button>'
+      + '</div></div>';
+
+    root.innerHTML = h;
+
+    /* 大猫 */
+    if (pageCat) { try { pageCat.dispose(); } catch (e) {} pageCat = null; }
+    var cb = $('pgCat');
+    if (cb && window.CyberCat) {
+      pageCat = CyberCat.mount(cb, { vitality: v, bare: true, hungry: p.hunger < 30, gear: p.gear });
+    }
+    var ch = $('pgChat'); if (ch) ch.scrollTop = ch.scrollHeight;
+
+    root.addEventListener('click', pageClick);
+    root.addEventListener('input', pageInput);
+    root.addEventListener('keydown', pageInput);
+  }
+
+  function pageClick(e) {
+    var el = e.target.closest('[data-pact]');
+    if (!el) return;
+    e.stopPropagation();
+    var act = el.dataset.pact, id = el.dataset.id;
+    var p = ensure();
+
+    if (act === 'pat') { pat(); L.render(); }
+    else if (act === 'feed') { feed(id); L.render(); }
+    else if (act === 'buy') buy(id);
+    else if (act === 'send') { var inp = $('pgChatIn'); var val = inp ? inp.value : ''; if (inp) inp.value = ''; chat(val); L.render(); }
+    else if (act === 'panel-shop') openPanel('shop');
+    else if (act === 'panel-mem') openPanel('mem');
+    else if (act === 'rename') {
+      var nm = (($('pgName') || {}).value || '').trim();
+      if (!nm) { L.toast('给个名字'); return; }
+      p.name = nm; L.save();
+      L.addMemory('note', '它现在叫「' + nm + '」了', ['伙伴']);
+      say('记住啦，我叫' + nm + '。', 3600);
+      L.toast('改名成功'); L.render();
+    }
+    else if (act === 'size') { p.widget.size = id; L.save(); refresh(); L.render(); }
+    else if (act === 'reset-pos') { p.widget.x = null; p.widget.y = null; L.save(); applyPos(); L.toast('挂件回到右下角'); }
+    else if (act === 'tg-hide') { p.widget.hidden = !p.widget.hidden; L.save(); applyPos(); L.render(); }
+    else if (act === 'tg-quiet') { p.widget.quiet = !p.widget.quiet; L.save(); if (!p.widget.quiet) say('那我说了。', 2600); L.render(); }
+    else if (act === 'tg-nohunger') {
+      p.noHunger = !p.noHunger; p.lastTickAt = Date.now(); L.save();
+      L.toast(p.noHunger ? '已开启：它不会再饿了' : '已关闭：饱食度会随时间慢慢下降');
+      if (p.noHunger) say('那我就不催你了。', 3200);
+      refresh(); L.render();
+    }
+    else if (act === 'gear') {
+      var slot = el.dataset.slot;
+      if (!id) { p.gear[slot] = null; }
+      else if (!p.owned[id]) { L.toast('还没买这个装扮，去商城看看'); return; }
+      else { p.gear[slot] = (p.gear[slot] === id) ? null : id; }
+      L.save();
+      if (pageCat) pageCat.setGear(p.gear);
+      if (cat) cat.setGear(p.gear);
+      L.render();
+    }
+    else if (act === 'clear-chat') {
+      if (window.confirm('只清掉和它的对话记录？')) {
+        p.chat = []; L.save();
+        L.toast('对话记录清空了');
+        L.render();
+      }
+    }
+    else if (act === 'clear-mem') {
+      if (window.confirm('清空全部记忆（包括任务、鱼干、里程碑的记录）？')) {
+        ST().memories = []; L.save(); L.toast('记忆清空了'); L.render();
+      }
+    }
+    else if (act === 'reset-pet') {
+      if (window.confirm('重置伙伴？等级、亲密度、鱼干、装扮都会回到刚认识的样子。')) {
+        ST().pet = {}; ensure(); L.save();
+        if (cat) { cat.setGear(ensure().gear); }
+        L.toast('它重新认识你了');
+        refresh(); L.render();
+      }
+    }
+  }
+
+  function pageInput(e) {
+    var el = e.target;
+    if (!el) return;
+    e.stopPropagation();
+    if (el.id === 'pgChatIn' && e.type === 'keydown' && e.key === 'Enter') {
+      var v = el.value; el.value = ''; chat(v);
+    }
+  }
+
   /* ================= 面板事件 ================= */
   function panelClick(e) {
     var el = e.target.closest('[data-pact]');
@@ -755,6 +1037,7 @@
 
     if (act === 'close') closePanel();
     else if (act === 'tab') { panelTab = el.dataset.tab; renderPanel(); }
+    else if (act === 'goto-page') { closePanel(); L.tab('pet'); }
     else if (act === 'pat') pat();
     else if (act === 'feed') feed(id);
     else if (act === 'buy') buy(id);
@@ -934,6 +1217,7 @@
     onFish: onFish,
     poke: pokeCat,
     state: ensure,
+    renderPage: renderPage,
     open: function (what, tab) { if (!booted) boot(); openPanel(tab); },
     close: closePanel
   };

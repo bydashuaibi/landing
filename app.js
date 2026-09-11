@@ -1246,7 +1246,8 @@ function viewCompanion(){
     + '<span>🍚 饱食 <b>'+(p0.hunger==null?'—':Math.round(p0.hunger))+'</b></span>'
     + '<span>💗 亲密 <b>'+(p0.intimacy==null?'—':Math.round(p0.intimacy))+'</b></span></div>'
     + '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">'
-    + '<button class="btn primary sm" data-act="petFeed">🐟 喂它</button>'
+    + '<button class="btn primary sm" data-act="petPage">🐾 伙伴详情与设定</button>'
+    + '<button class="btn ghost sm" data-act="petFeed">🐟 喂它</button>'
     + '<button class="btn ghost sm" data-act="petPat">🤚 抚摸</button>'
     + '<button class="btn ghost sm" data-act="petChat">💬 说说话</button>'
     + '<button class="btn ghost sm" data-act="petShop">🛒 商城</button>'
@@ -1256,6 +1257,15 @@ function viewCompanion(){
 }
 
 /* ================= 视图：我的（设置+树洞） ================= */
+/* ================= 视图：伙伴（详情与设定，内容由 pet.js 渲染） ================= */
+function viewPet(){
+  return '<div class="mod-head"><div class="kicker">Module 07 · Companion Pet</div>'
+    + '<div class="warp-head" data-warp><h2>伙伴</h2></div>'
+    + '<p>它不是待办，是你做事时顺手养起来的一只猫：<b>完成 ≥60 分钟的任务</b>换小鱼干，'
+    + '小鱼干换吃的、玩具、装扮，也能换你自己定的现实奖励。右下角挂件是它的日常视角，这一页是它的全部细节。</p></div>'
+    + '<div id="petPage"><div class="empty">正在唤醒…</div></div>';
+}
+
 function viewMe(){
   var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><div class="warp-head" data-warp><h2>我的</h2></div>'
     + '<p>设置 AI 配置（陪伴）与 GitHub Token（可选，提升日报拉取限额）；查看数据概览；匿名树洞，说不敢对别人说的话。</p></div>';
@@ -1328,12 +1338,15 @@ function viewMe(){
 }
 
 /* ================= 渲染入口 ================= */
-var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',me:'我的'};
+var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',me:'我的'};
 function render(){
-  var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,me:viewMe};
+  var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
   $('view').innerHTML = views[CUR_TAB]();
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
+
+  /* 伙伴页内容由 pet.js 填（要赶在入场动画之前） */
+  if(CUR_TAB==='pet' && window.Pet) Pet.renderPage();
 
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===CUR_TAB);
@@ -1665,6 +1678,7 @@ var App = {
   timerFinish:function(){ finishTimerEarly(); },
 
   /* --- 伙伴（实现在 pet.js） --- */
+  petPage:function(){ CUR_TAB='pet'; render(); },
   petFeed:function(){ if(window.Pet) Pet.open('panel','feed'); },
   petPat:function(){ if(window.Pet) Pet.pat(); },
   petChat:function(){ if(window.Pet) Pet.open('panel','chat'); },
@@ -1804,6 +1818,7 @@ document.addEventListener('click',function(e){
   else if(act==='timerFinish') App.timerFinish();
 
   /* 伙伴 */
+  else if(act==='petPage') App.petPage();
   else if(act==='petFeed') App.petFeed();
   else if(act==='petPat') App.petPat();
   else if(act==='petChat') App.petChat();
