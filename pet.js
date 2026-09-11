@@ -71,6 +71,9 @@
     if (p.widget.quiet === undefined) p.widget.quiet = false;
     if (p.widget.size === undefined) p.widget.size = 'M';
     if (p.noHunger === undefined) p.noHunger = false;
+    if (p.sleeping === undefined) p.sleeping = false;
+    if (p.dazeUntil === undefined) p.dazeUntil = 0;
+    if (!p.cd) p.cd = {};
     if (!p.lastTickAt) p.lastTickAt = Date.now();
     if (!p.lastPatAt) p.lastPatAt = 0;
     if (!p.lastChatAt) p.lastChatAt = 0;
@@ -90,7 +93,7 @@
      开了「不要让它饿」就完全不衰减——它一直在，不催你。 */
   function decay() {
     var p = ensure(), now = Date.now();
-    if (p.noHunger) { p.lastTickAt = now; return; }
+    if (p.noHunger || p.sleeping) { p.lastTickAt = now; return; }   /* 睡觉 / 关掉饥饿 都不掉饱食 */
     var hrs = (now - p.lastTickAt) / 3600000;
     if (hrs < 0.4) return;
     p.hunger = Math.max(0, p.hunger - Math.min(22, hrs * 0.75));
@@ -126,6 +129,14 @@
     fish: ['鱼干到手！', '这个我会存起来的。', '嘿嘿。', '又攒了一点。'],
     upgrade: ['我们好像…更熟了？', '嗯，我喜欢你在的时候。'],
     late: ['你还在吗？我一直都在。', '刚才那段时间去哪了，我不问。你回来了就好。'],
+    play: ['！这个我能追一天。', '来了来了！', '再动一下，就动一下下。', '（扑）'],
+    lift: ['哇——', '有点高…不过还行。', '（被举起来，尾巴晃）', '你力气挺大。'],
+    chin: ['嗯…就是这里…', '呼噜呼噜……', '（仰头）', '再往上一点。'],
+    call: ['喵？', '（耳朵动了动）', '在。', '嗯？'],
+    sleep: ['那我先眯一会儿。', '晚安…', '（团成一团）'],
+    wake: ['醒了。', '嗯…几点了？', '（揉眼睛）'],
+    daze: ['好，那就什么都不做。', '陪你坐一会儿。', '（一起发呆）'],
+    dazeEnd: ['谢谢陪我。', '这样也挺好的。', '（伸个懒腰）'],
     poor: ['鱼干不够…先去做点正事？', '攒着吧，我不急。']
   };
   function hourNow() { return new Date().getHours(); }
@@ -195,6 +206,114 @@
     floatText('💗 +' + gain);
     pokeCat();
     refresh(); renderPanel();
+  }
+
+  /* ================= 更多互动 ================= */
+  /* 全部「只加不减」，冷却只是防止连点，不是惩罚 */
+  var CD = { play: 25000, lift: 15000, chin: 45000, call: 6000 };
+
+  function cdLeft(k) {
+    var p = ensure(); p.cd = p.cd || {};
+    return Math.max(0, (p.cd[k] || 0) + (CD[k] || 0) - Date.now());
+  }
+  function startCd(k) { var p = ensure(); p.cd = p.cd || {}; p.cd[k] = Date.now(); L.save(); }
+
+  function wake() {
+    var p = ensure();
+    if (!p.sleeping) return false;
+    p.sleeping = false; L.save();
+    if (cat) cat.setState({ sleeping: false });
+    say(pick(LINES.wake), 3000);
+    return true;
+  }
+
+  function interact(name) {
+    var p = ensure();
+    if (name === 'sleep') { toggleSleep(); return; }
+    if (name === 'daze') { startDaze(); return; }
+    var left = cdLeft(name);
+    if (left > 0) { L.toast('等一下下，' + Math.ceil(left / 1000) + ' 秒后再来'); return; }
+    wake();
+    startCd(name);
+
+    if (name === 'play') {
+      var bonus = p.toys.indexOf('toy_wand') >= 0 ? 1 : 0;
+      addIntimacy(2 + bonus);
+      L.addMemory('pet', '陪它玩了一会儿（亲密 +' + (2 + bonus) + '）', ['互动']);
+      say(pick(LINES.play), 3600);
+      floatText('💗 +' + (2 + bonus));
+      if (cat) cat.play('hop', 1.5);
+    } else if (name === 'lift') {
+      addIntimacy(1);
+      L.addMemory('pet', '把它举高高了（亲密 +1）', ['互动']);
+      say(pick(LINES.lift), 3600);
+      floatText('💗 +1');
+      if (cat) cat.play('lift', 1.5);
+    } else if (name === 'chin') {
+      addIntimacy(2);
+      L.addMemory('pet', '挠了挠它的下巴（亲密 +2）', ['互动']);
+      say(pick(LINES.chin), 3600);
+      floatText('💗 +2');
+      if (cat) cat.play('chin', 1.6);
+    } else if (name === 'call') {
+      say(pick(LINES.call), 2600);
+      if (cat) cat.play('call', 0.9);
+    }
+    L.save();
+    refresh(); renderPanel();
+    if ($('petPage')) L.render();
+  }
+
+  function toggleSleep() {
+    var p = ensure();
+    p.sleeping = !p.sleeping;
+    p.lastTickAt = Date.now();          /* 睡觉期间不饿 */
+    L.save();
+    if (cat) cat.setState({ sleeping: p.sleeping });
+    if (p.sleeping) {
+      say(pick(LINES.sleep), 3800);
+      L.addMemory('pet', '它去睡觉了（睡觉期间不会饿）', ['互动']);
+    } else {
+      say(pick(LINES.wake), 3000);
+      L.toast('叫醒了');
+    }
+    refresh(); renderPanel();
+    if ($('petPage')) L.render();
+  }
+
+  var dazeTimer = null;
+  function startDaze() {
+    var p = ensure();
+    if (p.dazeUntil && p.dazeUntil > Date.now()) { L.toast('正在一起发呆…'); return; }
+    if (p.sleeping) wake();
+    p.dazeUntil = Date.now() + 60000;
+    L.save();
+    if (cat) cat.setState({ daze: true });
+    say(pick(LINES.daze), 4200);
+    if (dazeTimer) clearInterval(dazeTimer);
+    dazeTimer = setInterval(dazeTick, 1000);
+    L.addMemory('pet', '开始和你一起发一分钟呆', ['陪伴']);
+    refresh(); renderPanel();
+    if ($('petPage')) L.render();
+  }
+  function dazeTick() {
+    var p = ensure();
+    if (!p.dazeUntil || p.dazeUntil <= Date.now()) {
+      clearInterval(dazeTimer); dazeTimer = null;
+      p.dazeUntil = 0; L.save();
+      addIntimacy(2);
+      L.addMemory('pet', '一起发呆满一分钟（亲密 +2）', ['陪伴']);
+      if (cat) cat.setState({ daze: false });
+      say(pick(LINES.dazeEnd), 4200);
+      refresh();
+      if ($('petPage')) L.render(); else renderPanel();
+      return;
+    }
+    updatePills(p);
+    if ($('petPage')) {
+      var el = document.getElementById('pgDaze');
+      if (el) el.textContent = '发呆中 ' + Math.ceil((p.dazeUntil - Date.now()) / 1000) + 's';
+    }
   }
 
   var RULES = [
@@ -435,6 +554,12 @@
     '.pg-led{display:flex;gap:10px;font-size:12.5px;color:var(--muted);align-items:baseline}',
     '.pg-led b{color:#8a5a12;min-width:34px;text-align:right;flex:none}',
     '.pg-danger{display:flex;gap:8px;flex-wrap:wrap}',
+    '.pg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(144px,1fr));gap:10px}',
+    '.pg-ibtn{text-align:left;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.66);transition:.15s}',
+    '.pg-ibtn:hover{border-color:var(--terracotta);background:rgba(194,168,120,.16);transform:translateY(-1px)}',
+    '.pg-ibtn .e{font-size:19px;display:block;line-height:1.25}',
+    '.pg-ibtn b{display:block;font-size:13.5px;color:var(--ink);margin:3px 0 2px}',
+    '.pg-ibtn small{display:block;font-size:11.5px;color:var(--muted);line-height:1.45}',
     '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:190px}}'
   ].join('\n');
 
@@ -636,6 +761,14 @@
       + '<button class="btn ghost sm" data-pact="tab" data-tab="feed" style="flex:1">🐟 喂食</button>'
       + '<button class="btn ghost sm" data-pact="tab" data-tab="chat" style="flex:1">💬 说话</button>'
       + '</div>'
+      + '<div class="pp-field" style="flex-wrap:wrap">'
+      + '<button class="btn ghost sm" data-pact="act" data-id="play">🪄 逗它玩</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="chin">🤏 挠下巴</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="lift">🙌 举高高</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="call">📣 喊它</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="daze">☁️ 一起发呆</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="sleep">' + (p.sleeping ? '☀️ 叫醒' : '💤 让它睡') + '</button>'
+      + '</div>'
       + '<button class="btn ghost sm block" data-pact="goto-page" style="margin-top:9px">🐾 详情设定与全部数据 →</button>'
       + '<div class="pp-sec" style="margin-top:12px">'
       + '· 单次完成 <b>≥60 分钟</b>的任务，就能领 1~3 条小鱼干（60-119:1 / 120-179:2 / ≥180:3）<br/>'
@@ -835,6 +968,26 @@
       + '<button class="btn ghost sm" data-pact="panel-mem">📖 记忆库</button>'
       + '</div></div></div>';
 
+    /* 和它玩（新增交互） */
+    var dazing = !!(p.dazeUntil && p.dazeUntil > Date.now());
+    function ibtn(id, emoji, title, sub) {
+      return '<button class="pg-ibtn" data-pact="act" data-id="' + id + '"><span class="e">' + emoji + '</span>'
+        + '<b>' + title + '</b><small>' + sub + '</small></button>';
+    }
+    h += '<div class="card"><div class="row between"><h2>🐾 和它玩</h2>'
+      + (dazing ? '<span class="pg-chip on" id="pgDaze">发呆中</span>' : '')
+      + (p.sleeping ? '<span class="pg-chip">💤 睡觉中</span>' : '') + '</div>'
+      + '<div class="hint">怎么点都行，只加不减，没有惩罚。冷却只是防连点。</div>'
+      + '<div class="pg-grid">'
+      + ibtn('play', '🪄', '逗它玩', '亲密 +2（有逗猫棒 +3）')
+      + ibtn('lift', '🙌', '举高高', '亲密 +1')
+      + ibtn('chin', '🤏', '挠下巴', '亲密 +2')
+      + ibtn('call', '📣', '喊它一声', '它会应你，不加也不减')
+      + ibtn('daze', '☁️', dazing ? '发呆中…' : '一起发呆 60 秒', '什么都不做也算陪伴，结束 +2')
+      + ibtn('sleep', p.sleeping ? '☀️' : '💤', p.sleeping ? '叫醒它' : '让它睡一会',
+        p.sleeping ? '醒来看见你会很开心' : '睡觉期间饱食度不掉')
+      + '</div></div>';
+
     /* 喂它 */
     h += '<div class="card"><h2>🍚 喂它</h2><div class="hint">食物用小鱼干在商城买，买完存在仓库里。'
       + '单次完成 ≥60 分钟的任务就能赚到 1~3 条。</div>';
@@ -963,6 +1116,7 @@
     var p = ensure();
 
     if (act === 'pat') { pat(); L.render(); }
+    else if (act === 'act') { interact(id); return; }   /* interact 内部自己会刷新 */
     else if (act === 'feed') { feed(id); L.render(); }
     else if (act === 'buy') buy(id);
     else if (act === 'send') { var inp = $('pgChatIn'); var val = inp ? inp.value : ''; if (inp) inp.value = ''; chat(val); L.render(); }
@@ -1037,6 +1191,7 @@
 
     if (act === 'close') closePanel();
     else if (act === 'tab') { panelTab = el.dataset.tab; renderPanel(); }
+    else if (act === 'act') { interact(id); return; }
     else if (act === 'goto-page') { closePanel(); L.tab('pet'); }
     else if (act === 'pat') pat();
     else if (act === 'feed') feed(id);
@@ -1129,7 +1284,11 @@
       cat.setVitality(v);
       cat.setGear(p.gear);
       cat.setHungry(p.hunger < 30);
+      /* 恢复持续状态：睡觉 / 发呆（应用关掉再打开也要接上） */
+      cat.setState({ sleeping: !!p.sleeping, daze: !!(p.dazeUntil && p.dazeUntil > Date.now()) });
     }
+    if (p.dazeUntil && p.dazeUntil > Date.now() && !dazeTimer) dazeTimer = setInterval(dazeTick, 1000);
+    else if (p.dazeUntil && p.dazeUntil <= Date.now()) { p.dazeUntil = 0; L.save(); }
     updatePills(p);
     dailyGreet(p);
     scheduleIdle();
