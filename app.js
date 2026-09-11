@@ -845,7 +845,7 @@ function catSpeak(t){
 function viewToday(){
   var h = '';
 
-  /* 首页主视觉（结构化蓝图：主张 + 主视觉占位） */
+  /* 首页主视觉（结构化蓝图：主张 + 标题） */
   h += '<div class="mod-head hero">'
     + '<div class="kicker">Module 01 · 首页</div>'
     + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
