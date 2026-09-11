@@ -23,6 +23,26 @@
 
   function rand(a, b) { return a + Math.random() * (b - a); }
 
+  /* 颜色压暗（挂件模式用：浅色背景上要能看清本体） */
+  function shadeHex(hex, k) {
+    var h = (hex || '#888888').replace('#', '');
+    if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+    var r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+    return 'rgb(' + Math.round(r * k) + ',' + Math.round(g * k) + ',' + Math.round(b * k) + ')';
+  }
+
+  /* 圆角矩形（老内核没有 ctx.roundRect 时回退） */
+  function rr(ctx, x, y, w, h, r) {
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
   function mount(el, opts) {
     if (!el) return null;
     opts = opts || {};
@@ -42,6 +62,19 @@
     var vitality = Math.max(0, Math.min(100, opts.vitality == null ? 50 : opts.vitality));
     var tier = tierOf(vitality);
     var v = vitality / 100;
+
+    /* 挂件模式：透明底、无网格/扫描线/故障，只留一只猫；可带配饰 */
+    var bare = !!opts.bare;
+    var hungry = !!opts.hungry;
+    var gear = { neck:null, face:null, head:null };
+    setGear(opts.gear);
+
+    function setGear(g) {
+      gear = { neck:null, face:null, head:null };
+      if (!g) return;
+      if (typeof g === 'string') { gear.neck = g; return; }
+      Object.keys(gear).forEach(function (k) { if (g[k]) gear[k] = g[k]; });
+    }
 
     /* 动画状态 */
     var t0 = performance.now();
@@ -70,7 +103,8 @@
       var cx = W / 2;
       var s = Math.min(W / 280, H / 210);      /* 统一缩放 */
       if (s > 1.25) s = 1.25;
-      if (s < 0.55) s = 0.55;
+      var minS = bare ? 0.16 : 0.55;
+      if (s < minS) s = minS;
 
       var T = tier;
       var breathSpeed = T === 'low' ? 0.85 : (T === 'high' ? 1.7 : 1.25);
@@ -82,22 +116,42 @@
       var corePulse = 0.5 + 0.5 * Math.sin(t * (T === 'high' ? 3.4 : 2.0));
       var headTilt = Math.sin(t * 0.6) * (T === 'low' ? 1.5 : 3);
 
+      /* 饿了：耷拉一点、慢一点、核心变暗（但不惩罚、不掉亲密度） */
+      if (hungry) {
+        earDroop = Math.max(earDroop, 0.7);
+        eyeBase = Math.min(eyeBase, 0.5);
+        tailAmp *= 0.5;
+        corePulse *= 0.45;
+      }
+
       ctx.clearRect(0, 0, W, H);
 
-      /* 深色底 + 网格 */
-      ctx.fillStyle = '#1a1410';
-      ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = P.grid;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      var gap = 22 * s, off = (t * 6) % gap;
-      for (var gx = -gap + off; gx < W + gap; gx += gap) {
-        ctx.moveTo(gx, 0); ctx.lineTo(gx, H);
+      if (!bare) {
+        /* 深色底 + 网格 */
+        ctx.fillStyle = '#1a1410';
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = P.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        var gap = 22 * s, off = (t * 6) % gap;
+        for (var gx = -gap + off; gx < W + gap; gx += gap) {
+          ctx.moveTo(gx, 0); ctx.lineTo(gx, H);
+        }
+        for (var gy = -gap + off; gy < H + gap; gy += gap) {
+          ctx.moveTo(0, gy); ctx.lineTo(W, gy);
+        }
+        ctx.stroke();
+      } else {
+        /* 挂件模式：透明底 + 一圈暖光，把猫托出来 */
+        var gr = ctx.createRadialGradient(W / 2, H * 0.72, 2, W / 2, H * 0.72, Math.max(W, H) * 0.62);
+        gr.addColorStop(0, 'rgba(255,252,246,.34)');
+        gr.addColorStop(0.55, 'rgba(246,236,220,.16)');
+        gr.addColorStop(1, 'rgba(246,236,220,0)');
+        ctx.fillStyle = gr;
+        ctx.beginPath();
+        ctx.ellipse(W / 2, H * 0.74, W * 0.42, H * 0.30, 0, 0, 6.284);
+        ctx.fill();
       }
-      for (var gy = -gap + off; gy < H + gap; gy += gap) {
-        ctx.moveTo(0, gy); ctx.lineTo(W, gy);
-      }
-      ctx.stroke();
 
       ctx.save();
       ctx.translate(cx, 0);
@@ -113,6 +167,8 @@
       ctx.shadowBlur = T === 'high' ? 16 : (T === 'mid' ? 11 : 6);
       ctx.strokeStyle = P.line;
       ctx.fillStyle = 'rgba(26,20,16,.92)';
+      /* 本体色：大舞台沿用核心色；挂件模式压暗一档，浅色背景上才看得清 */
+      var bodyFill = bare ? shadeHex(P.core, 0.62) : P.core;
 
       /* 尾巴 */
       var tsw = Math.sin(t * tailSpeed) * tailAmp;
@@ -134,6 +190,7 @@
       /* 身体 */
       var bodyW = 46, bodyH = 40 + breath * 0.5;
       ctx.lineWidth = 3;
+      ctx.fillStyle = bodyFill;
       ctx.beginPath();
       ctx.moveTo(bx - bodyW, base);
       ctx.bezierCurveTo(bx - bodyW - 4, base - bodyH * 0.9, bx - bodyW * 0.55, base - bodyH - 8, bx, base - bodyH - 8);
@@ -144,6 +201,7 @@
 
       /* 前爪 */
       ctx.lineWidth = 2.6;
+      ctx.fillStyle = bodyFill;
       [-20, 20].forEach(function (px) {
         ctx.beginPath();
         ctx.ellipse(bx + px, base - 2, 11, 6, 0, 0, 6.284);
@@ -174,6 +232,7 @@
       var headR = 40;
       var hy = base - bodyH - 30 - breath;
       ctx.lineWidth = 3;
+      ctx.fillStyle = bodyFill;
       ctx.beginPath();
       ctx.arc(bx, hy, headR, 0, 6.284);
       ctx.fill(); ctx.stroke();
@@ -203,21 +262,23 @@
         ctx.globalAlpha = 1;
       });
 
-      /* 头顶天线 */
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(bx, hy - headR + 2);
-      ctx.lineTo(bx + 2, hy - headR - 22);
-      ctx.stroke();
-      var antBlink = T === 'high' ? (0.55 + 0.45 * Math.sin(t * 5)) : (0.3 + 0.3 * Math.sin(t * 1.6));
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = P.core;
-      ctx.globalAlpha = antBlink;
-      ctx.beginPath();
-      ctx.arc(bx + 2, hy - headR - 24, 3.6, 0, 6.284);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = T === 'high' ? 16 : (T === 'mid' ? 11 : 6);
+      /* 头顶天线（戴王冠时收起） */
+      if (!gear.head) {
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bx, hy - headR + 2);
+        ctx.lineTo(bx + 2, hy - headR - 22);
+        ctx.stroke();
+        var antBlink = T === 'high' ? (0.55 + 0.45 * Math.sin(t * 5)) : (0.3 + 0.3 * Math.sin(t * 1.6));
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = P.core;
+        ctx.globalAlpha = antBlink;
+        ctx.beginPath();
+        ctx.arc(bx + 2, hy - headR - 24, 3.6, 0, 6.284);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = T === 'high' ? 16 : (T === 'mid' ? 11 : 6);
+      }
 
       /* 眼睛（眨眼 + 状态） */
       var blinking = (t % (blinkAt + 0.16)) < 0.16;
@@ -269,28 +330,91 @@
         }
       });
       ctx.globalAlpha = 1;
+
+      /* ---- 配饰（商城里买的装扮） ---- */
+      if (gear.face) {                       /* 墨镜 */
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = 'rgba(26,20,16,.4)';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = P.line;
+        [-15, 15].forEach(function (ex) {
+          rr(ctx, bx + ex - 11.5, hy - 5, 23, 15, 6);
+          ctx.fillStyle = 'rgba(24,20,17,.94)';
+          ctx.fill(); ctx.stroke();
+        });
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, hy + 2); ctx.lineTo(bx + 4, hy + 2);
+        ctx.stroke();
+        ctx.globalAlpha = 0.42;
+        ctx.beginPath();
+        ctx.moveTo(bx - 19, hy + 6); ctx.lineTo(bx - 9, hy - 2);
+        ctx.moveTo(bx + 11, hy + 6); ctx.lineTo(bx + 21, hy - 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      if (gear.neck) {                       /* 围巾 */
+        var nk = base - bodyH + 6;
+        ctx.shadowBlur = 7;
+        ctx.shadowColor = 'rgba(192,85,63,.45)';
+        ctx.strokeStyle = '#c0553f';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.moveTo(bx - 31, nk - 6);
+        ctx.quadraticCurveTo(bx, nk + 13, bx + 31, nk - 6);
+        ctx.stroke();
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(bx + 19, nk + 3);
+        ctx.lineTo(bx + 27, nk + 42);
+        ctx.stroke();
+      }
+
+      if (gear.head) {                       /* 小王冠 */
+        var cy0 = hy - headR - 4;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(224,169,59,.6)';
+        ctx.beginPath();
+        ctx.moveTo(bx - 19, cy0 + 12);
+        ctx.lineTo(bx - 19, cy0 - 7);
+        ctx.lineTo(bx - 9, cy0 + 2);
+        ctx.lineTo(bx, cy0 - 13);
+        ctx.lineTo(bx + 9, cy0 + 2);
+        ctx.lineTo(bx + 19, cy0 - 7);
+        ctx.lineTo(bx + 19, cy0 + 12);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(224,169,59,.94)';
+        ctx.fill();
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = 'rgba(255,255,255,.6)';
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+
       ctx.restore();
 
-      /* 扫描线 */
-      var sy = ((t * 0.22) % 1) * H;
-      ctx.fillStyle = P.scan;
-      ctx.fillRect(0, sy, W, 1.6);
+      /* 扫描线 + 故障闪烁（挂件模式不要，免得小尺寸下糊成一团） */
+      if (!bare) {
+        var sy = ((t * 0.22) % 1) * H;
+        ctx.fillStyle = P.scan;
+        ctx.fillRect(0, sy, W, 1.6);
 
-      /* 故障闪烁 */
-      if (t < glitchUntil) {
-        var slices = 4;
-        for (var i = 0; i < slices; i++) {
-          var sh = 4 + Math.random() * 10;
-          var syy = Math.random() * (H - sh);
-          var dx = (Math.random() - 0.5) * 26;
-          try {
-            ctx.drawImage(canvas, 0, syy * dpr, canvas.width, sh * dpr, dx, syy, W, sh);
-          } catch (e) { /* 忽略自绘制异常 */ }
+        if (t < glitchUntil) {
+          var slices = 4;
+          for (var i = 0; i < slices; i++) {
+            var sh = 4 + Math.random() * 10;
+            var syy = Math.random() * (H - sh);
+            var dx = (Math.random() - 0.5) * 26;
+            try {
+              ctx.drawImage(canvas, 0, syy * dpr, canvas.width, sh * dpr, dx, syy, W, sh);
+            } catch (e) { /* 忽略自绘制异常 */ }
+          }
+          ctx.globalAlpha = 0.16;
+          ctx.fillStyle = '#ff2d95';
+          ctx.fillRect(0, 0, W, H);
+          ctx.globalAlpha = 1;
         }
-        ctx.globalAlpha = 0.16;
-        ctx.fillStyle = '#ff2d95';
-        ctx.fillRect(0, 0, W, H);
-        ctx.globalAlpha = 1;
       }
     }
 
@@ -359,6 +483,8 @@
         v = vitality / 100;
         drawOnce();
       },
+      setGear: function (g) { setGear(g); drawOnce(); },
+      setHungry: function (h) { hungry = !!h; drawOnce(); },
       dispose: function () {
         disposed = true;
         stop();

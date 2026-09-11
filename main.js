@@ -5,7 +5,8 @@ function createWindow(){
   const win = new BrowserWindow({
     width: 1100,
     height: 760,
-    backgroundColor: '#f5f6fa',
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
+    backgroundColor: '#f3ece0',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

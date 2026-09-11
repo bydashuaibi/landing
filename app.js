@@ -78,6 +78,10 @@ function blankState(){
     weather: [],        // 情绪气象 [{date,mood,note}]
     companion: {messages: []},
     community: {nick:''},
+    weeklyTasks: [],    // 每周任务：{id,name,type('exercise'|'custom'),category,dailyGoalMin,weeklyGoalDays,enabled,records:[{date,minutes,mode,plannedMin,ts}],createdAt}
+    timer: null,        // 计时器：{taskId,plannedMin,startedAt,endsAt,paused,remainMs,finished}
+    memories: [],       // 记忆库：{id,at,kind,text,tags}
+    pet: {},            // 伙伴（由 pet.js 负责默认值与演化）
     settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
   };
 }
@@ -103,6 +107,10 @@ function migrate(){
   s.weather = s.weather || [];
   s.companion = s.companion || {messages:[]};
   s.community = s.community || {nick:''};
+  s.weeklyTasks = s.weeklyTasks || [];
+  s.memories = s.memories || [];
+  s.timer = s.timer || null;
+  s.pet = s.pet || {};
   s.settings = s.settings || {};
 
   /* 迁移旧 v1 数据中的 dumps/weather/companion/community/settings */
@@ -118,6 +126,14 @@ function migrate(){
     d.records = d.records || [];
     if(d.enabled===undefined) d.enabled = true;
     if(d.type===undefined) d.type = 'habit';
+  });
+  s.weeklyTasks.forEach(function(w){
+    w.records = w.records || [];
+    if(w.type===undefined) w.type = 'exercise';
+    if(w.enabled===undefined) w.enabled = true;
+    if(!w.dailyGoalMin) w.dailyGoalMin = 30;
+    if(!w.weeklyGoalDays) w.weeklyGoalDays = 5;
+    if(!w.category) w.category = w.type==='exercise' ? 'health' : 'edu';
   });
 }
 
@@ -159,6 +175,16 @@ function seed(){
        {date:addDays(t,-5),amount:10,minutes:10},{date:addDays(t,-3),amount:10,minutes:10},
        {date:addDays(t,-2),amount:10,minutes:10},{date:addDays(t,-1),amount:10,minutes:10}
      ], createdAt:addDays(t,-7)}
+  ];
+
+  /* 示例每周任务（运动型：每日时长 + 每周天数双目标） */
+  STATE.weeklyTasks = [
+    {id:uid('wk'), name:'跑步 / 健身房', type:'exercise', category:'health',
+     dailyGoalMin:30, weeklyGoalDays:5, enabled:true,
+     records:[
+       {date:addDays(t,-4), minutes:30, mode:'timer', plannedMin:30, ts:Date.now()},
+       {date:addDays(t,-2), minutes:35, mode:'timer', plannedMin:30, ts:Date.now()}
+     ], createdAt:addDays(t,-14)}
   ];
 
   STATE.dumps = [
@@ -308,9 +334,11 @@ function checkLongMilestones(g){
   if(pct>=100 && !g._milestoneDone){
     g._milestoneDone = true;
     msgs.push('🎉 「'+g.name+'」已完成！你做到了！');
+    addMemory('milestone', '「'+g.name+'」全部完成 🎉', ['里程碑']);
   } else if(pct>=50 && !g._milestoneHalf){
     g._milestoneHalf = true;
     msgs.push('💪 「'+g.name+'」进度已到 '+pct+'%！过半了，继续！');
+    addMemory('milestone', '「'+g.name+'」进度过半（'+pct+'%）', ['里程碑']);
   }
   return msgs;
 }
@@ -407,6 +435,370 @@ function renderDailyTaskCard(dt){
     +'</div>';
 }
 
+/* ================= 每周任务 ================= */
+/* 设计：双目标——【每日时长】+【每周达标天数】，能区分「练得久」和「练得勤」。
+   运动型打卡有两个入口：「已完成」直接把设定时长计入周报；「现在开始」起倒计时，
+   时间到再问「已完成 / 完成部分」，完成部分由你自己填实际做了多久。
+   原则延续：不催不罚，记录本身就算数。 */
+var WEEKLY_TYPES = [
+  {key:'exercise', label:'运动型', cat:'health', timed:true,
+   hint:'设每日运动时长，打卡可立即完成，也可起倒计时跟着做'},
+  {key:'custom',   label:'自定义型', cat:'edu',    timed:false,
+   hint:'设每日目标与每周天数，打卡即完成，不记时长'}
+];
+function weeklyTypeOf(key){
+  return WEEKLY_TYPES.find(function(x){return x.key===key;}) || WEEKLY_TYPES[0];
+}
+
+function weeklyTodayMinutes(w){
+  var m=0;
+  (w.records||[]).forEach(function(r){ if(r.date===today()) m+=(r.minutes||0); });
+  return m;
+}
+function isWeeklyCheckedToday(w){ return weeklyTodayMinutes(w)>0; }
+
+/* 某一自然周（周一为界）的统计 */
+function weeklyTaskStats(w, wk){
+  wk = wk || weekKey();
+  var end = addDays(wk,7);
+  var byDate={}, total=0;
+  (w.records||[]).forEach(function(r){
+    if(r.date<wk || r.date>=end) return;
+    byDate[r.date]=(byDate[r.date]||0)+(r.minutes||0);
+    total += (r.minutes||0);
+  });
+  var goal = w.dailyGoalMin||0;
+  var actDays=0, okDays=0;
+  for(var i=0;i<7;i++){
+    var m = byDate[addDays(wk,i)]||0;
+    if(m>0){
+      actDays++;
+      if(goal<=0 || m>=goal) okDays++;   /* 部分完成也算「动了」，但不算达标 */
+    }
+  }
+  return {byDate:byDate, total:total, actDays:actDays, okDays:okDays,
+          goalDays:w.weeklyGoalDays||7, dailyGoal:goal};
+}
+
+/* 所有启用的每周任务合计（喂给周报） */
+function weeklyTasksSummary(wk){
+  var r = {goalMin:0, doneMin:0, goalDays:0, okDays:0, totalMin:0, byCat:{}};
+  STATE.weeklyTasks.forEach(function(w){
+    if(!w.enabled) return;
+    var st = weeklyTaskStats(w, wk);
+    r.goalMin += (w.dailyGoalMin||0)*(w.weeklyGoalDays||7);
+    r.doneMin += st.total;
+    r.totalMin += st.total;
+    r.goalDays += (w.weeklyGoalDays||7);
+    r.okDays += st.okDays;
+    var c = w.category||'health';
+    r.byCat[c] = (r.byCat[c]||0) + st.total;
+  });
+  return r;
+}
+
+/* 本周 7 天格子 */
+function weeklyDots(w){
+  var wk = weekKey();
+  var st = weeklyTaskStats(w);
+  var goal = w.dailyGoalMin||0;
+  var now = today();
+  var html = '<div class="wk-dots">';
+  for(var i=0;i<7;i++){
+    var d = addDays(wk,i);
+    var m = st.byDate[d]||0;
+    var cls = 'wk-dot';
+    if(d>now) cls += ' future';
+    else if(goal<=0 ? m>0 : m>=goal) cls += ' ok';
+    else if(m>0) cls += ' part';
+    html += '<i class="'+cls+'" title="'+d+' · '+m+' 分钟"></i>';
+  }
+  return html+'</div>';
+}
+
+function renderWeeklyTaskCard(w){
+  var st = weeklyTaskStats(w);
+  var tmin = weeklyTodayMinutes(w);
+  var goal = w.dailyGoalMin||0;
+  var tp = weeklyTypeOf(w.type);
+  var dayPct = goal>0 ? Math.min(100, Math.round(tmin/goal*100)) : (tmin>0?100:0);
+  var checked = tmin>0;
+  var catCls = (CATEGORIES.find(function(c){return c.key===w.category;})||{}).cls || 'health';
+
+  return '<div class="task wtask'+(w.enabled?'':' paused')+'" data-id="'+w.id+'">'
+    +'<div class="tinfo">'
+    +'<div class="tname">'+esc(w.name)
+      +' <span class="cat '+catCls+'">'+tp.label+'</span>'
+      +(w.enabled?'':'<span class="badge-pause">已关</span>')+'</div>'
+    +'<div class="tmeta">每日 '+(goal||'—')+' 分钟 · 本周达标 <b>'+st.okDays+'/'+st.goalDays+'</b> 天 · 累计 '+st.total+' 分钟</div>'
+    +weeklyDots(w)
+    +'<div class="bar"><div style="width:'+dayPct+'%"></div></div>'
+    +'</div>'
+    +(checked
+      ? '<span class="badge-done">✓ 今天 '+tmin+' 分钟</span>'
+      : '<button class="btn primary sm" data-act="checkinWeekly" data-id="'+w.id+'">'+icon('check')+'打卡</button>')
+    +'<button class="btn ghost sm" data-act="toggleWeekly" data-id="'+w.id+'">'+(w.enabled?'关':'开')+'</button>'
+    +'<button class="btn ghost sm" data-act="editWeekly" data-id="'+w.id+'">'+icon('edit')+'</button>'
+    +'<button class="btn ghost sm" data-act="delWeekly" data-id="'+w.id+'">'+icon('trash')+'</button>'
+    +'</div>';
+}
+
+/* ---- 打卡：已完成 / 现在开始 ---- */
+function openWeeklyCheckin(id){
+  var w = STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w) return;
+  var st = weeklyTaskStats(w);
+  var tp = weeklyTypeOf(w.type);
+  var tmin = weeklyTodayMinutes(w);
+
+  if(!tp.timed){
+    /* 自定义型：不记时长，直接确认 */
+    openSheet('<h2>打卡：'+esc(w.name)+'</h2>'
+      +'<div class="hint">'+tp.label+' · 本周达标 '+st.okDays+'/'+st.goalDays+' 天</div>'
+      +'<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>'
+      +'<button class="btn primary" id="wc_ok">已完成</button></div>');
+    $('wc_ok').onclick=function(){ commitWeeklyRecord(w, 0, 'tap', 0); };
+    return;
+  }
+
+  if(tmin>0){
+    /* 今天已经打过卡，仍允许追加一段 */
+    openSheet('<h2>再来一段？</h2>'
+      +'<div class="hint">「'+esc(w.name)+'」今天已记录 '+tmin+' 分钟（每日目标 '+w.dailyGoalMin+' 分钟）</div>'
+      +'<div class="field"><label>本次时长（分钟）</label><input id="wc_min" type="number" value="'+w.dailyGoalMin+'" min="1"></div>'
+      +'<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>'
+      +'<button class="btn primary" id="wc_add">记下</button></div>');
+    $('wc_add').onclick=function(){
+      var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
+      commitWeeklyRecord(w, m, 'extra', m);
+    };
+    return;
+  }
+
+  openSheet('<h2>打卡：'+esc(w.name)+'</h2>'
+    +'<div class="hint">今日目标 <b>'+w.dailyGoalMin+' 分钟</b> · 本周达标 '+st.okDays+'/'+st.goalDays+' 天</div>'
+    +'<div class="wk-pick">'
+      +'<button class="wk-choice" id="wc_done"><b>已完成</b><span>按设定时长直接计入周报</span></button>'
+      +'<button class="wk-choice" id="wc_start"><b>现在开始</b><span>按设定时长起倒计时</span></button>'
+    +'</div>'
+    +'<div class="field" style="margin-top:14px"><label>本次时长（分钟）</label>'
+      +'<input id="wc_min" type="number" value="'+w.dailyGoalMin+'" min="1"></div>');
+
+  $('wc_done').onclick=function(){
+    var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
+    commitWeeklyRecord(w, m, 'instant', m);
+  };
+  $('wc_start').onclick=function(){
+    var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
+    closeSheet();
+    startWeeklyTimer(w, m);
+  };
+}
+
+/* 写入一条每周任务记录 */
+function commitWeeklyRecord(w, minutes, mode, plannedMin){
+  minutes = Math.max(0, minutes||0);
+  w.records = w.records||[];
+  w.records.push({date:today(), minutes:minutes, mode:mode||'instant', plannedMin:plannedMin||minutes, ts:Date.now()});
+  if(STATE.timer && STATE.timer.taskId===w.id) STATE.timer=null;
+  var f = minutes>0 ? awardFish(minutes, w.name) : 0;
+  addMemory('task', '「'+w.name+'」'+minutes+' 分钟（'+({instant:'直接完成',timer:'计时完成',partial:'完成部分',extra:'追加',tap:'打卡'}[mode]||'记录')+'）', ['每周任务']);
+  var st = weeklyTaskStats(w);
+  save(); closeSheet(); render(); renderTimerBar();
+  toast('已记录 '+minutes+' 分钟 · 本周达标 '+st.okDays+'/'+st.goalDays+' 天'+(f?' · +'+f+' 🐟':''));
+}
+
+/* ================= 专注计时器 ================= */
+var _timerTick = null;
+function timerRemainMs(){
+  var t=STATE.timer; if(!t) return 0;
+  if(t.finished) return 0;
+  if(t.paused) return Math.max(0, t.remainMs||0);
+  return Math.max(0, t.endsAt - Date.now());
+}
+function timerElapsedMs(){
+  var t=STATE.timer; if(!t) return 0;
+  return Math.max(0, (t.plannedMin*60000) - timerRemainMs());
+}
+function timerTask(){
+  if(!STATE.timer) return null;
+  return STATE.weeklyTasks.find(function(x){ return x.id===STATE.timer.taskId; }) || null;
+}
+function fmtClock(ms){
+  var s=Math.max(0,Math.round(ms/1000));
+  var m=Math.floor(s/60); s=s%60;
+  return ('0'+m).slice(-2)+':'+('0'+s).slice(-2);
+}
+function timerBarEl(){
+  var el = $('timerBar');
+  if(!el){
+    el = document.createElement('div');
+    el.id='timerBar'; el.className='timerbar hidden';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function renderTimerBar(){
+  var el = timerBarEl(), t = STATE.timer;
+  if(!t || t.finished){ el.classList.add('hidden'); el.innerHTML=''; return; }
+  var w = timerTask();
+  el.classList.remove('hidden');
+  el.innerHTML = '<span class="tb-ico">⏱</span>'
+    +'<span class="tb-time">'+fmtClock(timerRemainMs())+'</span>'
+    +'<span class="tb-name">'+esc(w?w.name:'专注')+' · '+t.plannedMin+' 分钟</span>'
+    +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?'继续':'暂停')+'</button>'
+    +'<button class="tb-btn" data-act="timerFinish">结束</button>';
+}
+function ensureTimerTick(){
+  if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
+  if(!STATE.timer || STATE.timer.finished) return;
+  _timerTick = setInterval(function(){
+    if(!STATE.timer){ clearInterval(_timerTick); _timerTick=null; return; }
+    if(!STATE.timer.paused && !STATE.timer.finished && timerRemainMs()<=0){
+      onTimerEnd();
+      return;
+    }
+    renderTimerBar();
+  }, 500);
+}
+function startWeeklyTimer(w, plannedMin){
+  STATE.timer = {
+    taskId:w.id, plannedMin:plannedMin, startedAt:Date.now(),
+    endsAt: Date.now()+plannedMin*60000, paused:false, remainMs:null, finished:false
+  };
+  save(); renderTimerBar(); ensureTimerTick();
+  var tip = '倒计时 '+plannedMin+' 分钟开始了，去动起来。';
+  toast(tip);
+  if(window.Pet && Pet.say) Pet.say('我帮你盯着时间，' + plannedMin + ' 分钟后叫你。');
+  addMemory('timer', '开始专注：「'+w.name+'」计划 '+plannedMin+' 分钟', ['计时']);
+}
+function toggleTimer(){
+  var t=STATE.timer; if(!t||t.finished) return;
+  if(t.paused){ t.endsAt = Date.now() + (t.remainMs||0); t.paused=false; }
+  else { t.remainMs = timerRemainMs(); t.paused=true; }
+  save(); renderTimerBar(); ensureTimerTick();
+}
+/* 时间到 */
+function onTimerEnd(){
+  var t=STATE.timer; if(!t) return;
+  t.finished = true;
+  if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
+  save();
+  alarmSound();
+  notify('⏰ 时间到', (timerTask()?timerTask().name:'专注')+' '+t.plannedMin+' 分钟完成，来记录一下');
+  if(window.Pet && Pet.say) Pet.say('时间到啦！你做了 ' + t.plannedMin + ' 分钟，去记一笔吧。');
+  renderTimerBar();
+  openTimerFinishSheet(false);
+}
+/* 结束（未到期）*/
+function finishTimerEarly(){
+  var t=STATE.timer; if(!t) return;
+  if(t.finished){ openTimerFinishSheet(false); return; }
+  openTimerFinishSheet(true);
+}
+/* 收尾弹窗：已完成 / 完成部分 */
+function openTimerFinishSheet(early){
+  var t=STATE.timer; if(!t) return;
+  var w = timerTask();
+  var name = w?w.name:'专注';
+  var passed = Math.max(1, Math.round(timerElapsedMs()/60000));
+  openSheet('<h2>'+(early?'结束本次专注？':'⏰ 时间到！')+'</h2>'
+    +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+' 分钟'+(early?(' · 已进行 '+passed+' 分钟'):'')+'</div>'
+    +'<div class="ph-actions">'
+      +'<button class="btn primary block" id="tf_done" style="margin-bottom:8px">'+icon('check')+' 已完成（记 '+t.plannedMin+' 分钟）</button>'
+      +'<button class="btn ghost block" id="tf_part">完成部分 · 我自己填时长</button>'
+      +(early?'<button class="btn ghost block" id="tf_giveup" style="margin-top:8px">放弃这次，不记录</button>':'')
+    +'</div>');
+
+  $('tf_done').onclick=function(){
+    if(w) commitWeeklyRecord(w, t.plannedMin, 'timer', t.plannedMin);
+    else { STATE.timer=null; save(); closeSheet(); render(); renderTimerBar(); }
+  };
+  $('tf_part').onclick=function(){
+    var def = Math.max(1, Math.round(timerElapsedMs()/60000));
+    openSheet('<h2>完成部分</h2>'
+      +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+' 分钟。这段实际做了多久？记多少算多少，不丢人。</div>'
+      +'<div class="field"><label>实际时长（分钟）</label><input id="tf_min" type="number" value="'+def+'" min="1"></div>'
+      +'<div class="sheet-actions"><button class="btn ghost" id="tf_back">返回</button>'
+      +'<button class="btn primary" id="tf_save">记下</button></div>');
+    $('tf_back').onclick=function(){ openTimerFinishSheet(early); };
+    $('tf_save').onclick=function(){
+      var m=parseInt($('tf_min').value,10);
+      if(!m||m<=0){ toast('填个分钟数'); return; }
+      if(w) commitWeeklyRecord(w, m, 'partial', t.plannedMin);
+      else { STATE.timer=null; save(); closeSheet(); render(); }
+    };
+  };
+  if(early && $('tf_giveup')){
+    $('tf_giveup').onclick=function(){
+      STATE.timer=null; save(); closeSheet(); renderTimerBar();
+      toast('已放弃这次，没有记录也没关系');
+      if(window.Pet && Pet.say) Pet.say('没关系，下次想动的时候我在。');
+    };
+  }
+}
+
+/* 到期提醒音（WebAudio，无音频文件依赖） */
+function alarmSound(){
+  try{
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    var ac = new AC();
+    var now = ac.currentTime;
+    for(var i=0;i<3;i++){
+      var o=ac.createOscillator(), g=ac.createGain();
+      o.type='sine'; o.frequency.value = i===2?1180:880;
+      var t0 = now + i*0.28;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.16, t0+0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, t0+0.24);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t0); o.stop(t0+0.26);
+    }
+    setTimeout(function(){ try{ ac.close(); }catch(e){} }, 1400);
+  }catch(e){}
+}
+function notify(title, body){
+  try{
+    if(!window.Notification) return;
+    if(Notification.permission==='granted'){ new Notification(title,{body:body}); }
+    else if(Notification.permission!=='denied'){ Notification.requestPermission(); }
+  }catch(e){}
+}
+
+/* ================= 小鱼干 & 记忆库 ================= */
+/* 规则：单次完成 ≥60 分钟的任务 → 1~3 条（60-119:1 / 120-179:2 / ≥180:3） */
+function fishForMinutes(m){
+  if(!m || m<60) return 0;
+  return Math.min(3, 1+Math.floor((m-60)/60));
+}
+function petState(){
+  if(!STATE.pet) STATE.pet = {};
+  if(STATE.pet.fish===undefined) STATE.pet.fish=0;
+  return STATE.pet;
+}
+function grantFish(n, reason){
+  n = Math.max(0, n|0);
+  if(!n) return 0;
+  var p = petState();
+  p.fish += n;
+  p.earned = (p.earned||0)+n;
+  p.fishLog = p.fishLog||[];
+  p.fishLog.push({at:Date.now(), n:n, reason:reason});
+  if(p.fishLog.length>400) p.fishLog.splice(0, p.fishLog.length-400);
+  addMemory('fish', '+'+n+' 条小鱼干 · '+reason, ['小鱼干']);
+  if(window.Pet && Pet.onFish) Pet.onFish(n, reason);
+  return n;
+}
+function awardFish(minutes, reason){
+  return grantFish(fishForMinutes(minutes), reason+'（'+(minutes||0)+' 分钟）');
+}
+function addMemory(kind, text, tags){
+  STATE.memories = STATE.memories||[];
+  STATE.memories.push({id:uid('m'), at:Date.now(), kind:kind||'note', text:text, tags:tags||[]});
+  if(STATE.memories.length>1000) STATE.memories.splice(0, STATE.memories.length-1000);
+}
+var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日'};
+
 /* ================= 赛博伙伴：活力全部来自你已经做的事 ================= */
 /* 设计原则：不新增「喂猫」任务。你倾倒、打卡、完成一件，它自然长。
    你没来，它不惩罚，只是「有点想你」。底线 12 分，永远不会归零或枯萎。 */
@@ -459,16 +851,23 @@ function viewToday(){
     + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
-  /* 赛博伙伴：状态由你已经做的事驱动，不需要额外照料 */
-  var cv = catVitality();
-  var ct = window.CyberCat ? CyberCat.tierOf(cv) : (cv<40?'low':(cv>70?'high':'mid'));
-  h += '<div class="card cat-card">'
-    + '<div class="cc-top"><h2>着陆伙伴</h2><span class="cc-badge t-'+ct+'">'+catTierText(ct)+'</span></div>'
-    + '<div class="cc-stage"><div class="cyber-cat" id="cyberCat" data-v="'+cv+'"></div></div>'
-    + '<div class="cc-meta"><div class="cc-bar"><i style="width:'+cv+'%"></i></div>'
-    + '<div class="cc-foot"><span>活力 '+cv+' / 100</span><span>连续着陆 '+catLandingDays()+' 天</span></div></div>'
-    + '<div class="cc-talk" id="ccTalk">'+esc(catSpeak(ct))+'</div>'
-    + '</div>';
+  /* 每周任务：今天还没动的那几个（伙伴已改为全局悬浮挂件，见右下角） */
+  var weeklyTodo = STATE.weeklyTasks.filter(function(w){ return w.enabled && !isWeeklyCheckedToday(w); });
+  if(weeklyTodo.length){
+    h += '<div class="card"><div class="row between"><h2>🏃 今天还没动</h2>'
+      + '<span class="muted" style="font-size:12px">每日目标 · 本周达标</span></div>'
+      + '<div class="hint">打开这里就是胜利。打卡后选「已完成」直接记账，或选「现在开始」跟着倒计时做。</div>';
+    weeklyTodo.forEach(function(w){
+      var st = weeklyTaskStats(w);
+      h += '<div class="wk-row">'
+        + '<div class="wk-info"><div class="wk-name">'+esc(w.name)+'</div>'
+        + '<div class="wk-sub">每日 '+w.dailyGoalMin+' 分钟 · 本周 <b>'+st.okDays+'/'+st.goalDays+'</b> 天</div>'
+        + weeklyDots(w) + '</div>'
+        + '<button class="btn primary sm" data-act="checkinWeekly" data-id="'+w.id+'">'+icon('check')+'打卡</button>'
+        + '</div>';
+    });
+    h += '</div>';
+  }
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -507,14 +906,21 @@ function viewToday(){
   }
   h += '</div>';
 
-  /* 快捷打卡区：启用的日常任务 */
+  /* 快捷打卡区：启用的日常任务 + 每周任务 */
   var activeDailies = STATE.dailyTasks.filter(function(d){return d.enabled;});
-  if(activeDailies.length){
-    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。</div><div class="quick-checkin">';
+  var activeWeeklies = STATE.weeklyTasks.filter(function(w){return w.enabled;});
+  if(activeDailies.length || activeWeeklies.length){
+    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。单次满 60 分钟赚 1~3 条小鱼干 🐟</div><div class="quick-checkin">';
     activeDailies.forEach(function(dt){
       var checked = isDailyCheckedToday(dt);
       h += '<div class="qci '+(checked?'done':'')+'" data-act="quickCheckin" data-id="'+dt.id+'">'
         + (checked ? icon('check')+' '+esc(dt.name) : esc(dt.name))
+        + '</div>';
+    });
+    activeWeeklies.forEach(function(w){
+      var m = weeklyTodayMinutes(w);
+      h += '<div class="qci '+(m>0?'done':'')+'" data-act="quickWeekly" data-id="'+w.id+'">'
+        + (m>0 ? icon('check')+' '+esc(w.name)+' · '+m+'min' : '🏃 '+esc(w.name))
         + '</div>';
     });
     h += '</div></div>';
@@ -576,13 +982,32 @@ function viewTasks(){
     STATE.dailyTasks.forEach(function(dt){ h += renderDailyTaskCard(dt); });
   }
 
+  /* 每周任务 */
+  var wSum = weeklyTasksSummary();
+  h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 每周任务</h2>'
+    + '<button class="btn primary sm" data-act="newWeekly">'+icon('plus')+' 新建每周任务</button></div>'
+    + '<div class="hint">按「每日时长 + 每周达标天数」双目标推进，适合运动这类需要节奏的事。'
+    + '打卡可选<b>已完成</b>（按设定时长直接计入周报）或<b>现在开始</b>（起倒计时，结束后再问完成多少）。</div>';
+  if(wSum.goalDays){
+    h += '<div class="wk-sum"><span>本周达标 <b>'+wSum.okDays+'/'+wSum.goalDays+'</b> 天</span>'
+      + '<span>累计 <b>'+wSum.doneMin+'</b> 分钟</span>'
+      + '<span>目标 <b style="color:var(--khaki-deep)">'+wSum.goalMin+'</b> 分钟</span></div>';
+  }
+  h += '</div>';
+
+  if(!STATE.weeklyTasks.length){
+    h += '<div class="empty">还没有每周任务。点「新建每周任务」加一个，比如「每天运动 30 分钟、每周至少 5 天」。</div>';
+  } else {
+    STATE.weeklyTasks.forEach(function(w){ h += renderWeeklyTaskCard(w); });
+  }
+
   return h;
 }
 
 /* ================= 视图：周报/复盘 ================= */
 function generateWeeklyReport(){
   var wk = weekKey();
-  if(STATE.reports[wk]) return STATE.reports[wk];
+  var cached = STATE.reports[wk];
 
   /* 计算本周概况 */
   var monday = wk;
@@ -597,8 +1022,13 @@ function generateWeeklyReport(){
     if(hasThisWeek && !g._weekNoted) g._weekNoted=true;
   });
 
-  /* 日常统计 */
+  /* 日常统计（把每周任务的时长并进来，运动这类主要走每周任务） */
   var dStats = weeklyDailyStats(wk);
+  var wSum = weeklyTasksSummary(wk);
+  Object.keys(wSum.byCat).forEach(function(c){
+    if(!dStats[c]) dStats[c] = {minutes:0, days:0, targetDays:7};
+    dStats[c].minutes += wSum.byCat[c];
+  });
   var totalDailyMin = 0;
   Object.keys(dStats).forEach(function(k){ totalDailyMin+=dStats[k].minutes; });
 
@@ -630,6 +1060,10 @@ function generateWeeklyReport(){
         if(dt.type==='recharge') rechargeMin+=(rec.minutes||0);
       }
     });
+    STATE.weeklyTasks.forEach(function(w){
+      if(!w.enabled) return;
+      (w.records||[]).forEach(function(r){ if(r.date===d) loadMin+=(r.minutes||0); });
+    });
 
     var wObj=STATE.weather.find(function(x){return x.date===d;});
     var rate = tasksTotal>0 ? Math.round(tasksDone/tasksTotal*100) : 0;
@@ -650,6 +1084,7 @@ function generateWeeklyReport(){
 
   var report = {
     generatedAt: Date.now(),
+    firstGeneratedAt: (cached && cached.firstGeneratedAt) || Date.now(),
     summary: {
       completionRate: completionRate,
       avgLoad: dailyCards.length>0 ? Math.round(dailyCards.reduce(function(a,c){return a+c.load;},0)/dailyCards.length) : 0,
@@ -657,11 +1092,13 @@ function generateWeeklyReport(){
     },
     moodTrack: moodTrack,
     dailyCards: dailyCards,
-    dailyStats: dStats
+    dailyStats: dStats,
+    weekly: wSum
   };
 
   STATE.reports[wk]=report;
-  save();
+  /* 每周首次生成才落盘；之后每次实时重算，保证今天打卡立刻反映在周报里 */
+  if(!cached) save();
   return report;
 }
 
@@ -676,8 +1113,31 @@ function viewWeekly(){
   /* 本周概况三数字 */
   h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)" data-count="'+rpt.summary.completionRate+'" data-decimals="0" data-suffix="%">0</div><div class="stat-label">完成率</div></div>'
     + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)" data-count="'+rpt.summary.avgLoad+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">日均投入(分钟)</div></div>'
-    + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div>'
+    + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div></div>'
     + '</div>';
+
+  /* 每周任务：双目标达成情况 */
+  if(STATE.weeklyTasks.length){
+    var wl = rpt.weekly || weeklyTasksSummary(wk);
+    var wkFish = (petState().fishLog||[]).filter(function(x){ return ymd(new Date(x.at||0)) >= wk; })
+      .reduce(function(a,x){ return a+(x.n||0); }, 0);
+    h += '<div class="card"><h2>'+icon('target')+' 每周任务</h2>'
+      + '<div class="hint">本周达标 <b>'+wl.okDays+'/'+wl.goalDays+'</b> 天 · 累计投入 <b>'+wl.doneMin+'</b> 分钟 · 本周赚到 <b>'+wkFish+'</b> 条小鱼干 🐟</div>';
+    STATE.weeklyTasks.forEach(function(w){
+      if(!w.enabled) return;
+      var st = weeklyTaskStats(w, wk);
+      var okPct = Math.min(100, Math.round(st.okDays/Math.max(1,st.goalDays)*100));
+      var minPct = w.dailyGoalMin ? Math.min(100, Math.round(st.total/(w.dailyGoalMin*(w.weeklyGoalDays||7))*100)) : 0;
+      h += '<div class="wk-rpt">'
+        + '<div class="wk-rpt-head"><b>'+esc(w.name)+'</b>'
+        + '<span class="muted">达标 '+st.okDays+'/'+st.goalDays+' 天 · '+st.total+' 分钟</span></div>'
+        + weeklyDots(w)
+        + '<div class="bar" title="达标天数进度"><div style="width:'+okPct+'%"></div></div>'
+        + '<div class="wk-rpt-foot"><span>天数进度 '+okPct+'%</span><span>时长进度 '+minPct+'%</span></div>'
+        + '</div>';
+    });
+    h += '</div>';
+  }
 
   /* 心情轨迹 */
   h += '<div class="card"><h2>心情轨迹</h2><div class="row" style="gap:16px;justify-content:center;margin-top:10px">';
@@ -779,9 +1239,19 @@ function viewCompanion(){
   if(!msgs.length) h+='<div class="empty">说点什么，或者点「近三日跟进」。</div>';
   msgs.forEach(function(m){ h+='<div class="bubble '+(m.role==='user'?'me':'ai')+'">'+esc(m.content)+'</div>'; });
   h+='</div><div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea><button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
+  var p0 = petState();
   h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
-    + '<div class="ph" style="min-height:140px"><span class="tag">图片占位</span>'
-    + '<div class="need"><b>陪伴角色形象</b><br/>赛博小猫 / 着陆伙伴 IP 立绘（透明 PNG，约 400×400）<br/>随情绪状态变化表情</div></div></div>';
+    + '<div class="hint">它不在页面里，它在<b>右下角那个挂件</b>里——切到哪一页都跟着你。喂食、抚摸、说话、逛商城都在那儿。</div>'
+    + '<div class="pet-mini"><span>🐟 小鱼干 <b>'+(p0.fish||0)+'</b></span>'
+    + '<span>🍚 饱食 <b>'+(p0.hunger==null?'—':Math.round(p0.hunger))+'</b></span>'
+    + '<span>💗 亲密 <b>'+(p0.intimacy==null?'—':Math.round(p0.intimacy))+'</b></span></div>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">'
+    + '<button class="btn primary sm" data-act="petFeed">🐟 喂它</button>'
+    + '<button class="btn ghost sm" data-act="petPat">🤚 抚摸</button>'
+    + '<button class="btn ghost sm" data-act="petChat">💬 说说话</button>'
+    + '<button class="btn ghost sm" data-act="petShop">🛒 商城</button>'
+    + '<button class="btn ghost sm" data-act="petMem">📖 记忆库</button>'
+    + '</div></div>';
   return h;
 }
 
@@ -823,9 +1293,29 @@ function viewMe(){
   h += '<div class="card"><h2>数据概览</h2>'
     + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
     + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
+    + '<div>每周：<b>'+STATE.weeklyTasks.filter(function(w){return w.enabled;}).length+'</b> 进行中</div>'
     + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
-    + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div></div>'
+    + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
+    + '<div>小鱼干：<b>'+petState().fish+'</b> 条</div>'
+    + '<div>记忆库：<b>'+STATE.memories.length+'</b> 条</div></div>'
     + svgMood + '</div>';
+
+  /* 记忆库（与伙伴的对话也归档到这里） */
+  var mems = STATE.memories.slice(-10).reverse();
+  h += '<div class="card"><div class="row between"><h2>'+icon('spark')+' 记忆库</h2>'
+    + '<button class="btn ghost sm" data-act="petMem">'+icon('edit')+' 全部 '+STATE.memories.length+' 条</button></div>'
+    + '<div class="hint">你做的事、和伙伴说过的话，都会归到这里。它不是待办清单，是你走过的痕迹。</div>';
+  if(!mems.length){
+    h += '<div class="empty">还没有记忆。去右下角的伙伴那儿说句话吧。</div>';
+  } else {
+    h += '<div class="mem-list">';
+    mems.forEach(function(m){
+      h += '<div class="mem-item"><span class="mem-kind k-'+(m.kind||'note')+'">'+(MEM_KIND[m.kind]||'记录')+'</span>'
+        + '<div class="mem-body">'+esc(m.text)+'<span class="mem-time">'+new Date(m.at).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</span></div></div>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';
 
   /* 树洞 */
   h += '<div class="card"><h2>'+icon('people')+' 匿名树洞</h2>'
@@ -842,7 +1332,6 @@ var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',c
 function render(){
   var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
-  if(window.CyberCat) CyberCat.disposeAll();
   $('view').innerHTML = views[CUR_TAB]();
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
 
@@ -866,24 +1355,9 @@ function render(){
   /* 玻璃折射标题 */
   if(window.WarpText) WarpText.apply($('view'));
 
-  /* 赛博伙伴 */
-  mountCyberCat();
-}
-
-function mountCyberCat(){
-  if(!window.CyberCat) return;
-  var el = $('cyberCat');
-  if(!el) return;
-  var v = parseFloat(el.dataset.v);
-  if(isNaN(v)) v = 50;
-  var tier = CyberCat.tierOf(v);
-  CyberCat.mount(el, {
-    vitality: v,
-    onPoke: function(){
-      var talk = $('ccTalk');
-      if(talk) talk.textContent = catSpeak(tier);
-    }
-  });
+  /* 伙伴挂件不随视图销毁，只刷新数据 */
+  if(window.Pet) Pet.refresh();
+  renderTimerBar();
 }
 
 /* ================= 统计数字 count-up ================= */
@@ -935,7 +1409,14 @@ function closeSheet(){
 var App = {
 
   /* --- 今日 --- */
-  markOne:function(){ if(STATE.oneThing && STATE.oneThing.date===today()){ STATE.oneThing.done=true; save(); render(); toast('完成了，今天稳了 ✓'); } },
+  markOne:function(){
+    if(STATE.oneThing && STATE.oneThing.date===today()){
+      STATE.oneThing.done=true;
+      grantFish(1, '完成今天一件：'+(STATE.oneThing.text||'').slice(0,20));
+      addMemory('daily', '今天一件完成：「'+(STATE.oneThing.text||'')+'」', ['今天一件']);
+      save(); render(); toast('完成了，今天稳了 ✓ · +1 🐟');
+    }
+  },
   changeOne:function(){ STATE.oneThing=null; save(); render(); },
   newOne:function(){
     openSheet('<h2>今天只承诺一件</h2><div class="hint">挑最小、最不添焦虑的那件。</div>'
@@ -1000,11 +1481,12 @@ var App = {
       g.current=(g.current||0)+amt;
       g.records.push({date:today(),amount:amt,minutes:mins,ts:Date.now()});
       if(g.current>=g.total){ g.status='done'; }
+      var fish = mins>0 ? awardFish(mins, g.name) : 0;
       save(); closeSheet();
       var ms=checkLongMilestones(g);
-      render();
+      render(); renderTimerBar();
       if(ms.length){ setTimeout(function(){toast(ms[0]);},300); }
-      else{ toast('已打卡 +'+amt+' '+g.unit); }
+      else{ toast('已打卡 +'+amt+' '+g.unit+(fish?(' · +'+fish+' 🐟'):'')); }
     });
   },
 
@@ -1083,7 +1565,9 @@ var App = {
     $('dci_ok').addEventListener('click',function(){
       var mins=parseInt($('dci_min').value,10)||10;
       dt.records.push({date:today(),amount:1,minutes:mins,ts:Date.now()});
-      save(); closeSheet(); render(); toast('已打卡 '+mins+' 分钟 ✓');
+      var fish = awardFish(mins, dt.name);
+      save(); closeSheet(); render();
+      toast('已打卡 '+mins+' 分钟 ✓'+(fish?(' · +'+fish+' 条小鱼干 🐟'):''));
     });
   },
 
@@ -1097,6 +1581,95 @@ var App = {
       STATE.dailyTasks=STATE.dailyTasks.filter(function(x){return x.id!==id;}); save(); closeSheet(); render(); toast('已删除');
     });
   },
+
+  /* --- 每周任务 CRUD --- */
+  newWeekly:function(){ App.openWeeklyForm(null); },
+  editWeekly:function(id){ App.openWeeklyForm(id); },
+  checkinWeekly:function(id){ openWeeklyCheckin(id); },
+  toggleWeekly:function(id){
+    var w=STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w)return;
+    w.enabled=!w.enabled; save(); render(); toast(w.enabled?'已启用':'已关闭');
+  },
+  openWeeklyForm:function(id){
+    var w = id ? STATE.weeklyTasks.find(function(x){return x.id===id;}) : null;
+    var isEdit = !!w;
+    openSheet('<h2>'+(isEdit?'编辑':'新建')+'每周任务</h2>'
+      + '<div class="field"><label>类型</label><div class="cat-grid" id="wk_type"></div>'
+      + '<div class="muted" id="wk_type_hint" style="font-size:12px;margin-top:6px;display:block"></div></div>'
+      + '<div class="field"><label>名称</label><input id="wk_name" value="'+esc(w?w.name:'')+'" placeholder="如：跑步 / 健身房"></div>'
+      + '<div class="row" style="gap:10px">'
+      + '<div class="field" style="flex:1"><label>每日目标（分钟）</label><input id="wk_daily" type="number" value="'+(w?w.dailyGoalMin:30)+'" min="1"></div>'
+      + '<div class="field" style="flex:1"><label>每周达标天数</label><input id="wk_days" type="number" value="'+(w?w.weeklyGoalDays:5)+'" min="1" max="7"></div>'
+      + '</div>'
+      + '<div class="field"><label>大类</label><div class="cat-grid" id="wk_cat"></div></div>'
+      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>'
+      + '<button class="btn primary" id="wk_save">'+(isEdit?'保存':'创建')+'</button></div>');
+
+    var selType = w ? w.type : 'exercise';
+    var selCat  = w ? w.category : weeklyTypeOf(selType).cat;
+
+    function paintType(){
+      var html='';
+      WEEKLY_TYPES.forEach(function(t){
+        html += '<div class="cat-chip '+(selType===t.key?'on':'')+'" data-tk="'+t.key+'">'+t.label+'</div>';
+      });
+      $('wk_type').innerHTML = html;
+      $('wk_type_hint').textContent = weeklyTypeOf(selType).hint;
+      $('wk_type').querySelectorAll('[data-tk]').forEach(function(el){
+        el.addEventListener('click',function(){
+          selType = el.dataset.tk;
+          selCat = weeklyTypeOf(selType).cat;
+          paintType(); paintCat();
+        });
+      });
+    }
+    function paintCat(){
+      var html='';
+      CATEGORIES.forEach(function(c){
+        html += '<div class="cat-chip '+(selCat===c.key?'on':'')+'" data-ck2="'+c.key+'">'+c.label+'</div>';
+      });
+      $('wk_cat').innerHTML = html;
+      $('wk_cat').querySelectorAll('[data-ck2]').forEach(function(el){
+        el.addEventListener('click',function(){ selCat = el.dataset.ck2; paintCat(); });
+      });
+    }
+    paintType(); paintCat();
+
+    $('wk_save').onclick=function(){
+      var name = $('wk_name').value.trim();
+      if(!name){ toast('写个名字'); return; }
+      var daily = parseInt($('wk_daily').value,10)||0;
+      var days = Math.min(7, Math.max(1, parseInt($('wk_days').value,10)||5));
+      if(!weeklyTypeOf(selType).timed) daily = 0;
+      if(w){ w.name=name; w.type=selType; w.category=selCat; w.dailyGoalMin=daily; w.weeklyGoalDays=days; }
+      else{
+        STATE.weeklyTasks.push({id:uid('wk'), name:name, type:selType, category:selCat,
+          dailyGoalMin:daily, weeklyGoalDays:days, enabled:true, records:[], createdAt:today()});
+      }
+      save(); closeSheet(); render(); toast(isEdit?'已更新':'已创建每周任务');
+    };
+  },
+  delWeekly:function(id){
+    var w=STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w)return;
+    openSheet('<h2>删除每周任务？</h2><div class="hint">「'+esc(w.name)+'」及其 '+w.records.length+' 条记录将被删除。</div>'
+      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn danger" id="dw_yes">确认删除</button></div>');
+    $('dw_yes').addEventListener('click',function(){
+      STATE.weeklyTasks=STATE.weeklyTasks.filter(function(x){return x.id!==id;});
+      if(STATE.timer && STATE.timer.taskId===id) STATE.timer=null;
+      save(); closeSheet(); render(); renderTimerBar(); toast('已删除');
+    });
+  },
+
+  /* --- 计时器 --- */
+  timerToggle:function(){ toggleTimer(); },
+  timerFinish:function(){ finishTimerEarly(); },
+
+  /* --- 伙伴（实现在 pet.js） --- */
+  petFeed:function(){ if(window.Pet) Pet.open('panel','feed'); },
+  petPat:function(){ if(window.Pet) Pet.pat(); },
+  petChat:function(){ if(window.Pet) Pet.open('panel','chat'); },
+  petShop:function(){ if(window.Pet) Pet.open('panel','shop'); },
+  petMem:function(){ if(window.Pet) Pet.open('panel','mem'); },
 
   /* --- 日报 --- */
   goDigest:function(){ CUR_TAB='digest'; render(); },
@@ -1218,6 +1791,25 @@ document.addEventListener('click',function(e){
   else if(act==='toggleDaily') App.toggleDaily(id);
   else if(act==='delDaily') App.delDaily(id);
 
+  /* 每周任务 */
+  else if(act==='newWeekly') App.newWeekly();
+  else if(act==='editWeekly') App.editWeekly(id);
+  else if(act==='checkinWeekly') App.checkinWeekly(id);
+  else if(act==='quickWeekly') App.checkinWeekly(id);
+  else if(act==='toggleWeekly') App.toggleWeekly(id);
+  else if(act==='delWeekly') App.delWeekly(id);
+
+  /* 计时器 */
+  else if(act==='timerToggle') App.timerToggle();
+  else if(act==='timerFinish') App.timerFinish();
+
+  /* 伙伴 */
+  else if(act==='petFeed') App.petFeed();
+  else if(act==='petPat') App.petPat();
+  else if(act==='petChat') App.petChat();
+  else if(act==='petShop') App.petShop();
+  else if(act==='petMem') App.petMem();
+
   /* 日报 */
   else if(act==='goDigest') App.goDigest();
   else if(act==='refreshDigest') App.refreshDigest();
@@ -1240,6 +1832,14 @@ function init(){
   load();
   checkAutoPause();
 
+  /* 深链：#tab=tasks 之类的锚点可以直接打开对应模块 */
+  try{
+    (location.hash||'').replace(/^#/,'').split('&').forEach(function(kv){
+      var p = kv.split('=');
+      if(p[0]==='tab' && TAB_TITLE[p[1]]) CUR_TAB = p[1];
+    });
+  }catch(e){}
+
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.addEventListener('click',function(){ CUR_TAB=b.dataset.tab; render(); });
   });
@@ -1257,7 +1857,36 @@ function init(){
 
   window.closeSheet=closeSheet;
   window.App=App;
+
+  /* 给 pet.js 用的桥（保持 app.js 单例状态，不重复造轮子） */
+  window.Landing = {
+    state:function(){ return STATE; },
+    save:save, render:render, toast:toast,
+    openSheet:openSheet, closeSheet:closeSheet,
+    callAI:callAI,
+    addMemory:addMemory, grantFish:grantFish, petState:petState,
+    vitality:catVitality, landingDays:catLandingDays, tierText:catTierText,
+    tierOf:function(v){ return window.CyberCat ? CyberCat.tierOf(v) : (v<40?'low':(v>70?'high':'mid')); },
+    fishForMinutes:fishForMinutes,
+    renderTimerBar:renderTimerBar,
+    today:today, ymd:ymd, addDays:addDays, esc:esc, icon:icon, uid:uid,
+    MEM_KIND:MEM_KIND, CATEGORIES:CATEGORIES,
+    tab:function(t){ CUR_TAB=t; render(); }
+  };
+
+  /* 计时恢复：应用没开着的这段时间里到期了 → 补一个结算入口 */
+  var tr = STATE.timer;
   render();
+  if(tr && !tr.finished && tr.endsAt <= Date.now()){
+    tr.finished = true;
+    save();
+    setTimeout(function(){
+      toast('你没开应用这会儿，计时已经结束了');
+      openTimerFinishSheet(false);
+    }, 700);
+  } else if(tr && !tr.finished){
+    ensureTimerTick();
+  }
 
   /* 自动拉取日报（今天还没拉过就静默拉取；无 token 也能拉，未认证限速 60 次/小时足够日报用） */
   if(!STATE.digest[today()]){
