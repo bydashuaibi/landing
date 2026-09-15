@@ -461,25 +461,65 @@
 
   /* ================= 样式 ================= */
   var CSS = [
-    '.pw-root{position:fixed;right:18px;bottom:18px;z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:6px;touch-action:none;-webkit-user-select:none;user-select:none}',
+    /* ===== 挂件：一个「小舞台」，不是一张飘着的贴图 ===== */
+    '.pw-root{position:fixed;right:18px;bottom:18px;z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:7px;touch-action:none;-webkit-user-select:none;user-select:none;transition:transform .28s var(--e-out)}',
     '.pw-root.hidden{display:none}',
-    '.pw-catbox{position:relative;width:134px;height:114px;cursor:grab;filter:drop-shadow(0 8px 16px rgba(46,36,25,.18))}',
-    '.pw-catbox:active{cursor:grabbing}',
-    '.pw-catbox canvas{display:block;width:100%;height:100%}',
-    '.pw-meta{display:flex;gap:5px;justify-content:center;margin-top:-8px;pointer-events:none}',
-    '.pw-pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.82);border:1px solid var(--line);color:#5b4a35;backdrop-filter:blur(6px)}',
-    '.pw-pill.warn{background:rgba(224,169,59,.92);color:#4a3208;border-color:transparent}',
-    '.pw-tools{position:absolute;top:-4px;right:-4px;display:flex;gap:4px;opacity:0;transition:opacity .18s}',
-    '.pw-root:hover .pw-tools{opacity:1}',
-    '.pw-tool{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.94);border:1px solid var(--line);color:#5b4a35;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(46,36,25,.14)}',
-    '.pw-bubble{max-width:232px;padding:9px 13px;border-radius:14px;border-bottom-right-radius:5px;background:rgba(255,255,255,.94);border:1px solid var(--line);color:var(--ink);font-size:13px;line-height:1.45;box-shadow:0 10px 24px rgba(46,36,25,.16);opacity:0;transform:translateY(6px) scale(.96);transition:opacity .22s,transform .22s;pointer-events:none;backdrop-filter:blur(10px)}',
+    /* 立绘是纵向的（约 1:2），盒子按这个比例给；不然会被 contain 缩得很小。
+       程序化那只猫自己按 min(W/158, H/172) 缩放，这个盒子对它也够用。 */
+    '.pw-stage{position:relative;width:132px;height:250px;margin-bottom:18px;cursor:grab;isolation:isolate;transition:width .3s var(--e-out),height .3s var(--e-out)}',
+    '.pw-stage:active{cursor:grabbing}',
+    '.pw-canvasbox{position:relative;z-index:2;filter:drop-shadow(0 10px 18px rgba(46,36,25,.20));animation:pwIdle 5.5s ease-in-out infinite}',
+    '.pw-canvasbox canvas{display:block;width:100%;height:100%}',
+    /* 它一直在「呼吸」——很小的幅度，不抢注意力 */
+    '@keyframes pwIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}',
+    '.pw-root.link-active .pw-canvasbox{animation:none}',
+    '.pw-root.collapsed .pw-canvasbox{animation:pwIdleMini 4.5s ease-in-out infinite}',
+    '@keyframes pwIdleMini{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px)}}',
+    /* 背后柔光：让白猫从米色背景里「浮」出来，而不是糊成一片 */
+    '.pw-halo{position:absolute;z-index:1;left:50%;bottom:6px;width:124px;height:104px;transform:translateX(-50%);pointer-events:none;border-radius:50%;',
+    '  background:radial-gradient(closest-side,rgba(255,255,255,.92),rgba(255,252,246,.52) 58%,rgba(255,252,246,0) 100%);',
+    '  transition:opacity .3s,transform .3s var(--e-out)}',
+    /* 状态环：活力三档换色，饿了会呼吸 */
+    '.pw-ring{position:absolute;z-index:0;left:50%;bottom:2px;width:116px;height:116px;transform:translateX(-50%);pointer-events:none;border-radius:50%;',
+    '  border:2px solid transparent;transition:border-color .5s,box-shadow .5s}',
+    '.pw-root.t-low  .pw-ring{border-color:rgba(143,163,176,.42);box-shadow:0 0 0 6px rgba(143,163,176,.09)}',
+    '.pw-root.t-mid  .pw-ring{border-color:rgba(34,211,238,.40);box-shadow:0 0 0 6px rgba(34,211,238,.09)}',
+    '.pw-root.t-high .pw-ring{border-color:rgba(94,234,212,.52);box-shadow:0 0 0 6px rgba(94,234,212,.13),0 0 22px rgba(224,169,59,.20)}',
+    '.pw-root.is-hungry .pw-ring{border-color:rgba(224,169,59,.72);animation:pwHungry 2.4s ease-in-out infinite}',
+    '@keyframes pwHungry{0%,100%{box-shadow:0 0 0 5px rgba(224,169,59,.10)}50%{box-shadow:0 0 0 11px rgba(224,169,59,.02)}}',
+    /* 悬停时微微抬起来 */
+    '.pw-stage:hover .pw-canvasbox{transform:translateY(-3px);transition:transform .25s var(--e-out)}',
+    '.pw-stage:hover .pw-halo{opacity:1;transform:translateX(-50%) scale(1.06)}',
+    '.pw-root.sleeping .pw-canvasbox{filter:drop-shadow(0 8px 14px rgba(46,36,25,.14)) saturate(.86)}',
+    /* 角落小工具 */
+    '.pw-tools{position:absolute;z-index:4;top:2px;right:2px;display:flex;gap:4px;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s}',
+    '.pw-stage:hover .pw-tools{opacity:1;transform:none}',
+    '.pw-tool{width:23px;height:23px;border-radius:50%;background:rgba(255,255,255,.96);border:1px solid var(--line);color:#5b4a35;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(46,36,25,.16);transition:.15s}',
+    '.pw-tool:hover{background:#fff;transform:scale(1.10)}',
+    /* 快捷动作条：悬停时从猫脚下浮出来 */
+    '.pw-quick{position:absolute;z-index:3;left:50%;bottom:-8px;transform:translateX(-50%) translateY(6px);display:flex;gap:5px;padding:5px 7px;border-radius:99px;',
+    '  background:rgba(255,255,255,.95);border:1px solid var(--line);box-shadow:0 8px 20px rgba(46,36,25,.16);',
+    '  opacity:0;pointer-events:none;transition:opacity .2s,transform .22s var(--e-out);backdrop-filter:blur(10px)}',
+    '.pw-stage:hover .pw-quick{opacity:1;transform:translateX(-50%);pointer-events:auto}',
+    '.pw-qbtn{width:26px;height:26px;border-radius:50%;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;transition:.14s}',
+    '.pw-qbtn:hover{background:rgba(194,168,120,.30);transform:scale(1.14)}',
+    /* 状态药丸 */
+    '.pw-meta{display:flex;gap:5px;justify-content:center;pointer-events:none;min-height:19px}',
+    '.pw-pill{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.86);border:1px solid var(--line);color:#5b4a35;box-shadow:0 2px 6px rgba(46,36,25,.07)}',
+    '.pw-pill.warn{background:linear-gradient(135deg,#e8b64a,#d99a22);color:#4a3208;border-color:transparent}',
+    /* 说话气泡：带一个小尾巴指向猫 */
+    '.pw-bubble{position:relative;max-width:236px;padding:10px 14px;border-radius:16px;border-bottom-right-radius:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);color:var(--ink);font-size:13px;line-height:1.5;box-shadow:0 12px 28px rgba(46,36,25,.18);opacity:0;transform:translateY(7px) scale(.95);transform-origin:bottom right;transition:opacity .24s var(--e-out),transform .24s var(--e-out);pointer-events:none;backdrop-filter:blur(12px)}',
+    '.pw-bubble::after{content:"";position:absolute;right:16px;bottom:-6px;width:11px;height:11px;background:inherit;border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg);border-bottom-right-radius:3px}',
     '.pw-bubble.on{opacity:1;transform:none}',
-    '.pw-mini{display:none;position:relative;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.94);border:1px solid var(--line);box-shadow:0 8px 20px rgba(46,36,25,.2);align-items:center;justify-content:center;font-size:24px;cursor:pointer}',
-    '.pw-root.collapsed .pw-mini{display:flex}',
-    '.pw-root.collapsed .pw-catbox,.pw-root.collapsed .pw-meta{display:none}',
-    '.pw-mini .dot{position:absolute;top:4px;right:4px;width:10px;height:10px;border-radius:50%;background:var(--amber);border:1.5px solid #fff}',
-    '.pw-float{position:absolute;right:12px;bottom:70px;font-size:13px;font-weight:800;color:#a85d2c;pointer-events:none;animation:pwFloat 1.5s var(--e-out) forwards;white-space:nowrap}',
-    '@keyframes pwFloat{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-34px)}}',
+    /* 收起态：小圆点。立绘模式下 cyber-cat 会自动只取头部铺满，见 setHeadOnly */
+    '.pw-root.collapsed .pw-stage{width:62px;height:62px;margin-bottom:8px}',
+    '.pw-root.collapsed .pw-halo{width:56px;height:56px;bottom:2px}',
+    '.pw-root.collapsed .pw-ring{width:52px;height:52px;bottom:1px;border-width:2px}',
+    '.pw-root.collapsed .pw-canvasbox{border-radius:50%;overflow:hidden}',
+    '.pw-root.collapsed .pw-quick,.pw-root.collapsed .pw-tools{display:none}',
+    '.pw-root.collapsed .pw-meta{display:none}',
+    '.pw-float{position:absolute;right:14px;bottom:150px;font-size:12px;font-weight:800;color:#a85d2c;pointer-events:none;animation:pwFloat 1.5s var(--e-out) forwards;white-space:nowrap;text-shadow:0 1px 3px rgba(255,255,255,.9)}',
+    '@keyframes pwFloat{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-36px)}}',
     /* 面板 */
     '.pp-root{position:fixed;z-index:46;width:min(344px,calc(100vw - 28px));max-height:min(560px,calc(100vh - 200px));overflow:auto;padding:16px;border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(255,255,255,.88));border:1px solid var(--line);box-shadow:0 22px 54px rgba(46,36,25,.28);backdrop-filter:blur(24px) saturate(118%);-webkit-backdrop-filter:blur(24px) saturate(118%);color:var(--ink);animation:ppIn .2s var(--e-out)}',
     '@keyframes ppIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}',
@@ -526,8 +566,11 @@
     '.pp-switch{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);margin-bottom:8px}',
     /* ===== 伙伴页（侧栏「伙伴」栏目） ===== */
     '.pg-hero{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}',
-    '.pg-stage{position:relative;flex:1 1 250px;min-width:230px;min-height:234px;border-radius:20px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px;background:linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.46));border:1px solid var(--line)}',
-    '.pg-cat{width:100%;height:234px}',
+    /* .pg-cat 的高度决定 cyber-cat 的 U（U = min(W/158, H/172)）。
+       原来 234px 配 230~250px 宽，比值大于 172/158，猫会被上下裁掉一截；
+       改成 300px 让高度不再成为瓶颈。 */
+    '.pg-stage{position:relative;flex:1 1 250px;min-width:230px;min-height:300px;border-radius:20px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px;background:linear-gradient(180deg,rgba(255,255,255,.74),rgba(255,255,255,.46));border:1px solid var(--line)}',
+    '.pg-cat{width:100%;height:300px}',
     '.pg-cat canvas{display:block;width:100%;height:100%}',
     '.pg-badge{position:absolute;top:10px;right:10px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.86);border:1px solid var(--line);color:#5b4a35}',
     '.pg-side{flex:1 1 280px;min-width:250px;display:flex;flex-direction:column;gap:11px}',
@@ -560,7 +603,9 @@
     '.pg-ibtn .e{font-size:19px;display:block;line-height:1.25}',
     '.pg-ibtn b{display:block;font-size:13.5px;color:var(--ink);margin:3px 0 2px}',
     '.pg-ibtn small{display:block;font-size:11.5px;color:var(--muted);line-height:1.45}',
-    '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:190px}}'
+    '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pw-stage{width:116px;height:220px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:250px}}',
+    /* 用户在系统里开了「减少动态效果」，就别抖了 */
+    '@media(prefers-reduced-motion:reduce){.pw-root,.pw-stage,.pw-canvasbox,.pw-halo,.pw-ring,.pw-bubble,.pw-quick,.pw-tools{transition:none!important;animation:none!important}}'
   ].join('\n');
 
   function injectCSS() {
@@ -581,14 +626,21 @@
     root.className = 'pw-root';
     root.innerHTML =
       '<div class="pw-bubble" id="pwBubble"></div>'
-      + '<div class="pw-catbox" id="pwCatBox" title="点我打开 · 按住拖动可换位置">'
+      + '<div class="pw-stage" id="pwCatBox" title="点我打开 · 按住可以拖到别处">'
+        + '<div class="pw-halo" aria-hidden="true"></div>'
+        + '<div class="pw-ring" aria-hidden="true"></div>'
         + '<div class="pw-tools">'
-          + '<button class="pw-tool" data-pact="collapse" title="收起">−</button>'
-          + '<button class="pw-tool" data-pact="hide" title="藏起来（在「我的」里可叫回来）">×</button>'
+          + '<button class="pw-tool" data-pact="collapse" title="收起成小圆点">−</button>'
+          + '<button class="pw-tool" data-pact="hide" title="藏起来（「我的」里可以叫回来）">×</button>'
+        + '</div>'
+        + '<div class="pw-quick">'
+          + '<button class="pw-qbtn" data-pact="q-feed" title="喂它">🐟</button>'
+          + '<button class="pw-qbtn" data-pact="q-pat" title="摸摸它">🤚</button>'
+          + '<button class="pw-qbtn" data-pact="q-chat" title="说说话">💬</button>'
+          + '<button class="pw-qbtn" data-pact="q-page" title="伙伴详情">🐾</button>'
         + '</div>'
       + '</div>'
-      + '<div class="pw-meta" id="pwMeta"></div>'
-      + '<div class="pw-mini" id="pwMini">🐱<span class="dot hidden"></span></div>';
+      + '<div class="pw-meta" id="pwMeta"></div>';
     document.body.appendChild(root);
 
     var panel = document.createElement('div');
@@ -596,8 +648,10 @@
     panel.className = 'pp-root hidden';
     document.body.appendChild(panel);
 
-    /* 猫 */
+    /* 猫：同一个 canvas 既当挂件本体也当收起后的小圆点，
+       靠 CSS 缩放而不是重建实例，收起/展开不会闪、也不多跑一个动画循环。 */
     var box = document.createElement('div');
+    box.className = 'pw-canvasbox';
     box.style.width = '100%';
     box.style.height = '100%';
     $('pwCatBox').insertBefore(box, $('pwCatBox').firstChild);
@@ -619,8 +673,11 @@
   function applyPos() {
     var p = ensure(), root = $('petWidget');
     if (!root) return;
-    root.classList.toggle('collapsed', !!p.widget.collapsed);
+    var isCollapsed = !!p.widget.collapsed;
+    root.classList.toggle('collapsed', isCollapsed);
     root.classList.toggle('hidden', !!p.widget.hidden);
+    /* 收起成小圆点时，立绘只画头部铺满（整只塞进 62px 会小到看不清） */
+    if (cat && cat.setHeadOnly) cat.setHeadOnly(isCollapsed);
     var k = SIZES[p.widget.size] || 1;
     root.style.transform = k === 1 ? '' : 'scale(' + k + ')';
     root.style.transformOrigin = 'bottom right';
@@ -661,6 +718,9 @@
     if (!root) return;
     var r = root.getBoundingClientRect();
     drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: r.left, oy: r.top, moved: 0, last: null };
+    /* 拖动时停掉上下浮动，并藏起快捷条，免得跟手势打架 */
+    root.classList.add('link-active');
+    if (root.setPointerCapture) { try { root.setPointerCapture(e.pointerId); } catch (err) {} }
     lastAct = Date.now();
   }
   function onMove(e) {
@@ -679,6 +739,8 @@
     placePanel();
   }
   function onUp(e) {
+    var root = $('petWidget');
+    if (root) root.classList.remove('link-active');
     if (!drag) return;
     var moved = drag.moved, last = drag.last;
     var p = ensure();
@@ -1265,13 +1327,24 @@
 
   function updatePills(p) {
     var m = $('pwMeta');
+    var root = $('petWidget');
+    var hungry = p.hunger < 30;
+    var v = L.vitality();
+    var tier = L.tierOf(v);
+
     if (m) {
-      var hungry = p.hunger < 30;
-      m.innerHTML = '<span class="pw-pill' + (hungry ? ' warn' : '') + '">' + (hungry ? '🍚 饿了' : '🍚 ' + Math.round(p.hunger)) + '</span>'
+      /* 活力这一个是「它今天怎么样」，比饱食更值得放前面 */
+      m.innerHTML = '<span class="pw-pill">✨ ' + Math.round(v) + '</span>'
+        + '<span class="pw-pill' + (hungry ? ' warn' : '') + '">'
+        + (hungry ? '🍚 饿了' : '🍚 ' + Math.round(p.hunger)) + '</span>'
         + '<span class="pw-pill">🐟 ' + p.fish + '</span>';
     }
-    var dot = document.querySelector('#pwMini .dot');
-    if (dot) dot.classList.toggle('hidden', p.hunger >= 30);
+    if (root) {
+      root.classList.remove('t-low', 't-mid', 't-high');
+      root.classList.add('t-' + tier);
+      root.classList.toggle('is-hungry', hungry);
+      root.classList.toggle('sleeping', !!p.sleeping);
+    }
   }
 
   function refresh() {
@@ -1336,9 +1409,16 @@
       var el = e.target.closest('[data-pact]');
       if (!el) return;
       e.stopPropagation();
+      e.preventDefault();
       var p2 = ensure();
-      if (el.dataset.pact === 'collapse') { p2.widget.collapsed = true; L.save(); applyPos(); closePanel(); }
-      else if (el.dataset.pact === 'hide') { p2.widget.hidden = true; L.save(); applyPos(); closePanel(); L.toast('它藏起来了，「我的 → 着陆伙伴」可以叫回来'); }
+      var act = el.dataset.pact;
+      if (act === 'collapse') { p2.widget.collapsed = true; L.save(); applyPos(); closePanel(); }
+      else if (act === 'hide') { p2.widget.hidden = true; L.save(); applyPos(); closePanel(); L.toast('它藏起来了，「我的 → 伙伴」可以叫回来'); }
+      /* 挂件上的快捷动作：不用先展开面板，顺手就能做 */
+      else if (act === 'q-feed') { openPanel('feed'); }
+      else if (act === 'q-pat') { pat(); }
+      else if (act === 'q-chat') { openPanel('chat'); }
+      else if (act === 'q-page') { closePanel(); L.tab('pet'); }
     });
 
     /* 面板事件（阻止冒泡，避免 app.js 的全局委托重复处理） */
@@ -1378,6 +1458,30 @@
     state: ensure,
     renderPage: renderPage,
     open: function (what, tab) { if (!booted) boot(); openPanel(tab); },
-    close: closePanel
+    close: closePanel,
+
+    /* 菜单栏用得到：藏起来之后要能叫回来、收起状态要能切换 */
+    show: function () {
+      if (!booted) boot();
+      var p = ensure();
+      p.widget.hidden = false;
+      p.widget.collapsed = false;
+      L.save(); applyPos();
+      say('我在这儿。', 2600);
+    },
+    hide: function () {
+      if (!booted) boot();
+      var p = ensure();
+      p.widget.hidden = true;
+      L.save(); applyPos(); closePanel();
+    },
+    toggleCollapse: function () {
+      if (!booted) boot();
+      var p = ensure();
+      p.widget.hidden = false;
+      p.widget.collapsed = !p.widget.collapsed;
+      L.save(); applyPos();
+      if (p.widget.collapsed) closePanel();
+    }
   };
 })();

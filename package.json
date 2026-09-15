@@ -1,17 +1,27 @@
 {
   "name": "landing",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "着陆 · 把焦虑变成下一步 —— 一个帮你从「有想法不干事」里着陆的 AI 陪伴工具",
+  "author": "bydashuaibi",
+  "license": "MIT",
   "main": "main.js",
+  "private": true,
   "scripts": {
     "start": "electron .",
-    "server": "node community-backend/server.js",
-    "dist": "electron-builder"
+    "dev": "electron . --dev",
+    "dist": "electron-builder --win portable",
+    "dist:dir": "electron-builder --win --dir"
   },
   "build": {
     "appId": "com.landing.app",
-    "copyright": "bydashuaibi",
     "productName": "着陆",
+    "copyright": "Copyright © 2026 bydashuaibi",
+    "asar": true,
+    "compression": "maximum",
+    "directories": {
+      "output": "../../../build",
+      "buildResources": "assets"
+    },
     "files": [
       "index.html",
       "app.js",
@@ -20,19 +30,28 @@
       "warp-text.js",
       "click-feedback.js",
       "gradient-waves.js",
-      "grainient.js",
       "main.js",
       "preload.js",
-      "assets/**/*",
-      "package.json"
+      "package.json",
+      "assets/icon.ico",
+      "assets/fonts/**/*"
     ],
     "win": {
-      "target": ["portable"],
-      "icon": "assets/icon.ico"
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "着陆-${version}-便携版.${ext}"
+    },
+    "portable": {
+      "artifactName": "着陆-${version}-便携版.${ext}"
     }
   },
   "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.0.0"
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
   }
 }

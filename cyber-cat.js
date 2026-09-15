@@ -7,6 +7,70 @@
      CyberCat.mount(el, {vitality:70, mood:'sun', onPoke:function(){...}})
      CyberCat.disposeAll()   // 视图切换前释放
    ============================================================ */
+/* ============================================================
+   Sprite 模式：如果 assets/pet/ 下有图片，就直接用它当猫，
+   而不是程序化绘制。
+   ------------------------------------------------------------
+   为什么要有这个：程序化画出来的猫再怎么调也很难"就是那一只"。
+   放一张 PNG 进去，挂件就显示那张图，形状/神态完全由你决定。
+
+   约定（文件名固定，贴图放 resources/app/assets/pet/）：
+     cat.png        默认状态
+     cat-happy.png  活力高（可选，缺省回落到 cat.png）
+     cat-hungry.png 饿了（可选）
+     cat-sleep.png  睡觉（可选）
+   图片建议：正方形、透明背景、猫居中、留一点边距。
+   ============================================================ */
+var SPRITE_DIR = 'assets/pet/';
+var SPRITE_STATES = ['happy', 'hungry', 'sleep'];
+
+/* 缓存：路径 -> {img, ok, tries}；ok=false 表示还没加载成功，draw 会隔帧重试 */
+var spriteCache = {};
+
+/* hasSprite：undefined=还没探明，true=有贴图，false=没有（用程序化那只猫）
+   为什么要这个：贴图是异步加载的。以前第一帧还没拿到图就回落到程序化绘制的猫，
+   于是启动瞬间先闪一下「丑猫」，图解码完才切成贴图——用户看到的就是「怎么先是那只猫」。
+   现在探测完成前不画任何替身，宁可空一帧，也不要显示错的形象。 */
+var hasSprite;
+
+function tryLoadSprite(baseName) {
+  var rec = spriteCache[baseName];
+  if (rec && rec.ok) return rec;
+  if (!rec) {
+    rec = { img: null, ok: false, tries: 0, done: false };
+    spriteCache[baseName] = rec;
+    startSpriteLoad(baseName, rec);       /* 首次就开始加载 */
+    return rec;
+  }
+  /* 还没好：每 60 帧重试一次，避免每帧都新建 Image */
+  rec.tries = (rec.tries || 0) + 1;
+  if (rec.tries % 60 === 0) startSpriteLoad(baseName, rec);
+  return rec;
+}
+
+function startSpriteLoad(baseName, rec) {
+  try {
+    var im = new Image();
+    im.onload = function () {
+      rec.img = im; rec.ok = true; rec.done = true;
+      if (baseName === 'cat') hasSprite = true;
+    };
+    im.onerror = function () {
+      rec.ok = false;
+      /* 基础贴图确认没有 -> 明确判定「无贴图」，此后一直走程序化绘制 */
+      if (baseName === 'cat') { rec.done = true; hasSprite = false; }
+    };
+    im.src = SPRITE_DIR + baseName + '.png';
+  } catch (e) {
+    rec.ok = false;
+    if (baseName === 'cat') { rec.done = true; hasSprite = false; }
+  }
+}
+
+/* 模块加载时就开始探测基础贴图，这样 pet.js 建挂件时多半已经就绪，
+   第一帧直接画贴图，不会有任何闪动。 */
+tryLoadSprite('cat');
+
 (function () {
   'use strict';
 
@@ -66,6 +130,8 @@
     /* 挂件模式：透明底、无网格/扫描线/故障，只留一只猫；可带配饰 */
     var bare = !!opts.bare;
     var hungry = !!opts.hungry;
+    /* 贴图模式下只画头部（收起成小圆点时用） */
+    var spriteHeadOnly = !!opts.headOnly;
     var gear = { neck:null, face:null, head:null };
     setGear(opts.gear);
 
@@ -123,13 +189,14 @@
     }
 
     function drawCute(t) {
-      var U = Math.min(W / 134, H / 120);
+      /* 单帧最大缩放（按参考图比例：连毛带发大约 156 宽 x 168 高） */
+      var U = Math.min(W / 158, H / 172);
       var cx = W / 2;
-      var by = H * 0.87 + hopY;
+      var by = H * 0.905 + hopY;
 
       var T = tier;
       var droopy = hungry;
-      var OUT = '#8b7f72';
+      var OUT = '#b3a89c';                              /* 浅暖灰描边：参考图的描边很浅，旧的深棕描边显脏 */
       var breath = Math.sin(t * (T === 'low' ? 0.9 : 1.5)) * 0.012;
 
       /* 动作动画参数 */
@@ -162,13 +229,13 @@
       ctx.clearRect(0, 0, W, H);
 
       /* 背后柔光 */
-      var glow = ctx.createRadialGradient(cx, by - 46 * U, 2 * U, cx, by - 46 * U, 70 * U);
-      glow.addColorStop(0, 'rgba(255,255,255,.80)');
+      var glow = ctx.createRadialGradient(cx, by - 60 * U, 2 * U, cx, by - 60 * U, 84 * U);
+      glow.addColorStop(0, 'rgba(255,255,255,.82)');
       glow.addColorStop(0.55, 'rgba(255,253,248,.34)');
       glow.addColorStop(1, 'rgba(255,253,248,0)');
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(cx, by - 46 * U, 70 * U, 0, 6.2832);
+      ctx.arc(cx, by - 60 * U, 84 * U, 0, 6.2832);
       ctx.fill();
 
       ctx.save();
@@ -177,267 +244,270 @@
       ctx.rotate(frot);
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
+
+      var cream = (function () {
+        var g = ctx.createLinearGradient(0, -110 * U, 0, 2 * U);
+        g.addColorStop(0, '#ffffff');
+        g.addColorStop(0.72, '#fbf9f5');
+        g.addColorStop(1, '#efebe3');
+        return g;
+      })();
+
+      /* ================= 尾巴（最底层，收在身体和垂发后面） ================= */
+      var sway = Math.sin(t * (T === 'low' ? 0.7 : (T === 'high' ? 2.0 : 1.2))) * (T === 'low' ? 1.5 : 3) * U;
+      ctx.save();
+      ctx.translate(20 * U, -20 * U + sway * 0.4);
+      ctx.rotate(0.78 + sway * 0.012);
+      ctx.beginPath();                                   /* 收尖的蓬松尾 */
+      ctx.moveTo(0, 6 * U);
+      ctx.quadraticCurveTo(10 * U, 4 * U, 12 * U, -7 * U);
+      ctx.quadraticCurveTo(9 * U, -16 * U, 1 * U, -18 * U);
+      ctx.quadraticCurveTo(-7 * U, -16 * U, -6 * U, -5 * U);
+      ctx.quadraticCurveTo(-5 * U, 4 * U, 0, 6 * U);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = OUT;
+      ctx.lineWidth = 1.9 * U;
+      ctx.stroke();
+      ctx.restore();
+
+      /* ================= 两侧长垂发（先画，身体和头压在上面） ================= */
+      /* 参考图里这是两绺从耳后垂下来的长发：贴着身子往下、末端收成小尖，
+         不该像两根等宽的香肠。外缘 40U、中间最宽，末端收到 29U 并往外飘一点。 */
       ctx.strokeStyle = OUT;
       ctx.lineWidth = 2.1 * U;
-
-      /* 地面投影 */
-      ctx.fillStyle = 'rgba(74,58,40,.13)';
-      ctx.beginPath();
-      ctx.ellipse(0, 2.5 * U, 33 * U, 5.5 * U, 0, 0, 6.2832);
-      ctx.fill();
-
-      /* ---- 尾巴（左侧一大团，绒毛边） ---- */
-      var sway = Math.sin(t * (T === 'low' ? 0.7 : (T === 'high' ? 2.0 : 1.2))) * (T === 'low' ? 1.5 : 4) * U;
-      ctx.save();
-      ctx.translate(-33 * U, -20 * U + sway * 0.5);
-      ctx.rotate(-0.5 + (droopy ? 0.16 : 0) + sway * 0.02);
-      fuzzPath(0, 0, 13 * U, 23 * U, 9, 0.075, t * 0.4);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-      /* 右侧小尾尖 */
-      ctx.save();
-      ctx.translate(32 * U, -26 * U - sway * 0.4);
-      ctx.rotate(0.55 + sway * 0.02);
-      fuzzPath(0, 0, 10 * U, 15 * U, 8, 0.08, t * 0.5 + 1.2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-
-      /* ---- 身体（一大团毛绒） ---- */
-      fuzzPath(0, -26 * U, 34 * U, 27 * U, 13, 0.05, t * 0.35);
-      var bgr = ctx.createLinearGradient(0, -54 * U, 0, 2 * U);
-      bgr.addColorStop(0, '#ffffff');
-      bgr.addColorStop(0.72, '#fbf8f3');
-      bgr.addColorStop(1, '#f0ece4');
-      ctx.fillStyle = bgr;
-      ctx.fill();
-      ctx.stroke();
-
-      /* ---- 前爪（三个小肉垫） ---- */
-      [-14, 0, 14].forEach(function (dx, i) {
+      [-1, 1].forEach(function (d) {
+        var lw = sway * 0.6 * d;                 /* 发梢随呼吸轻摆 */
         ctx.beginPath();
-        ctx.ellipse(dx * U, -6.5 * U + (i === 1 ? 0 : 1 * U), 9.5 * U, 7.5 * U, 0, 0, 6.2832);
+        ctx.moveTo(d * 23 * U, -74 * U);
+        ctx.bezierCurveTo(d * 35 * U, -68 * U, d * 41 * U + lw, -46 * U, d * 38 * U + lw, -25 * U);
+        ctx.quadraticCurveTo(d * 36 * U + lw * 1.6, -11 * U, d * 29 * U + lw * 1.8, -7 * U);  /* 收尖并外飘 */
+        ctx.quadraticCurveTo(d * 24 * U + lw, -10 * U, d * 22 * U, -26 * U);
+        ctx.quadraticCurveTo(d * 20 * U, -54 * U, d * 17 * U, -73 * U);
+        ctx.closePath();
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.stroke();
       });
-      ctx.strokeStyle = 'rgba(139,127,114,.55)';
-      ctx.lineWidth = 1.4 * U;
-      [-7, 7].forEach(function (dx) {
-        ctx.beginPath();
-        ctx.moveTo(dx * U, -11 * U); ctx.lineTo(dx * U, -2.5 * U);
-        ctx.stroke();
-      });
-      ctx.strokeStyle = OUT;
-      ctx.lineWidth = 2.1 * U;
 
-      /* ---- 耳朵 ---- */
+      /* ================= 身体（矮而圆的一团） ================= */
+      fuzzPath(0, -25 * U, 26 * U, 22 * U, 12, 0.05, t * 0.35);
+      ctx.fillStyle = cream;
+      ctx.fill();
+      ctx.stroke();
+
+      /* ================= 前爪：三只，带粉色肉垫 ================= */
+      [-14, 0, 14].forEach(function (dx, i2) {
+        var px = dx * U, py = -8.5 * U + (i2 === 1 ? 0 : 1.1 * U);
+        var rw = (i2 === 1 ? 10 * U : 9 * U), rh = 8 * U;
+        ctx.beginPath();
+        ctx.ellipse(px, py, rw, rh, 0, 0, 6.2832);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = OUT;
+        ctx.lineWidth = 1.9 * U;
+        ctx.stroke();
+        /* 脚趾分缝 */
+        ctx.strokeStyle = 'rgba(179,168,156,.62)';
+        ctx.lineWidth = 1.1 * U;
+        [-0.34, 0.34].forEach(function (g) {
+          ctx.beginPath();
+          ctx.moveTo(px + g * rw, py - rh * 0.75);
+          ctx.lineTo(px + g * rw * 0.78, py + rh * 0.28);
+          ctx.stroke();
+        });
+        /* 粉色肉垫 */
+        ctx.beginPath();
+        ctx.ellipse(px, py + rh * 0.30, rw * 0.34, rh * 0.26, 0, 0, 6.2832);
+        ctx.fillStyle = 'rgba(240,190,196,.62)';
+        ctx.fill();
+        ctx.strokeStyle = OUT;
+        ctx.lineWidth = 1.9 * U;
+      });
+
+      /* ================= 耳朵（细窄直立，位置偏上） ================= */
       var earDrop = droopy ? 0.42 : 0;
       [-1, 1].forEach(function (d) {
         ctx.beginPath();
-        ctx.moveTo(d * 7 * U, -66 * U);
-        ctx.quadraticCurveTo(d * 13 * U, -80 * U, d * (19 + earDrop * 5) * U, -86 * U + earDrop * 15 * U);
-        ctx.quadraticCurveTo(d * 25 * U, -78 * U, d * 26 * U, -63 * U);
-        ctx.quadraticCurveTo(d * 17 * U, -58 * U, d * 7 * U, -66 * U);
+        ctx.moveTo(d * 5 * U, -70 * U);
+        ctx.quadraticCurveTo(d * 8 * U, -88 * U, d * (16 + earDrop * 4) * U, -94 * U + earDrop * 14 * U);
+        ctx.quadraticCurveTo(d * 24 * U, -84 * U, d * 24 * U, -68 * U);
+        ctx.quadraticCurveTo(d * 14 * U, -63 * U, d * 5 * U, -70 * U);
         ctx.closePath();
         ctx.fillStyle = '#ffffff';
         ctx.fill();
+        ctx.strokeStyle = OUT;
+        ctx.lineWidth = 2.1 * U;
         ctx.stroke();
+        /* 耳内淡粉 */
         ctx.beginPath();
-        ctx.moveTo(d * 11 * U, -67 * U);
-        ctx.quadraticCurveTo(d * 15 * U, -77 * U, d * (18 + earDrop * 4) * U, -81 * U + earDrop * 11 * U);
-        ctx.quadraticCurveTo(d * 22 * U, -75 * U, d * 22.5 * U, -64 * U);
-        ctx.quadraticCurveTo(d * 16 * U, -60 * U, d * 11 * U, -67 * U);
+        ctx.moveTo(d * 9 * U, -71 * U);
+        ctx.quadraticCurveTo(d * 11 * U, -84 * U, d * (16 + earDrop * 3) * U, -88 * U + earDrop * 10 * U);
+        ctx.quadraticCurveTo(d * 20.5 * U, -80 * U, d * 20.5 * U, -69 * U);
+        ctx.quadraticCurveTo(d * 14 * U, -65 * U, d * 9 * U, -71 * U);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(244,186,196,.7)';
+        ctx.fillStyle = 'rgba(243,199,208,.72)';
         ctx.fill();
       });
 
-      /* ---- 头（毛绒圆） ---- */
-      var HY = -52 * U, HR = 27 * U;
+      /* ================= 头（宽而略扁的一团） ================= */
+      var HY = -56 * U, HR = 27 * U;
       ctx.save();
       ctx.rotate(ftilt);
       var hgr = ctx.createRadialGradient(-8 * U, HY - 12 * U, 3 * U, 0, HY + 6 * U, HR * 1.35);
       hgr.addColorStop(0, '#ffffff');
-      hgr.addColorStop(1, '#f6f2ec');
-      fuzzPath(0, HY, HR, HR * 0.95, 11, 0.055, t * 0.4);
+      hgr.addColorStop(1, '#f8f5f0');
+      fuzzPath(0, HY, HR, HR * 0.94, 11, 0.05, t * 0.4);
       ctx.fillStyle = hgr;
       ctx.fill();
-      ctx.stroke();
-
-      /* 呆毛 */
-      ctx.beginPath();
-      ctx.moveTo(1 * U, -78 * U);
-      ctx.quadraticCurveTo(6 * U, -88 * U, -2 * U, -92 * U);
-      ctx.stroke();
-
-      /* 刘海：一排小绒毛 */
       ctx.strokeStyle = OUT;
-      ctx.lineWidth = 1.8 * U;
-      ctx.beginPath();
-      [[-9.5, -1], [0, 0], [9.5, 1]].forEach(function (f) {
-        var sx = f[0] * U, tz = f[1];
-        ctx.moveTo(sx - 4.4 * U, HY - HR * 0.80);
-        ctx.quadraticCurveTo(sx + tz * 2 * U, HY - HR * 0.52, sx + 3 * U + tz * 2 * U, HY - HR * 0.30);
-      });
+      ctx.lineWidth = 2.1 * U;
       ctx.stroke();
 
-      /* ---- 脸 ---- */
-      var ex = 11 * U, ey = HY + 1.5 * U;
-      var sleeping = st.sleeping, dazing = st.daze;
-      var happyClosed = (T !== 'high') || sleeping || dazing;
-      var blinking = (((t + 1.7) % (blinkAt + 0.16)) < 0.16) && t > 0.05;
+      /* ---- 额头刘海：参考图是一排很浅的小尖，不是明显波浪 ----
+         原来的波峰到 8U 太夸张，像戴了个花边帽，压到 4.4U 并收窄。 */
+      var fr = HY - HR * 0.60;
+      ctx.beginPath();
+      ctx.moveTo(-14 * U, fr + 1.4 * U);
+      ctx.quadraticCurveTo(-11.5 * U, fr + 4.6 * U, -9.5 * U, fr + 1.8 * U);
+      ctx.quadraticCurveTo(-6 * U, fr + 5 * U, -3.5 * U, fr + 1.4 * U);
+      ctx.quadraticCurveTo(-0.5 * U, fr + 5 * U, 2.5 * U, fr + 1.4 * U);
+      ctx.quadraticCurveTo(5.5 * U, fr + 5 * U, 8.5 * U, fr + 1.8 * U);
+      ctx.quadraticCurveTo(12 * U, fr + 4.6 * U, 14 * U, fr + 1.4 * U);
+      ctx.strokeStyle = OUT;
+      ctx.lineWidth = 1.6 * U;
+      ctx.stroke();
 
-      if (happyClosed || blinking) {
-        /* 闭眼笑眯眯（参考图的表情） */
-        ctx.strokeStyle = '#3a2f28';
-        ctx.lineWidth = 2.6 * U;
+      /* ---- 呆毛：头顶一小撮，短、细、往上翘 ---- */
+      ctx.beginPath();
+      ctx.moveTo(1.5 * U, fr - 3 * U);
+      ctx.quadraticCurveTo(5 * U, fr - 12 * U, -2 * U, fr - 16 * U);
+      ctx.strokeStyle = OUT;
+      ctx.lineWidth = 2 * U;
+      ctx.stroke();
+
+      /* ================= 脸 ================= */
+      /* 参考图的猫是「安详」的表情：两道短而厚的深色眼缝，微微下弯。
+         试过 6 种眼型对比后选了这一种（上弧像在笑、下弧像困，一字缝最贴）。 */
+      var ex = 8.6 * U, ey = HY + 1 * U;
+      var sleeping = st.sleeping, dazing = st.daze;
+      var blinkCycle = blinkAt + 0.14;
+      var blinking = (((t + 1.7) % blinkCycle) < 0.14) && t > 0.05;
+
+      /* 偶尔睁眼看你一下（活力高时），其余时候都是那道安详的眼缝 */
+      if (blinking || (T === 'high' && !sleeping && !dazing && (((t * 0.37) % 7) > 5.6))) {
+        var irisR = (T === 'high' ? 3.2 : 2.9) * U;
         [-1, 1].forEach(function (d) {
-          var sag = droopy ? 1.6 * U : 0;
+          var ix = d * ex, iy = ey;
           ctx.beginPath();
-          ctx.moveTo(d * ex - 5.6 * U, ey + 2.4 * U + sag);
-          ctx.quadraticCurveTo(d * ex, ey - 4.4 * U, d * ex + 5.6 * U, ey + 2.4 * U + sag);
+          ctx.ellipse(ix, iy, irisR, irisR * 1.15, 0, 0, 6.2832);
+          ctx.fillStyle = '#5b5049';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(ix, iy + 0.3 * U, irisR * 0.55, irisR * 0.62, 0, 0, 6.2832);
+          ctx.fillStyle = '#2c2521';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(ix + 1.1 * U, iy - 1.3 * U, 1.05 * U, 0, 6.2832);
+          ctx.fillStyle = 'rgba(255,255,255,.97)';
+          ctx.fill();
+        });
+      } else {
+        ctx.strokeStyle = '#6b6058';
+        ctx.lineWidth = 2.5 * U;
+        ctx.lineCap = 'round';
+        [-1, 1].forEach(function (d) {
+          var sag = droopy ? 1.1 * U : 0;
+          ctx.beginPath();
+          ctx.moveTo(d * (ex - 2.7 * U), ey + 0.1 * U + sag * 0.5);
+          ctx.quadraticCurveTo(d * ex, ey + 1.0 * U + sag, d * (ex + 2.7 * U), ey + 0.1 * U + sag);
           ctx.stroke();
         });
-        ctx.strokeStyle = OUT;
-        ctx.lineWidth = 2.1 * U;
-      } else {
-        /* 精神好：睁眼 + 高光 */
-        [-1, 1].forEach(function (d) {
-          ctx.beginPath();
-          ctx.ellipse(d * ex, ey, 4.6 * U, 5.4 * U, 0, 0, 6.2832);
-          ctx.fillStyle = '#3a2f28';
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(d * (ex + 1.5 * U), ey - 2 * U, 1.6 * U, 0, 6.2832);
-          ctx.fillStyle = 'rgba(255,255,255,.96)';
-          ctx.fill();
-        });
+        ctx.lineCap = 'butt';
       }
 
-      /* 腮红 */
-      ctx.fillStyle = 'rgba(242,152,163,.42)';
+      /* 腮红：淡粉，位置在眼外下方 */
+      ctx.fillStyle = 'rgba(242,178,186,.45)';
       [-1, 1].forEach(function (d) {
         ctx.beginPath();
-        ctx.ellipse(d * 19 * U, HY + 9 * U, 5.2 * U, 3.4 * U, 0, 0, 6.2832);
+        ctx.ellipse(d * 15.5 * U, HY + 8.5 * U, 4.2 * U, 2.6 * U, 0, 0, 6.2832);
         ctx.fill();
       });
 
-      /* 鼻子 + w 嘴 */
+      /* 鼻子 + 嘴：一小横一点 + 小 w */
+      var noseY = HY + 6 * U;
+      ctx.fillStyle = 'rgba(214,150,160,.85)';
       ctx.beginPath();
-      ctx.moveTo(-1.7 * U, HY + 7.4 * U);
-      ctx.lineTo(1.7 * U, HY + 7.4 * U);
-      ctx.lineTo(0, HY + 9.3 * U);
-      ctx.closePath();
-      ctx.fillStyle = '#e79aa6';
+      ctx.ellipse(0, noseY, 1.3 * U, 0.9 * U, 0, 0, 6.2832);
       ctx.fill();
-      ctx.strokeStyle = OUT;
-      ctx.lineWidth = 1.7 * U;
+      ctx.strokeStyle = '#6b6058';
+      ctx.lineWidth = 1.4 * U;
       ctx.beginPath();
-      ctx.moveTo(0, HY + 9.3 * U); ctx.lineTo(0, HY + 10.6 * U);
+      ctx.moveTo(0, noseY + 0.9 * U);
+      ctx.lineTo(0, noseY + 1.7 * U);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(-3.4 * U, HY + 10.6 * U);
-      ctx.quadraticCurveTo(-1.7 * U, HY + 13 * U, 0, HY + 11 * U);
-      ctx.quadraticCurveTo(1.7 * U, HY + 13 * U, 3.4 * U, HY + 10.6 * U);
+      ctx.moveTo(-2.4 * U, noseY + 1.7 * U);
+      ctx.quadraticCurveTo(-1.2 * U, noseY + 3.5 * U, 0, noseY + 2.2 * U);
+      ctx.quadraticCurveTo(1.2 * U, noseY + 3.5 * U, 2.4 * U, noseY + 1.7 * U);
       ctx.stroke();
 
       ctx.restore();   /* 结束头部倾斜 */
 
-      /* ---- 配饰（商城买的，画在头之后才不会被盖住） ---- */
-      if (gear.head) {
-        var cy0 = HY - HR + 5 * U;
-        ctx.beginPath();
-        ctx.moveTo(-12 * U, cy0);
-        ctx.lineTo(-12 * U, cy0 - 11 * U);
-        ctx.lineTo(-6 * U, cy0 - 4 * U);
-        ctx.lineTo(0, cy0 - 14 * U);
-        ctx.lineTo(6 * U, cy0 - 4 * U);
-        ctx.lineTo(12 * U, cy0 - 11 * U);
-        ctx.lineTo(12 * U, cy0);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(228,175,64,.96)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,.65)';
-        ctx.lineWidth = 1.4 * U;
-        ctx.stroke();
-        ctx.strokeStyle = OUT;
-        ctx.lineWidth = 2.1 * U;
-      }
+      /* ================= 耳侧饰物：金环 + 蓝丝带蝴蝶结 ================= */
+      /* 参考图里环贴在耳根外侧、比耳朵矮一点，蝴蝶结和飘带在环后面垂下来 */
+      ctx.strokeStyle = OUT;
+      ctx.lineWidth = 2.1 * U;
+      [-1, 1].forEach(function (d) {
+        /* 原来 gx=24U 太靠里，环压在脸颊上；移到耳朵外缘 (26U,-70U) */
+        var gx = d * 26 * U, gy = -70 * U;
 
-      if (gear.face) {
-        ctx.strokeStyle = OUT;
-        ctx.lineWidth = 1.9 * U;
-        [-1, 1].forEach(function (d) {
-          rr(ctx, d * ex - 7.5 * U, ey - 6 * U, 15 * U, 11.5 * U, 4 * U);
-          ctx.fillStyle = 'rgba(30,24,20,.92)';
+        /* 丝带飘带（在环后面）——收窄，避免超出画布被裁掉一半 */
+        ctx.beginPath();
+        ctx.moveTo(gx + d * 1.5 * U, gy + 3 * U);
+        ctx.quadraticCurveTo(gx + d * 9 * U, gy + 11 * U, gx + d * 6 * U, gy + 23 * U);
+        ctx.quadraticCurveTo(gx + d * 4.5 * U, gy + 29 * U, gx + d * 2.5 * U, gy + 24 * U);
+        ctx.quadraticCurveTo(gx + d * 1.2 * U, gy + 13 * U, gx - d * 1.6 * U, gy + 5 * U);
+        ctx.closePath();
+        ctx.fillStyle = '#c8e0f0';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(150,186,210,.85)';
+        ctx.lineWidth = 1.2 * U;
+        ctx.stroke();
+
+        /* 蝴蝶结两耳：跨度和纵向偏移都收小，免得贴边被裁 */
+        ctx.fillStyle = '#d6e9f5';
+        ctx.strokeStyle = 'rgba(150,186,210,.9)';
+        ctx.lineWidth = 1.2 * U;
+        [-1, 1].forEach(function (s) {
+          ctx.beginPath();
+          ctx.moveTo(gx, gy - 0.5 * U);
+          ctx.quadraticCurveTo(gx + d * s * 6.2 * U, gy - 5.5 * U, gx + d * s * 5.6 * U, gy + 1 * U);
+          ctx.quadraticCurveTo(gx + d * s * 4.8 * U, gy + 5.5 * U, gx, gy + 2.5 * U);
+          ctx.closePath();
           ctx.fill();
           ctx.stroke();
         });
-        ctx.beginPath();
-        ctx.moveTo(-3.6 * U, ey - 1 * U);
-        ctx.lineTo(3.6 * U, ey - 1 * U);
-        ctx.stroke();
-        ctx.globalAlpha = 0.4;
-        ctx.lineWidth = 1.4 * U;
-        ctx.beginPath();
-        ctx.moveTo(-ex - 5.6 * U, ey + 2.4 * U); ctx.lineTo(-ex + 2 * U, ey - 3 * U);
-        ctx.moveTo(ex - 5.6 * U, ey + 2.4 * U); ctx.lineTo(ex + 2 * U, ey - 3 * U);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
 
-      if (gear.neck) {
-        ctx.strokeStyle = '#c0553f';
-        ctx.lineWidth = 5.4 * U;
+        /* 金色圆环 + 高光 */
         ctx.beginPath();
-        ctx.moveTo(-15 * U, -30 * U);
-        ctx.quadraticCurveTo(0, -20 * U, 15 * U, -30 * U);
-        ctx.stroke();
-        ctx.lineWidth = 4.6 * U;
-        ctx.beginPath();
-        ctx.moveTo(9 * U, -24 * U);
-        ctx.quadraticCurveTo(12 * U, -14 * U, 15 * U, -6 * U);
-        ctx.stroke();
-      }
-
-      /* ---- 两侧金环 + 淡蓝丝带（参考图特征） ---- */
-      [-1, 1].forEach(function (d) {
-        var rxx = d * 25 * U, ryy = -66 * U;
-        ctx.beginPath();
-        ctx.moveTo(rxx - 3.2 * U, ryy + 3 * U);
-        ctx.quadraticCurveTo(rxx + d * 6 * U, ryy + 22 * U, rxx + d * 1.5 * U, ryy + 40 * U);
-        ctx.quadraticCurveTo(rxx + d * 5 * U, ryy + 42 * U, rxx + d * 6.5 * U, ryy + 36 * U);
-        ctx.quadraticCurveTo(rxx + d * 3 * U, ryy + 20 * U, rxx + 3.2 * U, ryy + 3 * U);
-        ctx.closePath();
-        ctx.fillStyle = '#bcd8e8';
-        ctx.fill();
-        ctx.strokeStyle = '#8fb6ce';
-        ctx.lineWidth = 1.3 * U;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(rxx + d * 1 * U, ryy + 4 * U);
-        ctx.quadraticCurveTo(rxx - d * 1 * U, ryy + 24 * U, rxx + d * 4 * U, ryy + 38 * U);
-        ctx.strokeStyle = 'rgba(255,255,255,.75)';
-        ctx.lineWidth = 2 * U;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(rxx, ryy, 5.2 * U, 0, 6.2832);
+        ctx.arc(gx, gy, 5.2 * U, 0, 6.2832);
         ctx.fillStyle = '#e3c47c';
         ctx.fill();
         ctx.strokeStyle = '#b8933f';
         ctx.lineWidth = 1.5 * U;
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(rxx - d * 1.4 * U, ryy - 1.4 * U, 1.8 * U, 0, 6.2832);
-        ctx.fillStyle = 'rgba(255,255,255,.7)';
+        ctx.arc(gx - d * 1.2 * U, gy - 1.2 * U, 1.6 * U, 0, 6.2832);
+        ctx.fillStyle = 'rgba(255,255,255,.72)';
         ctx.fill();
+
+        ctx.strokeStyle = OUT;
+        ctx.lineWidth = 2.1 * U;
       });
 
-      /* ---- 状态特效 ---- */
+      /* ================= 状态特效 ================= */
       if (sleeping) {
         ctx.fillStyle = 'rgba(139,127,114,.75)';
         ctx.font = 'bold ' + (10 * U) + 'px Inter, sans-serif';
@@ -445,7 +515,7 @@
         [0, 1, 2].forEach(function (k) {
           var zz = (zt + k * 0.33) % 1;
           ctx.globalAlpha = 1 - zz;
-          ctx.fillText('z', 24 * U + zz * 12 * U, -60 * U - zz * 26 * U);
+          ctx.fillText('z', 24 * U + zz * 12 * U, -74 * U - zz * 26 * U);
         });
         ctx.globalAlpha = 1;
       }
@@ -453,28 +523,132 @@
         ctx.fillStyle = 'rgba(139,127,114,.6)';
         ctx.font = 'bold ' + (12 * U) + 'px Inter, sans-serif';
         var dcount = Math.floor(t * 1.6) % 3;
-        ctx.fillText('...'.slice(0, dcount + 1), 20 * U, -70 * U);
+        ctx.fillText('...'.slice(0, dcount + 1), 20 * U, -84 * U);
       }
       if (T === 'high' && !droopy) {
-        var tw = 0.55 + 0.45 * Math.sin(t * 3.2);
-        ctx.globalAlpha = tw;
-        ctx.fillStyle = '#e0a93b';
-        ctx.beginPath();
-        ctx.moveTo(30 * U, -78 * U);
-        ctx.quadraticCurveTo(30.6 * U, -74 * U, 34 * U, -74 * U);
-        ctx.quadraticCurveTo(30.6 * U, -74 * U, 30 * U, -70 * U);
-        ctx.quadraticCurveTo(29.4 * U, -74 * U, 26 * U, -74 * U);
-        ctx.quadraticCurveTo(29.4 * U, -74 * U, 30 * U, -78 * U);
-        ctx.fill();
+        var tw2 = 0.55 + 0.45 * Math.sin(t * 3.2);
+        ctx.globalAlpha = tw2 * 0.9;
+        ctx.fillStyle = '#e9c14a';
+        [[30, -84], [35, -76]].forEach(function (sp, si) {
+          var sx = sp[0] * U, sy = sp[1] * U, r2 = (si ? 1.4 : 2.1) * U;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - r2 * 2.1);
+          ctx.quadraticCurveTo(sx + r2 * 0.5, sy - r2 * 0.5, sx + r2 * 2.1, sy);
+          ctx.quadraticCurveTo(sx + r2 * 0.5, sy + r2 * 0.5, sx, sy + r2 * 2.1);
+          ctx.quadraticCurveTo(sx - r2 * 0.5, sy + r2 * 0.5, sx - r2 * 2.1, sy);
+          ctx.quadraticCurveTo(sx - r2 * 0.5, sy - r2 * 0.5, sx, sy - r2 * 2.1);
+          ctx.fill();
+        });
         ctx.globalAlpha = 1;
       }
 
       ctx.restore();
     }
 
-    /* ---------- 绘制 ---------- */
+    /* ---------- 贴图渲染 ----------
+       按状态挑图片：睡觉 > 饿 > 精神好 > 默认。
+       图片按「contain」放进画布，底下补一层柔和椭圆阴影，免得看着像浮在空中。
+
+       返回值三态：
+         true  已画（贴图或「故意留白」）
+         false 明确没有贴图 -> 调用方去画程序化的猫
+       关键：贴图还在加载时也要返回 true（画布留白），
+       否则第一帧会先画程序化的猫、图好了再切换，看起来就是「先闪一只丑猫」。 */
+    function drawSprite(t) {
+      var want = st.sleeping ? 'sleep' : (hungry ? 'hungry' : (tier === 'high' ? 'happy' : ''));
+      var rec = null;
+      if (want) {
+        var cand = tryLoadSprite('cat-' + want);
+        if (cand.ok) rec = cand;
+      }
+      var base = tryLoadSprite('cat');
+      if (!rec && base.ok) rec = base;
+
+      if (!rec) {
+        /* 还没探明有没有贴图：什么都不画，别拿程序化的猫顶上——
+           否则第一帧先闪一只猫、图好了再切换。
+           注意只有「还在加载」才留白；「确认加载失败」要立刻回落，不能一直空着。 */
+        if (base.done) return false;          /* 确定没有贴图 -> 程序化绘制 */
+        ctx.clearRect(0, 0, W, H);
+        return true;                          /* 仍未知 -> 留白等图 */
+      }
+
+      var img = rec.img;
+      var iw = img.naturalWidth || img.width;
+      var ih = img.naturalHeight || img.height;
+      if (!iw || !ih) return false;
+
+      ctx.clearRect(0, 0, W, H);
+
+      var dw, dh, dx, dy;
+      if (spriteHeadOnly) {
+        /* 收起态：画布是小方块，整只立绘塞进去会小到看不清，
+           所以只取头部（上半部分）并铺满，像一个头像。 */
+        var cropH = ih * 0.46;                       /* 头顶到胸口 */
+        var cropW = Math.min(iw, cropH * (W / H));   /* 按画布比例裁，避免变形 */
+        var sx = (iw - cropW) / 2;
+        var sy = ih * 0.015;
+        dh = H; dw = W; dx = 0; dy = 0;
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, sx, sy, cropW, cropH, dx, dy, dw, dh);
+        ctx.restore();
+        return true;
+      }
+
+      /* contain + 留 4% 边距 */
+      var pad = 0.04;
+      var k = Math.min((W * (1 - pad * 2)) / iw, (H * (1 - pad * 2)) / ih);
+      dw = iw * k; dh = ih * k;
+      dx = (W - dw) / 2;
+      dy = (H - dh) / 2;
+
+      /* 呼吸：整张图轻微缩放，比逐帧重画便宜，也不破坏原图 */
+      var br = 1 + Math.sin(t * (tier === 'low' ? 0.9 : 1.5)) * 0.012;
+
+      /* 地面阴影 */
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = '#4a3a28';
+      ctx.beginPath();
+      ctx.ellipse(W / 2, dy + dh * 0.995, dw * 0.30, dh * 0.030, 0, 0, 6.2832);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(W / 2, dy + dh / 2);
+      ctx.scale(br, br);
+      ctx.translate(-W / 2, -(dy + dh / 2));
+      /* 贴图是照片/插画，放大时用高质量插值，别出现锯齿 */
+      ctx.imageSmoothingEnabled = true;
+      if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, dx, dy + hopY, dw, dh);
+      ctx.restore();
+
+      /* 睡觉时补 Z，饿的时候补个提示点，保持"它在回应你"的感觉 */
+      if (st.sleeping) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(139,127,114,.75)';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        var zt = (t * 0.45) % 1;
+        [0, 1, 2].forEach(function (i) {
+          var zz = (zt + i * 0.33) % 1;
+          ctx.globalAlpha = 1 - zz;
+          ctx.fillText('z', dx + dw * 0.82 + zz * 12, dy + dh * 0.30 - zz * 26);
+        });
+        ctx.restore();
+      }
+      return true;
+    }
+
     function draw(t) {
-      if (bare) { drawCute(t); return; }
+      if (bare) {
+        /* 有贴图就用贴图，没有才回落到程序化画的猫 */
+        if (drawSprite(t)) return;
+        drawCute(t);
+        return;
+      }
       var P = PAL[tier];
       var by = H * 0.80 + hopY;               /* 基线 */
       var cx = W / 2;
@@ -862,6 +1036,8 @@
       },
       setGear: function (g) { setGear(g); drawOnce(); },
       setHungry: function (h) { hungry = !!h; drawOnce(); },
+      /* 贴图模式下切换「只画头部」（收起态用） */
+      setHeadOnly: function (b) { spriteHeadOnly = !!b; drawOnce(); },
       play: function (name, dur) { playFx(name, dur); },
       setState: function (o) {
         if (o && o.sleeping !== undefined) st.sleeping = !!o.sleeping;

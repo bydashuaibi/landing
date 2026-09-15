@@ -1,6 +1,8 @@
 /* 着陆 Landing v2 — 把焦虑变成下一步
- * 六模块：今日(推送+一件+快捷打卡) / 任务(长周期+日常) / 周报(复盘看板) / 日报(GitHub热度) / AI陪伴 / 我的(设置+树洞)
- * 核心机制：长周期里程碑鼓励 + 日常循环打卡 + 连续2天未打卡自动暂停 + 每周首次打开自动生成复盘
+ * 模块：今日(情绪气象+倾倒台+一件+快捷打卡) / 任务(长周期+日常+每周) / 周报(复盘看板) /
+ *       日报(GitHub 热度) / 陪伴(AI) / 伙伴(养成挂件) / 我的(设置+数据管理)
+ * 核心机制：先倾倒外化 → 选今天最小一步 → 打卡即算数 → 长周期里程碑鼓励 +
+ *          日常循环 + 连续2天未打卡自动暂停 + 每周首次打开自动生成复盘
  */
 (function(){
 'use strict';
@@ -82,6 +84,8 @@ function blankState(){
     timer: null,        // 计时器：{taskId,plannedMin,startedAt,endsAt,paused,remainMs,finished}
     memories: [],       // 记忆库：{id,at,kind,text,tags}
     pet: {},            // 伙伴（由 pet.js 负责默认值与演化）
+    oneThing: null,     // 今天一件：{date,text,done,dumpId?}
+    seeded: true,       // 标记：已初始化过（避免老库升级时被重新播种）
     settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
   };
 }
@@ -92,8 +96,48 @@ function load(){
     if(raw){ STATE = JSON.parse(raw); migrate(); return; }
   }catch(e){}
   STATE = blankState();
-  seed();
   save();
+}
+
+/* 老版本首次启动时会往库里塞示例数据（背单词 / 跑步 / 冥想 / 倾倒 / 情绪），
+   用户既没创建过也删不掉。这里做一次性清理：只在「整库恰好等于当初那批示例」时抹掉，
+   有任何一条被改过、被打过卡、被删过，就认为用户已经在用了，绝不动它。 */
+function stripLegacySeed(){
+  var s = STATE;
+  if(s.seedStripped) return;
+  s.seedStripped = true;
+
+  var ltNames = ['背完考研红宝书单词','读完《深度工作》'];
+  var dtNames = ['英语背词 30 个','跑步 30 分钟','冥想 10 分钟'];
+  var wkNames = ['跑步 / 健身房'];
+  var ltUntouched = function(g){ return g.records.length===0 && !g._milestoneHalf && !g._milestoneDone; };
+  var dtUntouched = function(d){ return d.records.length===0; };
+
+  if(s.longTasks.length===2 && s.longTasks.every(function(g){ return ltNames.indexOf(g.name)>=0 && ltUntouched(g); })){
+    s.longTasks = [];
+  }
+  if(s.dailyTasks.length===3 && s.dailyTasks.every(function(d){ return dtNames.indexOf(d.name)>=0 && dtUntouched(d); })){
+    s.dailyTasks = [];
+  }
+  if(s.weeklyTasks.length===1 && s.weeklyTasks.every(function(w){ return wkNames.indexOf(w.name)>=0 && w.records.length===0; })){
+    s.weeklyTasks = [];
+  }
+  /* 情绪气象是今天页那个选心情控件写的，但那个控件一直没做出来——
+     所以这组记录只可能来自示例。用「完全等于当初那 5 条」做签名匹配：
+     用户只要自己在今日页选过心情，日期或备注就会对不上，整体不碰。 */
+  var seedWeather = [
+    {d:-4, m:'sun',   n:'状态还行'},
+    {d:-3, m:'cloud', n:''},
+    {d:-2, m:'rain',  n:'有点乱'},
+    {d:-1, m:'cloud', n:''},
+    {d: 0, m:'rain',  n:''}
+  ];
+  var weatherMatches = s.weather.length === seedWeather.length
+    && seedWeather.every(function(sd, i){
+         var w = s.weather[i];
+         return w && w.date === addDays(today(), sd.d) && w.mood === sd.m && (w.note || '') === sd.n;
+       });
+  if(weatherMatches) s.weather = [];
 }
 
 function migrate(){
@@ -110,8 +154,14 @@ function migrate(){
   s.weeklyTasks = s.weeklyTasks || [];
   s.memories = s.memories || [];
   s.timer = s.timer || null;
+  if(s.timer){
+    if(!s.timer.scope) s.timer.scope = 'weekly';   /* 兼容旧版：原来只有每周任务能计时 */
+    if(!s.timer.mode) s.timer.mode = 'countdown';
+    if(s.timer.mode==='stopwatch' && s.timer.accMs===undefined) s.timer.accMs = 0;
+  }
   s.pet = s.pet || {};
   s.settings = s.settings || {};
+  if(s.oneThing === undefined) s.oneThing = null;
 
   /* 迁移旧 v1 数据中的 dumps/weather/companion/community/settings */
   if(!s.dumps.length && s.dumps_v1) s.dumps = s.dumps_v1;
@@ -135,12 +185,14 @@ function migrate(){
     if(!w.weeklyGoalDays) w.weeklyGoalDays = 5;
     if(!w.category) w.category = w.type==='exercise' ? 'health' : 'edu';
   });
+
+  stripLegacySeed();
 }
 
-function seed(){
+/* 示例数据：只在用户主动点「载入示例数据」时用，不再自动播种 */
+function seedDemo(){
   var t = today();
 
-  /* 示例长周期任务 */
   STATE.longTasks = [
     {id:uid('lt'), name:'背完考研红宝书单词', unit:'词', total:5500, current:1200,
      deadline:addDays(t,90), category:'edu', status:'active',
@@ -159,7 +211,6 @@ function seed(){
      ], createdAt:addDays(t,-7)}
   ];
 
-  /* 示例日常任务 */
   STATE.dailyTasks = [
     {id:uid('dt'), name:'英语背词 30 个', category:'edu', subCategory:'学习', type:'habit', enabled:true,
      records:[
@@ -177,7 +228,6 @@ function seed(){
      ], createdAt:addDays(t,-7)}
   ];
 
-  /* 示例每周任务（运动型：每日时长 + 每周天数双目标） */
   STATE.weeklyTasks = [
     {id:uid('wk'), name:'跑步 / 健身房', type:'exercise', category:'health',
      dailyGoalMin:30, weeklyGoalDays:5, enabled:true,
@@ -185,19 +235,6 @@ function seed(){
        {date:addDays(t,-4), minutes:30, mode:'timer', plannedMin:30, ts:Date.now()},
        {date:addDays(t,-2), minutes:35, mode:'timer', plannedMin:30, ts:Date.now()}
      ], createdAt:addDays(t,-14)}
-  ];
-
-  STATE.dumps = [
-    {id:uid('d'),text:'想系统学一下 RTOS，但一直没动手，资料收藏了一堆',createdAt:addDays(t,-2),kind:null,done:false,ts:Date.now()},
-    {id:uid('d'),text:'担心考研方向选错，反复查资料却不动手',createdAt:addDays(t,-1),kind:null,done:false,ts:Date.now()}
-  ];
-  STATE.oneThing = {date:t,text:'打开 RTOS 教程看前 10 分钟',done:false};
-  STATE.weather = [
-    {date:addDays(t,-4),mood:'sun',note:'状态还行'},
-    {date:addDays(t,-3),mood:'cloud',note:''},
-    {date:addDays(t,-2),mood:'rain',note:'有点乱'},
-    {date:addDays(t,-1),mood:'cloud',note:''},
-    {date:t,mood:'rain',note:''}
   ];
 }
 
@@ -346,6 +383,7 @@ function checkLongMilestones(g){
 /* 检查所有活跃长周期是否连续2天未打卡 → 自动暂停 */
 function checkAutoPause(){
   var yesterday = addDays(today(),-1);
+  var paused = [];
   STATE.longTasks.forEach(function(g){
     if(g.status!=='active') return;
     var lastRec = null;
@@ -360,10 +398,11 @@ function checkAutoPause(){
       if(!hasDayBefore && !hasToday){
         g.status='paused';
         g.pausedAt=today();
-        toast('「'+g.name+'」已自动暂停（连续两天未打卡），回来后可继续');
+        paused.push(g.name);
       }
     }
   });
+  return paused;   /* 调用方决定怎么温和地说，startup 时才提示一次 */
 }
 
 function renderLongTaskCard(g){
@@ -380,7 +419,8 @@ function renderLongTaskCard(g){
     +'<div class="bar"><div style="width:'+pct+'%"></div></div>'
     +'</div>'
     +(g.status==='active'
-      ? (isTodayChecked
+      ? '<button class="btn teal sm" data-act="startTimer" data-scope="long" data-id="'+g.id+'">'+icon('play')+'计时</button>'
+        + (isTodayChecked
         ? '<button class="btn ghost sm" data-act="editLong" data-id="'+g.id+'">'+icon('edit')+'编辑</button>'
         : '<button class="btn primary sm" data-act="checkinLong" data-id="'+g.id+'">'+icon('check')+'打卡</button>')
       : (g.status==='paused'
@@ -428,7 +468,9 @@ function renderDailyTaskCard(dt){
     +'</div>'
     +(checked
       ? '<span class="badge-done">✓ 已完成 '+dailyTodayMinutes(dt)+'分钟</span>'
-      : '<button class="btn primary sm" data-act="checkinDaily" data-id="'+dt.id+'">'+icon('check')+'打卡</button>')
+        + '<button class="btn teal sm" data-act="startTimer" data-scope="daily" data-id="'+dt.id+'">'+icon('play')+'再计时</button>'
+      : '<button class="btn primary sm" data-act="checkinDaily" data-id="'+dt.id+'">'+icon('check')+'打卡</button>'
+        + '<button class="btn teal sm" data-act="startTimer" data-scope="daily" data-id="'+dt.id+'">'+icon('play')+'计时</button>')
     +'<button class="btn ghost sm" data-act="toggleDaily" data-id="'+dt.id+'">'+(dt.enabled?'关':'开')+'</button>'
     +'<button class="btn ghost sm" data-act="editDaily" data-id="'+dt.id+'">'+icon('edit')+'</button>'
     +'<button class="btn ghost sm" data-act="delDaily" data-id="'+dt.id+'">'+icon('trash')+'</button>'
@@ -511,9 +553,49 @@ function weeklyDots(w){
     if(d>now) cls += ' future';
     else if(goal<=0 ? m>0 : m>=goal) cls += ' ok';
     else if(m>0) cls += ' part';
-    html += '<i class="'+cls+'" title="'+d+' · '+m+' 分钟"></i>';
+    var ways = m>0 ? dayModeLabels(w, d) : [];
+    html += '<i class="'+cls+'" title="'+d+' · '+m+' 分钟'+(ways.length?' · '+ways.join('/'):'')+'"></i>';
   }
   return html+'</div>';
+}
+
+/* 计时方式标签：正计时 / 倒计时 等 */
+var MODE_LABEL = {instant:'直接完成', timer:'倒计时', partial:'完成部分', extra:'追加', tap:'打卡', stopwatch:'正计时'};
+function modeLabel(m){ return MODE_LABEL[m]||'记录'; }
+
+/* 某天用过哪些计时方式（周报格子的 title 用） */
+function dayModeLabels(w, d){
+  var s = [];
+  (w.records||[]).forEach(function(r){
+    if(r.date!==d) return;
+    var l = modeLabel(r.mode);
+    if(s.indexOf(l)<0) s.push(l);
+  });
+  return s;
+}
+
+/* 本周各任务的计时方式分解（周报用来标出正计时/倒计时） */
+function weeklyModeStat(w, wk){
+  wk = wk || weekKey();
+  var end = addDays(wk,7);
+  var g = {sw:{n:0,min:0}, cd:{n:0,min:0}, dc:{n:0,min:0}};
+  (w.records||[]).forEach(function(r){
+    if(r.date<wk || r.date>=end) return;
+    var k = r.mode==='stopwatch' ? 'sw' : (r.mode==='timer'||r.mode==='partial') ? 'cd' : 'dc';
+    g[k].n++; g[k].min += (r.minutes||0);
+  });
+  return g;
+}
+
+/* 周报里那一排「正计时/倒计时/直接打卡」小标签 */
+function weeklyModeChips(w, wk){
+  var g = weeklyModeStat(w, wk);
+  if(!g.sw.n && !g.cd.n && !g.dc.n) return '';
+  var h = '<div class="wk-modes">';
+  if(g.sw.n) h += '<span class="mt sw">'+icon('play')+' 正计时 '+g.sw.n+' 次 · '+g.sw.min+' 分钟</span>';
+  if(g.cd.n) h += '<span class="mt cd">⏱ 倒计时 '+g.cd.n+' 次 · '+g.cd.min+' 分钟</span>';
+  if(g.dc.n) h += '<span class="mt dc">'+icon('check')+' 直接打卡 '+g.dc.n+' 次 · '+g.dc.min+' 分钟</span>';
+  return h+'</div>';
 }
 
 function renderWeeklyTaskCard(w){
@@ -537,6 +619,7 @@ function renderWeeklyTaskCard(w){
     +(checked
       ? '<span class="badge-done">✓ 今天 '+tmin+' 分钟</span>'
       : '<button class="btn primary sm" data-act="checkinWeekly" data-id="'+w.id+'">'+icon('check')+'打卡</button>')
+    +'<button class="btn teal sm" data-act="startTimer" data-scope="weekly" data-id="'+w.id+'">'+icon('play')+'计时</button>'
     +'<button class="btn ghost sm" data-act="toggleWeekly" data-id="'+w.id+'">'+(w.enabled?'关':'开')+'</button>'
     +'<button class="btn ghost sm" data-act="editWeekly" data-id="'+w.id+'">'+icon('edit')+'</button>'
     +'<button class="btn ghost sm" data-act="delWeekly" data-id="'+w.id+'">'+icon('trash')+'</button>'
@@ -554,7 +637,7 @@ function openWeeklyCheckin(id){
     /* 自定义型：不记时长，直接确认 */
     openSheet('<h2>打卡：'+esc(w.name)+'</h2>'
       +'<div class="hint">'+tp.label+' · 本周达标 '+st.okDays+'/'+st.goalDays+' 天</div>'
-      +'<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>'
+      +'<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
       +'<button class="btn primary" id="wc_ok">已完成</button></div>');
     $('wc_ok').onclick=function(){ commitWeeklyRecord(w, 0, 'tap', 0); };
     return;
@@ -565,11 +648,16 @@ function openWeeklyCheckin(id){
     openSheet('<h2>再来一段？</h2>'
       +'<div class="hint">「'+esc(w.name)+'」今天已记录 '+tmin+' 分钟（每日目标 '+w.dailyGoalMin+' 分钟）</div>'
       +'<div class="field"><label>本次时长（分钟）</label><input id="wc_min" type="number" value="'+w.dailyGoalMin+'" min="1"></div>'
-      +'<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>'
+      +'<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
+      +'<button class="btn teal" id="wc_sw2">'+icon('play')+'计时</button>'
       +'<button class="btn primary" id="wc_add">记下</button></div>');
     $('wc_add').onclick=function(){
       var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
       commitWeeklyRecord(w, m, 'extra', m);
+    };
+    $('wc_sw2').onclick=function(){
+      closeSheet();
+      startStopwatch('weekly', w.id);
     };
     return;
   }
@@ -579,6 +667,7 @@ function openWeeklyCheckin(id){
     +'<div class="wk-pick">'
       +'<button class="wk-choice" id="wc_done"><b>已完成</b><span>按设定时长直接计入周报</span></button>'
       +'<button class="wk-choice" id="wc_start"><b>现在开始</b><span>按设定时长起倒计时</span></button>'
+      +'<button class="wk-choice" id="wc_sw"><b>计时</b><span>正计时，做多久算多久</span></button>'
     +'</div>'
     +'<div class="field" style="margin-top:14px"><label>本次时长（分钟）</label>'
       +'<input id="wc_min" type="number" value="'+w.dailyGoalMin+'" min="1"></div>');
@@ -592,6 +681,10 @@ function openWeeklyCheckin(id){
     closeSheet();
     startWeeklyTimer(w, m);
   };
+  $('wc_sw').onclick=function(){
+    closeSheet();
+    startStopwatch('weekly', w.id);
+  };
 }
 
 /* 写入一条每周任务记录 */
@@ -601,7 +694,7 @@ function commitWeeklyRecord(w, minutes, mode, plannedMin){
   w.records.push({date:today(), minutes:minutes, mode:mode||'instant', plannedMin:plannedMin||minutes, ts:Date.now()});
   if(STATE.timer && STATE.timer.taskId===w.id) STATE.timer=null;
   var f = minutes>0 ? awardFish(minutes, w.name) : 0;
-  addMemory('task', '「'+w.name+'」'+minutes+' 分钟（'+({instant:'直接完成',timer:'计时完成',partial:'完成部分',extra:'追加',tap:'打卡'}[mode]||'记录')+'）', ['每周任务']);
+  addMemory('task', '「'+w.name+'」'+minutes+' 分钟（'+(mode==='timer'?'计时完成':modeLabel(mode||'instant'))+'）', ['每周任务']);
   var st = weeklyTaskStats(w);
   save(); closeSheet(); render(); renderTimerBar();
   toast('已记录 '+minutes+' 分钟 · 本周达标 '+st.okDays+'/'+st.goalDays+' 天'+(f?' · +'+f+' 🐟':''));
@@ -615,18 +708,32 @@ function timerRemainMs(){
   if(t.paused) return Math.max(0, t.remainMs||0);
   return Math.max(0, t.endsAt - Date.now());
 }
+function timerScope(){ var t=STATE.timer; return t ? (t.scope||'weekly') : 'weekly'; }
+function timerIsStopwatch(){ return !!(STATE.timer && STATE.timer.mode==='stopwatch'); }
 function timerElapsedMs(){
   var t=STATE.timer; if(!t) return 0;
+  if(t.mode==='stopwatch'){
+    var base = t.accMs||0;
+    return t.paused ? base : base + Math.max(0, Date.now()-(t.startedAt||Date.now()));
+  }
   return Math.max(0, (t.plannedMin*60000) - timerRemainMs());
 }
 function timerTask(){
   if(!STATE.timer) return null;
-  return STATE.weeklyTasks.find(function(x){ return x.id===STATE.timer.taskId; }) || null;
+  var sc = timerScope();
+  var list = sc==='daily' ? STATE.dailyTasks : (sc==='long' ? STATE.longTasks : STATE.weeklyTasks);
+  return list.find(function(x){ return x.id===STATE.timer.taskId; }) || null;
 }
 function fmtClock(ms){
   var s=Math.max(0,Math.round(ms/1000));
   var m=Math.floor(s/60); s=s%60;
   return ('0'+m).slice(-2)+':'+('0'+s).slice(-2);
+}
+/* 正计时用的时钟（超过一小时显示 1:23:45） */
+function fmtClockLong(ms){
+  var s=Math.max(0,Math.round(ms/1000));
+  var h=Math.floor(s/3600), m=Math.floor(s%3600/60); s=s%60;
+  return (h>0 ? (h+':'+('0'+m).slice(-2)) : ('0'+m).slice(-2))+':'+('0'+s).slice(-2);
 }
 function timerBarEl(){
   var el = $('timerBar');
@@ -641,10 +748,20 @@ function renderTimerBar(){
   var el = timerBarEl(), t = STATE.timer;
   if(!t || t.finished){ el.classList.add('hidden'); el.innerHTML=''; return; }
   var w = timerTask();
+  var nm = esc(w ? w.name : (t.name||'专注'));
   el.classList.remove('hidden');
+  if(t.mode==='stopwatch'){
+    var used = timerElapsedMs();
+    el.innerHTML = '<span class="tb-ico">▶</span>'
+      +'<span class="tb-time">'+fmtClockLong(used)+'</span>'
+      +'<span class="tb-name">'+nm+' · 已 '+Math.floor(used/60000)+' 分钟</span>'
+      +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?'继续':'暂停')+'</button>'
+      +'<button class="tb-btn" data-act="timerFinish">结束</button>';
+    return;
+  }
   el.innerHTML = '<span class="tb-ico">⏱</span>'
     +'<span class="tb-time">'+fmtClock(timerRemainMs())+'</span>'
-    +'<span class="tb-name">'+esc(w?w.name:'专注')+' · '+t.plannedMin+' 分钟</span>'
+    +'<span class="tb-name">'+nm+' · '+t.plannedMin+' 分钟</span>'
     +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?'继续':'暂停')+'</button>'
     +'<button class="tb-btn" data-act="timerFinish">结束</button>';
 }
@@ -652,8 +769,28 @@ function ensureTimerTick(){
   if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
   if(!STATE.timer || STATE.timer.finished) return;
   _timerTick = setInterval(function(){
-    if(!STATE.timer){ clearInterval(_timerTick); _timerTick=null; return; }
-    if(!STATE.timer.paused && !STATE.timer.finished && timerRemainMs()<=0){
+    var t = STATE.timer;
+    if(!t){ clearInterval(_timerTick); _timerTick=null; return; }
+    if(t.mode==='stopwatch'){
+      var el2 = timerElapsedMs();
+      /* 忘记停的保护：单次超过 4 小时先封顶暂停，不悄悄记一整天 */
+      if(el2 >= SW_MAX_MS){
+        t.accMs = SW_MAX_MS; t.paused = true; save(); renderTimerBar();
+        notify('⏱ 计时太久啦', '已按 4 小时封顶并暂停，记得结束一下');
+        toast('计时超过 4 小时，已封顶暂停');
+        return;
+      }
+      /* 每 60 分钟温和提醒一次，只报时、不评判 */
+      if(!t.paused && el2-(t.nagMs||0) >= SW_NAG_MS){
+        t.nagMs = el2; save();
+        var nm2 = timerTask();
+        notify('⏱ 计时还在跑', (nm2?nm2.name:'专注')+' 已 '+fmtClockLong(el2)+'，还顺利吗？');
+        if(window.Pet && Pet.say) Pet.say('已经 '+Math.floor(el2/60000)+' 分钟了，喝口水也行。');
+      }
+      renderTimerBar();
+      return;
+    }
+    if(!t.paused && !t.finished && timerRemainMs()<=0){
       onTimerEnd();
       return;
     }
@@ -662,6 +799,7 @@ function ensureTimerTick(){
 }
 function startWeeklyTimer(w, plannedMin){
   STATE.timer = {
+    scope:'weekly', mode:'countdown', name:w.name,
     taskId:w.id, plannedMin:plannedMin, startedAt:Date.now(),
     endsAt: Date.now()+plannedMin*60000, paused:false, remainMs:null, finished:false
   };
@@ -673,7 +811,11 @@ function startWeeklyTimer(w, plannedMin){
 }
 function toggleTimer(){
   var t=STATE.timer; if(!t||t.finished) return;
-  if(t.paused){ t.endsAt = Date.now() + (t.remainMs||0); t.paused=false; }
+  if(t.mode==='stopwatch'){
+    if(t.paused){ t.startedAt = Date.now(); t.paused=false; }
+    else { t.accMs = timerElapsedMs(); t.paused=true; }
+  }
+  else if(t.paused){ t.endsAt = Date.now() + (t.remainMs||0); t.paused=false; }
   else { t.remainMs = timerRemainMs(); t.paused=true; }
   save(); renderTimerBar(); ensureTimerTick();
 }
@@ -735,6 +877,171 @@ function openTimerFinishSheet(early){
       if(window.Pet && Pet.say) Pet.say('没关系，下次想动的时候我在。');
     };
   }
+}
+
+/* ================= 正计时：点一下开始，做多久算多久 =================
+   和倒计时相反：不设目标、不到点响铃、不出现「未达标」字样。
+   结束时按实际时长落账，时长本身就是打卡；日常任务同一天多次计时会累加进同一条记录，
+   所以一天仍然只算一次打卡，但时长是累计的。
+   防呆三件套：<1 分钟默认丢掉；单次超过 4 小时自动封顶暂停；每 60 分钟提醒一次还在跑。 */
+var SW_MIN_MS = 60000;
+var SW_MAX_MS = 4*3600*1000;
+var SW_NAG_MS = 60*60*1000;
+
+function scopeList(scope){
+  if(scope==='daily') return STATE.dailyTasks;
+  if(scope==='long')  return STATE.longTasks;
+  return STATE.weeklyTasks;
+}
+function scopeName(scope){
+  if(scope==='daily') return '日常任务';
+  if(scope==='long')  return '长周期任务';
+  return '每周任务';
+}
+
+function startStopwatch(scope, id){
+  var task = (scopeList(scope)||[]).find(function(x){ return x.id===id; });
+  if(!task){ toast('找不到这个任务'); return; }
+
+  /* 同一时刻只跑一个计时：先问一声，不粗暴丢掉 */
+  if(STATE.timer && !STATE.timer.finished){
+    var busy = timerTask();
+    openSheet('<h2>先结束正在计时的那个？</h2>'
+      +'<div class="hint">「'+esc(busy?busy.name:(STATE.timer.name||'另一个任务'))+'」已经计时 '
+      +fmtClockLong(timerElapsedMs())+'，先把它记下来再开始新的。</div>'
+      +'<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
+      +'<button class="btn primary" id="sw_switch">结束并开始</button></div>');
+    $('sw_switch').onclick=function(){
+      var used = timerElapsedMs();
+      if(used>=SW_MIN_MS) commitStopwatchRecord(Math.round(used/60000));
+      else { STATE.timer=null; if(_timerTick){clearInterval(_timerTick);_timerTick=null;} save(); renderTimerBar(); }
+      closeSheet();
+      startStopwatch(scope, id);
+    };
+    return;
+  }
+
+  STATE.timer = { scope:scope, mode:'stopwatch', name:task.name, taskId:id,
+    plannedMin:0, startedAt:Date.now(), accMs:0, paused:false, remainMs:0,
+    finished:false, nagMs:0 };
+  save(); renderTimerBar(); ensureTimerTick();
+  render();   /* 让卡片/芯片立刻反映「计时中」 */
+  toast('开始计时：'+task.name+'。做多久算多久，不用看表。');
+  if(window.Pet && Pet.say) Pet.say('我帮你记着时间，你专心做就行。');
+  addMemory('timer', '开始计时：「'+task.name+'」（'+scopeName(scope)+'）', ['计时']);
+}
+
+/* 把当前正计时落账：写进对应任务的记录里 */
+function commitStopwatchRecord(minutes, meta){
+  var t = STATE.timer; if(!t) return 0;
+  var scope = t.scope||'weekly', id = t.taskId;
+  var task = timerTask();
+  minutes = Math.max(0, Math.round(minutes||0));
+  meta = meta||{};
+
+  /* 任务被删掉了 → 只收走计时，不落账 */
+  if(!task){
+    STATE.timer = null;
+    if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
+    save(); closeSheet(); render(); renderTimerBar();
+    toast('这个任务已经不在了，这次没记');
+    return 0;
+  }
+
+  var name = task.name;
+  var fish = minutes>0 ? awardFish(minutes, name) : 0;
+
+  if(scope==='daily'){
+    var rec = task.records.find(function(r){ return r.date===today(); });
+    if(rec){ rec.minutes = (rec.minutes||0)+minutes; rec.ts = Date.now(); }  /* 同一天累加，仍算一次打卡 */
+    else { task.records.push({date:today(), amount:1, minutes:minutes, ts:Date.now()}); }
+  }
+  else if(scope==='long'){
+    var amt = parseInt(meta.amount,10)||0;
+    task.records.push({date:today(), amount:amt, minutes:minutes, ts:Date.now()});
+    if(amt>0) task.current = (task.current||0)+amt;
+    if(task.current>=task.total) task.status = 'done';
+  }
+  else{
+    task.records = task.records||[];
+    task.records.push({date:today(), minutes:minutes, mode:'stopwatch', plannedMin:0, ts:Date.now()});
+  }
+
+  addMemory('task', '「'+name+'」计时 '+minutes+' 分钟（正计时 · '+scopeName(scope)+'）', ['计时']);
+  STATE.timer = null;
+  if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
+  save(); closeSheet(); render(); renderTimerBar();
+  toast('记下 '+minutes+' 分钟'+(fish?(' · +'+fish+' 🐟'):'')+(scope==='daily'?'，今天已打卡 ✓':''));
+
+  if(scope==='long' && (parseInt(meta.amount,10)||0)>0){
+    var ms = checkLongMilestones(task);
+    if(ms.length) setTimeout(function(){ toast(ms[0]); }, 400);
+  }
+  return minutes;
+}
+
+/* 结束正计时：默认按计时时长，也允许改成实际值 */
+function openStopwatchFinishSheet(){
+  if(!timerIsStopwatch()) return;
+  var t = STATE.timer, task = timerTask();
+  var name = task ? task.name : (t.name||'专注');
+  var ms = timerElapsedMs();
+  var mins = Math.max(1, Math.round(ms/60000));
+
+  if(ms < SW_MIN_MS){
+    openSheet('<h2>这段太短啦</h2>'
+      +'<div class="hint">「'+esc(name)+'」只计了 '+Math.round(ms/1000)+' 秒（不到 1 分钟），默认不算打卡。</div>'
+      +'<div class="sheet-actions"><button class="btn ghost" id="sw_min1">还是记 1 分钟</button>'
+      +'<button class="btn primary" id="sw_drop0">丢掉这段</button></div>');
+    $('sw_min1').onclick=function(){ commitStopwatchRecord(1); };
+    $('sw_drop0').onclick=function(){ dropStopwatch(); };
+    return;
+  }
+
+  var longField = (t.scope==='long')
+    ? '<div class="field"><label>这次完成了多少（'+esc(task.unit||'个')+'，可以不填）</label>'
+      +'<input id="sw_amt" type="number" value="" placeholder="只记时间就不填"></div>'
+    : '';
+
+  openSheet('<h2>结束计时</h2>'
+    +'<div class="hint">「'+esc(name)+'」计时 <b>'+fmtClockLong(ms)+'</b>。做多久算多久，不用凑整。</div>'
+    +'<div class="field"><label>实际时长（分钟）</label><input id="sw_min" type="number" value="'+mins+'" min="0"></div>'
+    +longField
+    +'<div class="ph-actions">'
+    +'<button class="btn primary block" id="sw_ok" style="margin-bottom:8px">'+icon('check')+' 记下并打卡</button>'
+    +'<button class="btn ghost block" id="sw_drop">这次不算，丢掉</button>'
+    +'</div>');
+
+  $('sw_ok').onclick=function(){
+    var m = parseInt($('sw_min').value,10);
+    if(isNaN(m)||m<0) m = mins;
+    var amt = (t.scope==='long' && $('sw_amt')) ? (parseInt($('sw_amt').value,10)||0) : 0;
+    commitStopwatchRecord(m, {amount:amt});
+  };
+  $('sw_drop').onclick=function(){ dropStopwatch(); };
+}
+
+function dropStopwatch(){
+  STATE.timer = null;
+  if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
+  save(); closeSheet(); render(); renderTimerBar();
+  toast('丢掉了，没记录也没关系');
+  if(window.Pet && Pet.say) Pet.say('不算数就不算数，你动过就已经不一样了。');
+}
+
+/* 卡片/芯片上的「▶ 计时」：不用切页也能开正计时
+   没在跑 → ▶ 开始；正在跑同一个任务 → 点击即结束并落账 */
+function timerMatchesTask(scope, id){
+  return !!(STATE.timer && !STATE.timer.finished && STATE.timer.scope===scope && STATE.timer.taskId===id);
+}
+function qciTimerBtn(scope, id){
+  var running = timerMatchesTask(scope, id);
+  return '<button class="qci-timer'+(running?' on':'')+'"'
+    + ' data-act="'+(running?'timerFinish':'startTimer')+'"'
+    + ' data-scope="'+scope+'" data-id="'+id+'"'
+    + ' title="'+(running?'正在计时 · 点这里结束并记下':'开始正计时，做多久算多久')+'">'
+    + (running ? '计时中 ⏹' : icon('play'))
+    + '</button>';
 }
 
 /* 到期提醒音（WebAudio，无音频文件依赖） */
@@ -841,6 +1148,92 @@ function catSpeak(t){
   return arr[Math.floor(Math.random()*arr.length)];
 }
 
+/* ================= 倾倒台 & 情绪气象 ================= */
+/* 倾倒台是「着陆」的第一步：把在脑子里空转的焦虑外化成字，才看得清下一步。
+   它同时是伙伴活力的主要来源（catVitality 里今日倾倒 1 次 +12，上限 +24）。 */
+var DUMP_KINDS = [
+  {key:'do',   label:'要做的',   emoji:'🎯'},
+  {key:'drop', label:'可以放掉', emoji:'🍃'},
+  {key:'feel', label:'只是感受', emoji:'💭'}
+];
+function dumpKindOf(k){ return DUMP_KINDS.find(function(x){return x.key===k;}) || null; }
+
+/* 今日已倾倒条数（供 UI 显示与测试） */
+function todayDumpCount(){
+  var ts0=new Date(); ts0.setHours(0,0,0,0);
+  return STATE.dumps.filter(function(d){ return (d.createdAt||0)>=ts0.getTime(); }).length;
+}
+
+function renderDumpCard(){
+  var list = STATE.dumps.slice().sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+  var todayN = todayDumpCount();
+
+  var h = '<div class="card dump-card" id="dumpCard">'
+    + '<div class="row between"><h2>'+icon('leaf')+' 倾倒台</h2>'
+    + '<span class="dump-count">'+(todayN ? ('今天倒出 '+todayN+' 条 · 小鱼干已到账') : '今天还没倒过')+'</span></div>'
+    + '<div class="hint">脑子里同时在转的事，先写下来。不用分类、不用有条理——写出来它就不在脑子里空转了。'
+    + '倒出来算数：每倒 1 次，小陆的活力 +12（每天最多算 2 次）。</div>'
+    + '<textarea id="dumpInput" class="dump-input" placeholder="现在最占脑子的那件事是…"></textarea>'
+    + '<div class="dump-tools">'
+    + '<button class="btn primary sm" data-act="dumpAdd">'+icon('plus')+' 倒出来</button>'
+    + '<span class="dump-tip">写完再决定它是「要做的」「可以放掉」还是「只是感受」</span>'
+    + '</div>';
+
+  if(!list.length){
+    h += '<div class="empty">倾倒台是空的。上面写点什么，哪怕只有一句。</div>';
+  } else {
+    h += '<div class="dump-list">';
+    list.slice(0,20).forEach(function(d){
+      var k = dumpKindOf(d.kind);
+      var when = d.createdAt ? new Date(d.createdAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      h += '<div class="dump-item'+(d.done?' is-done':'')+'">'
+        + '<div class="dump-head">'
+        + '<span class="dump-chip'+(k?(' k-'+k.key):'')+'">'+(k ? k.emoji+' '+k.label : '未分类')+'</span>'
+        + '<span class="dump-time">'+esc(when)+'</span>'
+        + '<button class="dump-del" data-act="dumpDel" data-id="'+d.id+'" title="删掉这条">✕</button>'
+        + '</div>'
+        + '<div class="dump-text">'+esc(d.text)+'</div>'
+        + '<div class="dump-acts">';
+      DUMP_KINDS.forEach(function(kk){
+        h += '<button class="dump-k'+(d.kind===kk.key?' on':'')+'" data-act="dumpKind" data-id="'+d.id+'" data-kind="'+kk.key+'">'+kk.emoji+' '+kk.label+'</button>';
+      });
+      h += '<button class="dump-start" data-act="dumpStart" data-id="'+d.id+'">↳ 就做这一小步</button>'
+        + '</div></div>';
+    });
+    if(list.length>20){
+      h += '<div class="dump-tip" style="margin-top:8px">只显示最近 20 条，共 '+list.length+' 条。</div>';
+    }
+    h += '</div>';
+  }
+  return h+'</div>';
+}
+
+function renderMoodCard(){
+  var rec = STATE.weather.filter(function(x){ return x.date===today(); }).pop();
+  var MOODS = [
+    {key:'sun',   emoji:'☀️', label:'晴', note:'状态不错'},
+    {key:'cloud', emoji:'⛅', label:'阴', note:'还行，有点钝'},
+    {key:'rain',  emoji:'🌧️', label:'雨', note:'有点乱'},
+    {key:'storm', emoji:'⛈️', label:'暴', note:'快撑不住了'}
+  ];
+  var h = '<div class="card mood-card">'
+    + '<div class="row between"><h2>'+icon('cloud')+' 情绪气象</h2>'
+    + '<span class="dump-count">'+(rec ? '今天记过了' : '还没记')+'</span></div>'
+    + '<div class="hint">不用解释，选一个就行。它会影响小陆今天的状态——你下雨的时候它不会催你。</div>'
+    + '<div class="mood-pick">';
+  MOODS.forEach(function(m){
+    var on = rec && rec.mood===m.key;
+    h += '<button class="mood-btn m-'+m.key+(on?' on':'')+'" data-act="setMood" data-mood="'+m.key+'">'
+      + '<span class="mood-emo">'+m.emoji+'</span><span class="mood-lb">'+m.label+'</span>'
+      + '<span class="mood-note">'+m.note+'</span></button>';
+  });
+  h += '</div>';
+  if(rec){
+    h += '<div class="mood-note-line">今天：'+esc((MOODS.find(function(m){return m.key===rec.mood;})||{}).note||'已记录')+'</div>';
+  }
+  return h+'</div>';
+}
+
 /* ================= 视图：今日 ================= */
 function viewToday(){
   var h = '';
@@ -864,6 +1257,7 @@ function viewToday(){
         + '<div class="wk-sub">每日 '+w.dailyGoalMin+' 分钟 · 本周 <b>'+st.okDays+'/'+st.goalDays+'</b> 天</div>'
         + weeklyDots(w) + '</div>'
         + '<button class="btn primary sm" data-act="checkinWeekly" data-id="'+w.id+'">'+icon('check')+'打卡</button>'
+        + '<button class="btn teal sm" data-act="startTimer" data-scope="weekly" data-id="'+w.id+'">'+icon('play')+'计时</button>'
         + '</div>';
     });
     h += '</div>';
@@ -890,6 +1284,12 @@ function viewToday(){
       +'<div class="push-actions"><button class="btn primary sm" data-act="refreshDigest">刷新</button></div></div>';
   }
 
+  /* 情绪气象：选一个就行，影响小陆今天的状态 */
+  h += renderMoodCard();
+
+  /* 倾倒台：外化焦虑——闭环的第一步 */
+  h += renderDumpCard();
+
   /* 今日一件 */
   var ot = STATE.oneThing;
   h += '<div class="card one-thing">';
@@ -910,33 +1310,22 @@ function viewToday(){
   var activeDailies = STATE.dailyTasks.filter(function(d){return d.enabled;});
   var activeWeeklies = STATE.weeklyTasks.filter(function(w){return w.enabled;});
   if(activeDailies.length || activeWeeklies.length){
-    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。单次满 60 分钟赚 1~3 条小鱼干 🐟</div><div class="quick-checkin">';
+    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。单次满 60 分钟赚 1~3 条小鱼干 🐟<br>▶ 是正计时：点一下就开始，做多久算多久，不用切到任务页。</div><div class="quick-checkin">';
     activeDailies.forEach(function(dt){
       var checked = isDailyCheckedToday(dt);
       h += '<div class="qci '+(checked?'done':'')+'" data-act="quickCheckin" data-id="'+dt.id+'">'
-        + (checked ? icon('check')+' '+esc(dt.name) : esc(dt.name))
+        + '<span class="qci-lb">'+(checked ? icon('check')+' '+esc(dt.name) : esc(dt.name))+'</span>'
+        + qciTimerBtn('daily', dt.id)
         + '</div>';
     });
     activeWeeklies.forEach(function(w){
       var m = weeklyTodayMinutes(w);
       h += '<div class="qci '+(m>0?'done':'')+'" data-act="quickWeekly" data-id="'+w.id+'">'
-        + (m>0 ? icon('check')+' '+esc(w.name)+' · '+m+'min' : '🏃 '+esc(w.name))
+        + '<span class="qci-lb">'+(m>0 ? icon('check')+' '+esc(w.name)+' · '+m+'min' : '🏃 '+esc(w.name))+'</span>'
+        + qciTimerBtn('weekly', w.id)
         + '</div>';
     });
     h += '</div></div>';
-  }
-
-  /* 长周期进度提醒 */
-  var milestoneMsgs = [];
-  STATE.longTasks.filter(function(g){return g.status==='active';}).forEach(function(g){
-    var ms = checkLongMilestones(g);
-    milestoneMsgs = milestoneMsgs.concat(ms);
-  });
-  if(milestoneMsgs.length){
-    h += '<div class="card" style="background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(20,184,166,.06));border-color:rgba(34,197,94,.25)">';
-    h += '<h2 style="color:#16a34a">'+icon('spark')+' 进度里程碑</h2>';
-    milestoneMsgs.forEach(function(m){ h += '<div style="margin:6px 0;font-size:14px">'+m+'</div>'; });
-    h += '</div>';
   }
 
   return h;
@@ -1132,6 +1521,7 @@ function viewWeekly(){
         + '<div class="wk-rpt-head"><b>'+esc(w.name)+'</b>'
         + '<span class="muted">达标 '+st.okDays+'/'+st.goalDays+' 天 · '+st.total+' 分钟</span></div>'
         + weeklyDots(w)
+        + weeklyModeChips(w, wk)
         + '<div class="bar" title="达标天数进度"><div style="width:'+okPct+'%"></div></div>'
         + '<div class="wk-rpt-foot"><span>天数进度 '+okPct+'%</span><span>时长进度 '+minPct+'%</span></div>'
         + '</div>';
@@ -1256,7 +1646,15 @@ function viewCompanion(){
   return h;
 }
 
-/* ================= 视图：我的（设置+树洞） ================= */
+/* ================= 视图：我的（设置+数据管理） ================= */
+/* 「我的」页的按钮需要绑事件（视图每次 render 都会重建 DOM） */
+function bindMeActions(){
+  var ex=$('me_export'), im=$('me_import');
+  if(ex) ex.onclick=App.exportData;
+  if(im) im.onclick=App.importData;
+  if($('posts')) App.loadCommunity();
+}
+
 /* ================= 视图：伙伴（详情与设定，内容由 pet.js 渲染） ================= */
 function viewPet(){
   return '<div class="mod-head"><div class="kicker">Module 07 · Companion Pet</div>'
@@ -1268,8 +1666,8 @@ function viewPet(){
 
 function viewMe(){
   var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><div class="warp-head" data-warp><h2>我的</h2></div>'
-    + '<p>设置 AI 配置（陪伴）与 GitHub Token（可选，提升日报拉取限额）；查看数据概览；匿名树洞，说不敢对别人说的话。</p></div>';
-  h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存本地浏览器。</div>'
+    + '<p>设置 AI 配置（陪伴）与 GitHub Token（可选，提升日报拉取限额）；查看数据概览、导出备份。</p></div>';
+  h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存在这台电脑上。</div>'
     + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
 
   /* 情绪气象 SVG */
@@ -1327,22 +1725,74 @@ function viewMe(){
   }
   h += '</div>';
 
-  /* 树洞 */
-  h += '<div class="card"><h2>'+icon('people')+' 匿名树洞</h2>'
-    + '<div class="field"><textarea id="postBody" placeholder="今天着陆了吗？还是还在飘着？"></textarea></div>'
-    + '<div class="row between"><button class="btn primary" data-act="postCommunity">'+icon('send')+' 匿名发布</button>'
-    + '<button class="btn ghost sm" data-act="loadCommunity">'+icon('refresh')+' 刷新</button></div></div>'
-    + '<div id="posts"><div class="empty">加载中…</div></div>';
+  /* 数据管理：备份 / 恢复 / 重置。桌面版走系统文件对话框，网页版退回浏览器下载。 */
+  var isDesk = !!(window.landing && window.landing.data);
+  h += '<div class="card"><h2>'+icon('cog')+' 数据管理</h2>'
+    + '<div class="hint">'+(isDesk
+        ? '所有数据都存在这台电脑上，不上传任何服务器。换电脑或重装前先导出备份。'
+        : '所有数据只存在这个浏览器的本地存储里。换电脑前先导出备份。')+'</div>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap">'
+    + '<button class="btn primary sm" id="me_export">'+icon('send')+' 导出备份</button>'
+    + '<button class="btn ghost sm" id="me_import">'+icon('refresh')+' 导回备份</button>'
+    + '<button class="btn ghost sm" data-act="openSettings">'+icon('cog')+' 设置面板</button>'
+    + (isDesk ? '<button class="btn ghost sm" data-act="openDataDir">打开数据文件夹</button>' : '')
+    + '</div>'
+    + '<div class="muted" style="font-size:12px;margin-top:10px" id="meDataPath">'
+    + '长周期 '+STATE.longTasks.length+' · 日常 '+STATE.dailyTasks.length+' · 每周 '+STATE.weeklyTasks.length
+    + ' · 倾倒 '+STATE.dumps.length+' · 情绪 '+STATE.weather.length+' · 记忆 '+STATE.memories.length
+    + '</div></div>';
+
+  /* 树洞：只在桌面版里有（借助 preload 暴露的本地存储），
+     网页里没有 window.landing 就整块不显示，而不是留一个必然报错的入口。 */
+  if(window.landing && window.landing.feed){
+    h += '<div class="card"><h2>'+icon('people')+' 树洞</h2>'
+      + '<div class="hint">写点不敢对别人说的。它只存在<b>这台电脑</b>上，不上传、不联网、没有别人能看见——'
+      + '说出来的意义在于说出来本身。</div>'
+      + '<div class="field"><textarea id="postBody" placeholder="今天着陆了吗？还是还在飘着？"></textarea></div>'
+      + '<div class="row between" style="flex-wrap:wrap;gap:8px">'
+      + '<button class="btn primary" data-act="postCommunity">'+icon('send')+' 写进去</button>'
+      + '<div class="row" style="gap:8px">'
+      + '<button class="btn ghost sm" data-act="loadCommunity">'+icon('refresh')+' 刷新</button>'
+      + '<button class="btn ghost sm" data-act="clearCommunity">清空</button>'
+      + '</div></div>'
+      + '<div id="posts" class="feed-list"><div class="empty">加载中…</div></div></div>';
+  }
 
   return h;
 }
 
+
+
 /* ================= 渲染入口 ================= */
 var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',me:'我的'};
+
+/* 出错兜底：单个视图抛异常不应该让整个应用白屏，其它模块仍然能用 */
+function renderErrorView(tab, err){
+  var detail = (err && (err.stack || err.message)) || String(err);
+  return '<div class="mod-head"><div class="kicker">出错了</div>'
+    + '<div class="warp-head" data-warp><h2>这一页没渲染出来</h2></div>'
+    + '<p>其它模块还能用。你的数据都在本地，没有丢。可以先切到别的栏目，或者把下面的报错贴给我。</p></div>'
+    + '<div class="card"><h2>'+icon('warn')+' 「'+esc(TAB_TITLE[tab]||tab)+'」渲染失败</h2>'
+    + '<div class="hint">错误信息：</div>'
+    + '<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55;background:rgba(46,36,25,.05);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;max-height:280px">'+esc(detail)+'</pre>'
+    + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
+    + '<button class="btn primary sm" data-act="retryRender">重试这一页</button>'
+    + '<button class="btn ghost sm" data-act="goToday">回今日</button>'
+    + '</div></div>';
+}
+
 function render(){
   var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
-  $('view').innerHTML = views[CUR_TAB]();
+
+  var html;
+  try{
+    html = views[CUR_TAB]();
+  }catch(err){
+    console.error('[着陆] 渲染「'+CUR_TAB+'」失败：', err);
+    html = renderErrorView(CUR_TAB, err);
+  }
+  $('view').innerHTML = html;
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
 
   /* 伙伴页内容由 pet.js 填（要赶在入场动画之前） */
@@ -1362,8 +1812,8 @@ function render(){
   /* 周报统计 count-up */
   if(CUR_TAB==='weekly'){ initCountUp(); }
 
-  if(CUR_TAB==='me'){ App.loadCommunity(); }
   if(CUR_TAB==='companion'){ var c=$('chat'); if(c) c.scrollTop=c.scrollHeight; }
+  if(CUR_TAB==='me'){ bindMeActions(); }
 
   /* 玻璃折射标题 */
   if(window.WarpText) WarpText.apply($('view'));
@@ -1427,6 +1877,11 @@ var App = {
       STATE.oneThing.done=true;
       grantFish(1, '完成今天一件：'+(STATE.oneThing.text||'').slice(0,20));
       addMemory('daily', '今天一件完成：「'+(STATE.oneThing.text||'')+'」', ['今天一件']);
+      /* 今天一件若是从某条倾倒缩出来的，顺手把那一条标成处理完 */
+      if(STATE.oneThing.dumpId){
+        var d=STATE.dumps.find(function(x){return x.id===STATE.oneThing.dumpId;});
+        if(d){ d.done=true; if(!d.kind) d.kind='do'; }
+      }
       save(); render(); toast('完成了，今天稳了 ✓ · +1 🐟');
     }
   },
@@ -1434,11 +1889,75 @@ var App = {
   newOne:function(){
     openSheet('<h2>今天只承诺一件</h2><div class="hint">挑最小、最不添焦虑的那件。</div>'
       + '<div class="field"><textarea id="o_text" placeholder="比如：打开书看 10 分钟"></textarea></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" id="o_save">定下</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="o_save">定下</button></div>');
     $('o_save').addEventListener('click',function(){
       var v=$('o_text').value.trim(); if(!v){toast('写点什么');return;}
       STATE.oneThing={date:today(),text:v,done:false}; save(); closeSheet(); render(); toast('今天就这一件');
     });
+  },
+
+  /* --- 倾倒台 --- */
+  dumpAdd:function(){
+    var ta=$('dumpInput'); if(!ta) return;
+    var v=ta.value.trim(); if(!v){ toast('写一句就行'); ta.focus(); return; }
+    var before = todayDumpCount();
+    STATE.dumps.push({id:uid('d'), text:v, createdAt:Date.now(), kind:null, done:false});
+    /* 倾倒本身就是进展——记进痕迹，不要求分类 */
+    addMemory('note', '倾倒：'+v.slice(0,60), ['倾倒台']);
+    var gainFish = before<2;
+    if(gainFish) grantFish(1, '倾倒焦虑：'+v.slice(0,20));
+    save(); render();
+    /* render 之后 DOM 被重建，焦点要重新给回去 */
+    var ta2=$('dumpInput'); if(ta2) ta2.focus();
+    toast(gainFish ? '倒出来了 ✓ · +1 🐟' : '倒出来了 ✓');
+  },
+  dumpKind:function(id, kind){
+    var d=STATE.dumps.find(function(x){return x.id===id;}); if(!d) return;
+    d.kind = (d.kind===kind) ? null : kind;   /* 再点一次取消，允许改主意 */
+    save(); render();
+  },
+  dumpDone:function(id){
+    var d=STATE.dumps.find(function(x){return x.id===id;}); if(!d) return;
+    d.done=!d.done; save(); render();
+    toast(d.done ? '这条处理完了 ✓' : '已放回待办');
+  },
+  dumpDel:function(id){
+    STATE.dumps=STATE.dumps.filter(function(x){return x.id!==id;});
+    save(); render(); toast('已删掉');
+  },
+  /* 从一条倾倒里挑出「今天能迈的最小一步」，写进今日一件 */
+  dumpStart:function(id){
+    var d=STATE.dumps.find(function(x){return x.id===id;}); if(!d) return;
+    openSheet('<h2>就做这一小步</h2>'
+      + '<div class="hint">从刚才倒出来的那件事里，只挑<b>今天能做完的最小一步</b>。写「打开资料看 10 分钟」比写「学完 RTOS」有用得多。</div>'
+      + '<div class="dump-quote">'+esc(d.text)+'</div>'
+      + '<div class="field"><label>今天这一件</label><input id="ds_text" value="" placeholder="打开 RTOS 教程看前 10 分钟"></div>'
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
+      + '<button class="btn primary" id="ds_save">就它了</button></div>');
+    var inp=$('ds_text'); if(inp) inp.focus();
+    $('ds_save').addEventListener('click',function(){
+      var v=($('ds_text').value||'').trim(); if(!v){ toast('写一件小的'); return; }
+      STATE.oneThing={date:today(),text:v,done:false,dumpId:d.id};
+      if(!d.kind) d.kind='do';
+      addMemory('daily', '把「'+d.text.slice(0,30)+'」缩成了今天一件：「'+v+'」', ['今天一件']);
+      save(); closeSheet(); render(); toast('今天就这一件');
+    });
+  },
+
+  /* --- 情绪气象 --- */
+  setMood:function(mood){
+    if(!mood) return;
+    var exist=STATE.weather.filter(function(x){return x.date===today();}).pop();
+    if(exist) exist.mood=mood;
+    else STATE.weather.push({date:today(),mood:mood,note:''});
+    var first = !exist;
+    /* 记情绪本身也算一次「着陆」，一天只算一次，避免刷 */
+    if(first){
+      grantFish(1, '记下今天的情绪');
+      addMemory('note', '今天的情绪：'+({sun:'晴',cloud:'阴',rain:'雨',storm:'暴'}[mood]||mood), ['情绪']);
+    }
+    save(); render();
+    toast(first ? '记下了 ✓ · +1 🐟' : '改好了');
   },
 
   /* --- 长周期 CRUD --- */
@@ -1454,7 +1973,7 @@ var App = {
       + '<div class="field" style="flex:1"><label>当前进度</label><input id="lt_cur" type="number" value="'+(g?g.current:'0')+'" placeholder="0"></div></div>'
       + '<div class="field"><label>截止日期</label><input id="lt_dl" type="date" value="'+(g?g.deadline:'')+'"></div>'
       + '<div class="field"><label>类别</label><div class="cat-grid" id="lt_cat"></div></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" id="lt_save">'+(isEdit?'保存':'创建')+'</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="lt_save">'+(isEdit?'保存':'创建')+'</button></div>');
 
     /* 渲染类别选择 */
     var catHtml='';
@@ -1487,7 +2006,7 @@ var App = {
       + '<div class="muted">当前 '+g.current+'/'+g.total+' '+g.unit+' ('+longPct(g)+'%)</div>'
       + '<div class="field"><label>本次完成量（'+g.unit+'）</label><input id="ci_amt" type="number" value="1" min="0"></div>'
       + '<div class="field"><label>花费时间（分钟，可选）</label><input id="ci_min" type="number" value="" placeholder="可选"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" id="ci_ok">确认打卡</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="ci_ok">确认打卡</button></div>');
     $('ci_ok').addEventListener('click',function(){
       var amt=parseInt($('ci_amt').value,10)||0;
       var mins=parseInt($('ci_min').value,10)||0;
@@ -1511,7 +2030,7 @@ var App = {
   delLong:function(id){
     var g=STATE.longTasks.find(function(x){return x.id===id;}); if(!g)return;
     openSheet('<h2>删除长周期任务？</h2><div class="hint">「'+esc(g.name)+'」及其 '+g.records.length+' 条记录将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn danger" id="dl_yes">确认删除</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="dl_yes">确认删除</button></div>');
     $('dl_yes').addEventListener('click',function(){
       STATE.longTasks=STATE.longTasks.filter(function(x){return x.id!==id;}); save(); closeSheet(); render(); toast('已删除');
     });
@@ -1535,7 +2054,7 @@ var App = {
       + '</div></div>'
       + '<div class="field"><label>大类</label><div class="cat-grid" id="dn_cat"></div></div>'
       + '<div class="field"><label>子类（可选）</label><input id="dn_sub" value="'+esc(dt?dt.subCategory:'')+'" placeholder="如：运动 / 冥想 / 阅读"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" id="dn_save">'+(isEdit?'保存':'创建')+'</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="dn_save">'+(isEdit?'保存':'创建')+'</button></div>');
 
     var selType=dt?dt.type:'habit';
     $('dn_type').querySelectorAll('[data-dt]').forEach(function(b){
@@ -1574,7 +2093,7 @@ var App = {
     if(isDailyCheckedToday(dt)){ toast('今天已经打过卡了'); return; }
     openSheet('<h2>打卡：'+esc(dt.name)+'</h2>'
       + '<div class="field"><label>花费时间（分钟）</label><input id="dci_min" type="number" value="10" min="1"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn primary" id="dci_ok">确认</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="dci_ok">确认</button></div>');
     $('dci_ok').addEventListener('click',function(){
       var mins=parseInt($('dci_min').value,10)||10;
       dt.records.push({date:today(),amount:1,minutes:mins,ts:Date.now()});
@@ -1589,7 +2108,7 @@ var App = {
   delDaily:function(id){
     var dt=STATE.dailyTasks.find(function(x){return x.id===id;}); if(!dt)return;
     openSheet('<h2>删除日常任务？</h2><div class="hint">「'+esc(dt.name)+'」将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn danger" id="dd_yes">确认删除</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="dd_yes">确认删除</button></div>');
     $('dd_yes').addEventListener('click',function(){
       STATE.dailyTasks=STATE.dailyTasks.filter(function(x){return x.id!==id;}); save(); closeSheet(); render(); toast('已删除');
     });
@@ -1615,7 +2134,7 @@ var App = {
       + '<div class="field" style="flex:1"><label>每周达标天数</label><input id="wk_days" type="number" value="'+(w?w.weeklyGoalDays:5)+'" min="1" max="7"></div>'
       + '</div>'
       + '<div class="field"><label>大类</label><div class="cat-grid" id="wk_cat"></div></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>'
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
       + '<button class="btn primary" id="wk_save">'+(isEdit?'保存':'创建')+'</button></div>');
 
     var selType = w ? w.type : 'exercise';
@@ -1665,7 +2184,7 @@ var App = {
   delWeekly:function(id){
     var w=STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w)return;
     openSheet('<h2>删除每周任务？</h2><div class="hint">「'+esc(w.name)+'」及其 '+w.records.length+' 条记录将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn danger" id="dw_yes">确认删除</button></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="dw_yes">确认删除</button></div>');
     $('dw_yes').addEventListener('click',function(){
       STATE.weeklyTasks=STATE.weeklyTasks.filter(function(x){return x.id!==id;});
       if(STATE.timer && STATE.timer.taskId===id) STATE.timer=null;
@@ -1675,7 +2194,8 @@ var App = {
 
   /* --- 计时器 --- */
   timerToggle:function(){ toggleTimer(); },
-  timerFinish:function(){ finishTimerEarly(); },
+  timerFinish:function(){ if(timerIsStopwatch()) openStopwatchFinishSheet(); else finishTimerEarly(); },
+  startTimer:function(scope,id){ startStopwatch(scope,id); },
 
   /* --- 伙伴（实现在 pet.js） --- */
   petPage:function(){ CUR_TAB='pet'; render(); },
@@ -1714,10 +2234,15 @@ var App = {
   followup3:function(){
     if(!STATE.settings.aiKey){ toast('先配置 AI'); CUR_TAB='me'; render(); App.openSettings(); return; }
     var since=addDays(today(),-3);
-    var dumps=STATE.dumps.filter(function(d){return d.createdAt>=since;}).map(function(d){return '【'+(d.kind||'未分类')+'】'+d.text;});
+    var dumps=STATE.dumps.filter(function(d){ return ymd(new Date(d.createdAt||0))>=since; }).map(function(d){return '【'+(d.kind||'未分类')+'】'+d.text;});
     var weather=STATE.weather.filter(function(w){return w.date>=since;}).map(function(w){return w.date+' '+w.mood+(w.note?'：'+w.note:'');});
-    var ot=STATE.oneThing&&STATE.oneThing.date>=since?('今天一件：'+STATE.oneThing.text+(STATE.oneThing.done?'（已完成）':'（未完成）')):'(无)';
-    var prompt='这是用户近三天的记录，请生成一份温柔的「跟进日报」：1)一句话接住他现在的状态；2)指出一个小进展；3)给一个明天可以迈的最小一步。控制在150字内。\n倾倒台：'+(dumps.join('\n')||'（无）')+'\n情绪：'+(weather.join('\n')||'（无）')+'\n'+ot;
+    var ot=(STATE.oneThing && STATE.oneThing.date>=since) ? ('今天一件：'+STATE.oneThing.text+(STATE.oneThing.done?'（已完成）':'（未完成）')) : '(无)';
+    /* 今日一件可能来自倾倒台，把原始那条也带上，AI 才看得懂前后文 */
+    var fromDump=(STATE.oneThing && STATE.oneThing.date>=since && STATE.oneThing.dumpId)
+      ? (STATE.dumps.find(function(d){return d.id===STATE.oneThing.dumpId;})||{}).text : '';
+    var prompt='这是用户近三天的记录，请生成一份温柔的「跟进日报」：1)一句话接住他现在的状态；2)指出一个小进展；3)给一个明天可以迈的最小一步。控制在150字内。\n倾倒台：'+(dumps.join('\n')||'（无）')+'\n情绪：'+(weather.join('\n')||'（无）')+'\n'+ot+(fromDump?('\n它来自这条倾倒：'+fromDump):'');
+    /* 兼容：老库里 community 字段还在，只是不再有入口 */
+    STATE.community = STATE.community || {nick:''};
     STATE.companion.messages.push({role:'user',content:'【近三日跟进】请生成我的日报',ts:Date.now()});
     var msgs=[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}];
     save(); render();
@@ -1727,27 +2252,113 @@ var App = {
     });
   },
 
-  /* --- 树洞 --- */
+  /* --- 树洞（本地） --- */
+  /* 只在桌面版有 window.landing.feed 时可用：数据由主进程写进 userData 下的
+     feed.json，不联网、不上传。 */
   loadCommunity:function(){
     var box=$('posts'); if(!box) return;
-    var api=APP_CONFIG.communityApi||'';
-    fetch(api+'/feed').then(function(r){return r.ok?r.json():{posts:[]};}).then(function(j){
-      var posts=j.posts||[];
-      if(!posts.length){ box.innerHTML='<div class="empty">树洞还空着。</div>'; return; }
-      box.innerHTML=posts.slice(0,40).map(function(p){
-        return '<div class="post"><div class="head"><span>匿名</span><span>'+esc(p.date||'')+'</span></div><div class="body">'+esc(p.body||'')+'</div></div>';
+    if(!(window.landing && window.landing.feed)){
+      box.innerHTML='<div class="empty">这个版本没有树洞。</div>';
+      return;
+    }
+    window.landing.feed.list().then(function(posts){
+      posts = posts||[];
+      if(!posts.length){ box.innerHTML='<div class="empty">树洞还空着。写第一句吧。</div>'; return; }
+      box.innerHTML=posts.slice(0,60).map(function(p){
+        var when = p.at ? new Date(p.at).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : (p.date||'');
+        return '<div class="post"><div class="head"><span>'+esc(p.nick||'匿名')+'</span><span>'+esc(when)+'</span></div>'
+          + '<div class="body">'+esc(p.body||'')+'</div></div>';
       }).join('');
-    }).catch(function(e){ box.innerHTML='<div class="empty">连接失败（需要启动后端 server.js）</div>'; });
+    }).catch(function(){ box.innerHTML='<div class="empty">读不出来了。</div>'; });
   },
 
   postCommunity:function(){
     var ta=$('postBody'); if(!ta) return;
-    var v=ta.value.trim(); if(!v){toast('写点什么');return;}
-    var api=APP_CONFIG.communityApi||'';
-    fetch(api+'/feed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:v,nick:STATE.community.nick||''})})
-      .then(function(r){return r.ok?'ok':r.text();}).then(function(){
-        ta.value=''; App.loadCommunity(); toast('已匿名发布');
-      }).catch(function(e){ toast('失败：'+e.message); });
+    var v=ta.value.trim(); if(!v){ toast('写点什么'); return; }
+    if(!(window.landing && window.landing.feed)){ toast('这个版本没有树洞'); return; }
+    window.landing.feed.post({body:v}).then(function(r){
+      if(r && r.ok){
+        ta.value='';
+        /* 写进树洞也算一次「着陆」，记进痕迹 */
+        addMemory('note', '树洞：'+v.slice(0,50), ['树洞']);
+        grantFish(1, '写进树洞');
+        save(); render(); toast('写进去了 ✓ · +1 🐟');
+      } else {
+        toast('没写成：'+((r&&r.error)||'未知原因'));
+      }
+    }).catch(function(e){ toast('失败：'+e.message); });
+  },
+
+  clearCommunity:function(){
+    if(!(window.landing && window.landing.feed)) return;
+    if(!confirm('清空树洞里的全部内容？不可恢复。')) return;
+    window.landing.feed.clear().then(function(){ App.loadCommunity(); toast('已清空'); });
+  },
+
+  openDataDir:function(){
+    if(window.landing && window.landing.openDataDir) window.landing.openDataDir();
+  },
+
+  /* --- 备份 --- */
+  /* 桌面版交给主进程弹系统「另存为」，用户能自己选位置；
+     网页版退回浏览器下载，行为一致。 */
+  exportData:function(){
+    var json;
+    try{ json=JSON.stringify(STATE,null,2); }
+    catch(err){ toast('导出失败：'+err.message); return; }
+
+    if(window.landing && window.landing.data){
+      window.landing.data.save(json).then(function(r){
+        if(r && r.ok) toast('已导出到 '+r.filePath);
+        else if(r && r.canceled) toast('已取消');
+        else toast('导出失败：'+((r&&r.error)||'未知原因'));
+      }).catch(function(e){ toast('导出失败：'+e.message); });
+      return;
+    }
+
+    try{
+      var blob=new Blob([json],{type:'application/json'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url; a.download='着陆备份-'+today()+'.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },4000);
+      toast('已导出备份文件');
+    }catch(err){ toast('导出失败：'+err.message); }
+  },
+
+  importData:function(){
+    var apply=function(text){
+      var obj;
+      try{ obj=JSON.parse(text); }
+      catch(err){ toast('导入失败：不是有效的 JSON'); return; }
+      if(!obj||typeof obj!=='object'||!Array.isArray(obj.longTasks)){ toast('导入失败：不是着陆的备份文件'); return; }
+      /* 必须就地改 STATE：内部所有函数都闭包引用同一个对象，
+         整个替换掉会让它们继续看旧对象，导入等于没导。 */
+      var keep = STATE;
+      Object.keys(keep).forEach(function(k){ delete keep[k]; });
+      Object.keys(obj).forEach(function(k){ keep[k] = obj[k]; });
+      migrate(); save(); closeSheet(); render(); toast('已导回备份');
+    };
+
+    if(window.landing && window.landing.data){
+      window.landing.data.open().then(function(r){
+        if(r && r.ok) apply(r.json);
+        else if(r && r.canceled) toast('已取消');
+        else toast('导入失败：'+((r&&r.error)||'未知原因'));
+      }).catch(function(e){ toast('导入失败：'+e.message); });
+      return;
+    }
+
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='application/json,.json';
+    inp.onchange=function(){
+      var f=inp.files&&inp.files[0]; if(!f) return;
+      var fr=new FileReader();
+      fr.onload=function(){ apply(String(fr.result)); };
+      fr.readAsText(f);
+    };
+    inp.click();
   },
 
   /* --- 设置 --- */
@@ -1758,23 +2369,32 @@ var App = {
       + '<div class="field"><label>AI 接口地址（baseUrl）</label><input id="s_base" value="'+esc(s.aiBaseUrl||'')+'" placeholder="https://api.openai.com/v1"></div>'
       + '<div class="field"><label>API Key</label><input id="s_key" type="password" value="'+esc(s.aiKey||'')+'" placeholder="sk-..."></div>'
       + '<div class="field"><label>模型名</label><input id="s_model" value="'+esc(s.aiModel||'')+'" placeholder="gpt-4o-mini"></div>'
-      + '<div class="field"><label>树洞昵称（匿名，可选）</label><input id="s_nick" value="'+esc(s.community?STATE.community.nick:'')+'" placeholder="留空即匿名"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button><button class="btn danger" id="s_reset">清空全部数据</button><button class="btn primary" id="s_save">保存</button></div>'
-      + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank">GitHub</a></div>');
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="s_reset">清空全部数据</button><button class="btn primary" id="s_save">保存</button></div>'
+      + '<div class="row between" style="margin-top:14px;gap:10px;flex-wrap:wrap">'
+      + '<button class="btn ghost sm" id="s_export">导出备份</button>'
+      + '<button class="btn ghost sm" id="s_import">导入备份</button>'
+      + '<button class="btn ghost sm" id="s_demo">载入示例数据</button>'
+      + '</div>'
+      + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
 
     $('s_save').onclick=function(){
       STATE.settings.githubToken=$('s_gh').value.trim();
       STATE.settings.aiBaseUrl=$('s_base').value.trim();
       STATE.settings.aiKey=$('s_key').value.trim();
       STATE.settings.aiModel=$('s_model').value.trim()||'gpt-4o-mini';
-      STATE.community.nick=$('s_nick').value.trim();
       save(); closeSheet(); toast('已保存');
     };
     $('s_reset').onclick=function(){
-      if(confirm('确定清空全部本地数据？不可恢复。')){
+      if(confirm('确定清空全部数据？任务、倾倒、情绪、伙伴和记忆都会没，不可恢复。')){
         localStorage.removeItem(APP_CONFIG.storageKey);
-        STATE=blankState(); seed(); save(); render(); closeSheet(); toast('已清空');
+        STATE=blankState(); save(); render(); closeSheet(); toast('已清空，从零开始');
       }
+    };
+    $('s_export').onclick=App.exportData;
+    $('s_import').onclick=App.importData;
+    $('s_demo').onclick=function(){
+      if(!confirm('载入示例数据？会覆盖当前的任务设置（倾倒、情绪、伙伴、记忆保留）。')) return;
+      seedDemo(); save(); closeSheet(); render(); toast('示例数据已载入');
     };
   }
 };
@@ -1790,6 +2410,14 @@ document.addEventListener('click',function(e){
   else if(act==='changeOne') App.changeOne();
   else if(act==='newOne') App.newOne();
   else if(act==='quickCheckin') App.quickCheckin(id);
+
+  /* 倾倒台 / 情绪气象 */
+  else if(act==='dumpAdd') App.dumpAdd();
+  else if(act==='dumpKind') App.dumpKind(id, el.dataset.kind);
+  else if(act==='dumpDone') App.dumpDone(id);
+  else if(act==='dumpDel') App.dumpDel(id);
+  else if(act==='dumpStart') App.dumpStart(id);
+  else if(act==='setMood') App.setMood(el.dataset.mood);
 
   /* 长周期 */
   else if(act==='newLong') App.newLong();
@@ -1814,6 +2442,7 @@ document.addEventListener('click',function(e){
   else if(act==='delWeekly') App.delWeekly(id);
 
   /* 计时器 */
+  else if(act==='startTimer') App.startTimer(el.dataset.scope||'weekly', id);
   else if(act==='timerToggle') App.timerToggle();
   else if(act==='timerFinish') App.timerFinish();
 
@@ -1834,19 +2463,45 @@ document.addEventListener('click',function(e){
   else if(act==='sendAI') App.sendAI();
   else if(act==='followup3') App.followup3();
 
-  /* 树洞 */
+  /* 树洞 / 数据管理 */
   else if(act==='loadCommunity') App.loadCommunity();
   else if(act==='postCommunity') App.postCommunity();
+  else if(act==='clearCommunity') App.clearCommunity();
+  else if(act==='openDataDir') App.openDataDir();
 
   /* 设置 */
   else if(act==='openSettings') App.openSettings();
+
+  /* 关闭弹层。以前这里用内联 onclick="closeSheet()"，
+     但外壳加了 CSP（script-src 'self'）之后内联事件处理器会被拦掉，
+     所有「取消」按钮就都点不动了。改走全局委托，和别的按钮一致的路径。 */
+  else if(act==='closeSheet') closeSheet();
+
+  /* 错误兜底 */
+  else if(act==='retryRender') render();
+  else if(act==='goToday'){ CUR_TAB='today'; render(); }
 });
 
 /* ================= 启动 ================= */
 function init(){
   load();
-  checkAutoPause();
+  var pausedNames = checkAutoPause();
 
+  /* 渲染期间不产生副作用：里程碑在这里统一结算一次 */
+  var milestoneMsgs = [];
+  STATE.longTasks.forEach(function(g){
+    if(g.status!=='active' && g.status!=='done') return;
+    milestoneMsgs = milestoneMsgs.concat(checkLongMilestones(g));
+  });
+  if(pausedNames.length) save();
+  if(milestoneMsgs.length){
+    setTimeout(function(){ toast(milestoneMsgs[0]); }, 900);
+  }
+  if(pausedNames.length){
+    setTimeout(function(){
+      toast('「'+pausedNames[0]+'」停了两天，先歇着——想继续随时点「继续」');
+    }, pausedNames.length && milestoneMsgs.length ? 3200 : 900);
+  }
   /* 深链：#tab=tasks 之类的锚点可以直接打开对应模块 */
   try{
     (location.hash||'').replace(/^#/,'').split('&').forEach(function(kv){
