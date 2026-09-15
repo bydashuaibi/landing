@@ -9,6 +9,9 @@
  *   data.save({json}) / data.open()                        备份走系统文件对话框
  *   info()                                                 版本号 / 数据目录路径
  *   openDataDir()                                          在资源管理器里打开数据目录
+ *   tray.setHint(text)                                     把「现在在计什么」写到托盘悬停提示
+ *   autoLaunch.get() / autoLaunch.set(bool)                开机自启开关
+ *   timerActive(bool)                                      计时中→关后台节流，保证到点准时
  *   isDesktop = true                                       前端据此决定用哪套实现
  */
 const { contextBridge, ipcRenderer } = require('electron');
@@ -31,5 +34,14 @@ contextBridge.exposeInMainWorld('landing', {
   },
 
   info: () => ipcRenderer.invoke('app:info'),
-  openDataDir: () => ipcRenderer.invoke('app:openDataDir')
+  openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
+
+  tray: {
+    setHint: (text) => ipcRenderer.send('tray:hint', String(text || ''))
+  },
+  autoLaunch: {
+    get: () => ipcRenderer.invoke('app:getAutoLaunch'),
+    set: (on) => ipcRenderer.invoke('app:setAutoLaunch', !!on)
+  },
+  timerActive: (on) => ipcRenderer.send('timer:active', !!on)
 });

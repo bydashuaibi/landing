@@ -744,8 +744,32 @@ function timerBarEl(){
   }
   return el;
 }
+/* 后台常驻状态：把「现在在计什么」写到托盘悬停提示，
+   并告诉主进程「计时中，别把我降频」（窗口藏起来后 Chromium 会把定时器降频，倒计时会晚点响）。
+   只有桌面版有这个桥；网页版直接跳过。 */
+var _trayHint = null, _trayActive = false;
+function pushBackgroundState(){
+  var t = STATE.timer, active = !!(t && !t.finished);
+  if(active !== _trayActive){
+    _trayActive = active;
+    if(window.landing && window.landing.timerActive) window.landing.timerActive(active);
+  }
+  var hint = '在后台待着';
+  if(active){
+    var w = timerTask();
+    var nm = w ? w.name : (t.name||'专注');
+    if(t.mode==='stopwatch') hint = (t.paused?'已暂停 · ':'')+nm+' · 已 '+fmtClockLong(timerElapsedMs());
+    else hint = (t.paused?'已暂停 · ':'')+nm+' · 剩 '+fmtClock(timerRemainMs());
+  }
+  if(hint !== _trayHint){
+    _trayHint = hint;
+    if(window.landing && window.landing.tray) window.landing.tray.setHint(hint);
+  }
+}
+
 function renderTimerBar(){
   var el = timerBarEl(), t = STATE.timer;
+  pushBackgroundState();
   if(!t || t.finished){ el.classList.add('hidden'); el.innerHTML=''; return; }
   var w = timerTask();
   var nm = esc(w ? w.name : (t.name||'专注'));
@@ -926,7 +950,7 @@ function startStopwatch(scope, id){
     finished:false, nagMs:0 };
   save(); renderTimerBar(); ensureTimerTick();
   render();   /* 让卡片/芯片立刻反映「计时中」 */
-  toast('开始计时：'+task.name+'。做多久算多久，不用看表。');
+  toast('开始计时：'+task.name+'。做多久算多久，不用看表。关掉窗口也没事，会在右下角托盘继续走。');
   if(window.Pet && Pet.say) Pet.say('我帮你记着时间，你专心做就行。');
   addMemory('timer', '开始计时：「'+task.name+'」（'+scopeName(scope)+'）', ['计时']);
 }
@@ -2375,7 +2399,33 @@ var App = {
       + '<button class="btn ghost sm" id="s_import">导入备份</button>'
       + '<button class="btn ghost sm" id="s_demo">载入示例数据</button>'
       + '</div>'
+      + '<div class="field" style="margin-top:14px"><label>后台常驻</label>'
+      +   '<div class="hint" style="margin:0 0 8px">关掉窗口只是缩到右下角托盘，程序继续跑、计时照常走（托盘悬停能看到剩余时间）。要彻底退出：右键托盘图标 → 退出着陆。</div>'
+      +   '<button class="btn ghost sm" id="s_autostart">开机自动启动：读取中…</button>'
+      + '</div>'
       + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
+
+    /* 开机自启：只在桌面版有桥；网页版说明一句 */
+    var asBtn = $('s_autostart');
+    if(asBtn){
+      if(window.landing && window.landing.autoLaunch){
+        window.landing.autoLaunch.get().then(function(on){
+          asBtn.dataset.on = on ? '1' : '0';
+          asBtn.textContent = '开机自动启动：'+(on ? '已开启' : '已关闭');
+        });
+        asBtn.onclick = function(){
+          var next = asBtn.dataset.on !== '1';
+          window.landing.autoLaunch.set(next).then(function(applied){
+            asBtn.dataset.on = applied ? '1' : '0';
+            asBtn.textContent = '开机自动启动：'+(applied ? '已开启' : '已关闭');
+            toast(applied ? '开机自启已开（启动后待在托盘里，不弹窗）' : '开机自启已关');
+          });
+        };
+      } else {
+        asBtn.textContent = '开机自动启动：仅桌面版可用';
+        asBtn.disabled = true;
+      }
+    }
 
     $('s_save').onclick=function(){
       STATE.settings.githubToken=$('s_gh').value.trim();

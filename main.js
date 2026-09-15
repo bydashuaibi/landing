@@ -9,7 +9,7 @@
  *   · window.open / 页面内跳转一律拦截，外链交给系统浏览器
  *   · 渲染进程里的网络请求只允许它真正需要的域名（GitHub API + 用户自配的 AI 接口）
  */
-const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen } = require('electron');
+const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -299,6 +299,103 @@ function showAbout() {
   });
 }
 
+/* ---------- 后台常驻：托盘 ----------
+   为什么要这个：计时是「先打开、做多久算多久」，窗口一关就把计时收了等于白计。
+   所以关窗口 = 缩进右下角托盘，程序继续跑，计时照常走；想彻底退出走托盘右键或菜单。
+   --hidden 供开机自启用：启动后直接待在托盘里，不弹窗打断人。 */
+const START_HIDDEN = process.argv.includes('--hidden');
+const TRAY_HINT_FILE = path.join(DATA_DIR, 'tray-hint-shown');
+let tray = null;
+let isQuitting = false;
+
+function trayIcon() {
+  const img = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.ico'));
+  if (img.isEmpty()) return nativeImage.createEmpty();
+  return img.resize({ width: 16, height: 16 });   /* Windows 通知区域就 16px */
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) { createWindow(); return; }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function createTray() {
+  if (tray) return;
+  try {
+    tray = new Tray(trayIcon());
+  } catch (err) {
+    console.error('[tray] 托盘创建失败，退回「关窗即退出」：', err.message);
+    return;
+  }
+  tray.setToolTip('着陆 · 在后台待着（计时照常走）');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '显示主窗口', click: showMainWindow },
+    { label: '结束当前计时', click: () => runInRenderer('window.App && App.timerFinish()') },
+    { type: 'separator' },
+    { label: '打开数据文件夹', click: () => shell.openPath(app.getPath('userData')) },
+    { type: 'separator' },
+    { label: '退出着陆', click: () => { isQuitting = true; app.quit(); } }
+  ]));
+  /* 左键点图标：开着就收起、藏着就叫回来（和大多数常驻软件一致） */
+  tray.on('click', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()) mainWindow.hide();
+    else showMainWindow();
+  });
+  if (process.argv.includes('--dev')) console.log('[tray] 托盘已创建');
+}
+
+/* 第一次把窗口关进托盘时提一句，免得他以为程序被关了 */
+function trayHintOnce() {
+  try {
+    if (fs.existsSync(TRAY_HINT_FILE)) return;
+    fs.writeFileSync(TRAY_HINT_FILE, new Date().toISOString());
+    if (tray && process.platform === 'win32') {
+      tray.displayBalloon({
+        title: '着陆缩到托盘了',
+        content: '窗口关了，但计时还在走。点右下角的小图标就能叫回来；要彻底退出就右键它。'
+      });
+    }
+  } catch (e) {}
+}
+
+/* 开机自启：打包后 execPath 就是应用本体；开发态跑的是 electron.exe，得把工程目录当参数带上 */
+function autoLaunchArgs() {
+  return app.isPackaged ? ['--hidden'] : [path.resolve(__dirname), '--hidden'];
+}
+
+ipcMain.handle('app:getAutoLaunch', () => {
+  try { return !!app.getLoginItemSettings().openAtLogin; } catch (e) { return false; }
+});
+
+ipcMain.handle('app:setAutoLaunch', (e, on) => {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: !!on,
+      openAsHidden: true,                 /* macOS 用 */
+      path: process.execPath,
+      args: autoLaunchArgs()
+    });
+    return !!app.getLoginItemSettings().openAtLogin;
+  } catch (err) {
+    return false;
+  }
+});
+
+/* 渲染进程把「现在在计什么」推给托盘，鼠标悬停就能看见，不用打开窗口 */
+ipcMain.on('tray:hint', (e, text) => {
+  if (tray && !tray.isDestroyed()) tray.setToolTip('着陆 · ' + (text || '在后台待着'));
+});
+
+/* 计时进行中时关掉后台节流：窗口藏起来后 Chromium 会把定时器降频，
+   倒计时可能晚一分钟才响。只在计时期间关，平时仍然省电。 */
+ipcMain.on('timer:active', (e, active) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.webContents.setBackgroundThrottling(!active); } catch (err) {}
+  }
+});
+
 /* ---------- 建窗 ---------- */
 let mainWindow = null;
 
@@ -324,8 +421,9 @@ function createWindow() {
 
   if (state.maximized) mainWindow.maximize();
 
-  /* 白屏一闪很难看：等首帧画完再显示 */
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  /* 白屏一闪很难看：等首帧画完再显示。
+     开机自启（--hidden）时直接待在托盘里，别一开机就弹窗打断人。 */
+  mainWindow.once('ready-to-show', () => { if (!START_HIDDEN) mainWindow.show(); });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
@@ -343,7 +441,15 @@ function createWindow() {
   ['resize', 'move', 'maximize', 'unmaximize'].forEach(ev => {
     mainWindow.on(ev, () => saveWindowState(mainWindow));
   });
-  mainWindow.on('close', () => saveWindowState(mainWindow));
+  mainWindow.on('close', (e) => {
+    saveWindowState(mainWindow);
+    /* 关窗口 = 缩到托盘，不退出（有托盘时才这么做；托盘没建起来就保持老行为） */
+    if (!isQuitting && tray) {
+      e.preventDefault();
+      mainWindow.hide();
+      trayHintOnce();
+    }
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
 
   /* 外链一律丢给系统浏览器：应用内的窗口必须始终是我们的 UI */
@@ -385,14 +491,18 @@ app.whenReady().then(() => {
   applySecurity(session.defaultSession);
   buildMenu();
   createWindow();
+  createTray();          /* 有托盘 = 关窗口只是藏起来，程序继续在后台跑 */
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
+app.on('before-quit', () => { isQuitting = true; });
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  /* 有托盘就留在后台（计时还在走），没有才按老规矩退出 */
+  if (process.platform !== 'darwin' && !tray) app.quit();
 });
 
 /* 只允许一个实例跑，避免两个窗口抢同一个 localStorage */
