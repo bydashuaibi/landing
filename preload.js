@@ -11,6 +11,8 @@
  *   openDataDir()                                          在资源管理器里打开数据目录
  *   tray.setHint(text)                                     把「现在在计什么」写到托盘悬停提示
  *   autoLaunch.get() / autoLaunch.set(bool)                开机自启开关
+ *   closeChoice({choice,remember}) / closePromptOpened()    点 × 时的选择（托盘 / 退出 / 记住）
+ *   closePref.get() / closePref.set(action)                关窗偏好：ask | tray | quit
  *   timerActive(bool)                                      计时中→关后台节流，保证到点准时
  *   isDesktop = true                                       前端据此决定用哪套实现
  */
@@ -42,6 +44,16 @@ contextBridge.exposeInMainWorld('landing', {
   autoLaunch: {
     get: () => ipcRenderer.invoke('app:getAutoLaunch'),
     set: (on) => ipcRenderer.invoke('app:setAutoLaunch', !!on)
+  },
+  /* 点 × 时的选择：最小化到托盘 / 彻底退出（可选「记住我的选择」） */
+  closeChoice: (payload) => ipcRenderer.send('close:choice', {
+    choice: payload && payload.choice,
+    remember: !!(payload && payload.remember)
+  }),
+  closePromptOpened: () => ipcRenderer.send('close:prompt-opened'),
+  closePref: {
+    get: () => ipcRenderer.invoke('close:getPref'),
+    set: (action) => ipcRenderer.invoke('close:setPref', action)
   },
   timerActive: (on) => ipcRenderer.send('timer:active', !!on)
 });

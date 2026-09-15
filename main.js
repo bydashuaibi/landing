@@ -302,11 +302,28 @@ function showAbout() {
 /* ---------- 后台常驻：托盘 ----------
    为什么要这个：计时是「先打开、做多久算多久」，窗口一关就把计时收了等于白计。
    所以关窗口 = 缩进右下角托盘，程序继续跑，计时照常走；想彻底退出走托盘右键或菜单。
+   点 × 时给一次选择（托盘 / 退出），勾了「记住我的选择」下次就不再问。
    --hidden 供开机自启用：启动后直接待在托盘里，不弹窗打断人。 */
 const START_HIDDEN = process.argv.includes('--hidden');
 const TRAY_HINT_FILE = path.join(DATA_DIR, 'tray-hint-shown');
+const PREFS_FILE = path.join(DATA_DIR, 'prefs.json');
 let tray = null;
 let isQuitting = false;
+
+/* ---------- 关窗偏好：ask（每次问）/ tray（缩托盘）/ quit（直接退） ---------- */
+function readPrefs() {
+  try { return JSON.parse(fs.readFileSync(PREFS_FILE, 'utf8')) || {}; } catch (e) { return {}; }
+}
+function writePrefs(patch) {
+  ensureDataDir();
+  const next = Object.assign(readPrefs(), patch);
+  try { fs.writeFileSync(PREFS_FILE, JSON.stringify(next, null, 2)); } catch (e) {}
+  return next;
+}
+function getCloseAction() {
+  const v = readPrefs().closeAction;
+  return (v === 'tray' || v === 'quit') ? v : 'ask';
+}
 
 function trayIcon() {
   const img = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.ico'));
@@ -360,6 +377,45 @@ function trayHintOnce() {
   } catch (e) {}
 }
 
+function hideToTray() {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+  trayHintOnce();
+}
+
+/* 点 × 时问一次：躲进托盘，还是彻底退出？
+   弹层画在应用自己的界面里（和整站的暖色风格一致），不弹系统灰框。
+   渲染进程若没应答（卡住/崩了），4 秒后自动退到「缩到托盘」—— 绝不能把关不掉做成新 bug。 */
+let askingClose = false;
+function askCloseChoice() {
+  if (askingClose) return;
+  askingClose = true;
+
+  let done = false, watchdog = null;
+  const cleanup = () => {
+    done = true;
+    askingClose = false;
+    if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+    ipcMain.removeListener('close:choice', onChoice);
+    ipcMain.removeListener('close:prompt-opened', onOpened);
+  };
+  const onOpened = () => { if (watchdog) { clearTimeout(watchdog); watchdog = null; } };
+  const onChoice = (e, payload) => {
+    if (done) return;
+    const choice = (payload && payload.choice) || 'tray';
+    if (choice === 'cancel') { cleanup(); return; }          /* 再想想：窗口照旧开着 */
+    const remember = !!(payload && payload.remember);
+    if (remember && (choice === 'tray' || choice === 'quit')) writePrefs({ closeAction: choice });
+    cleanup();
+    if (choice === 'quit') { isQuitting = true; app.quit(); }
+    else hideToTray();
+  };
+
+  ipcMain.on('close:choice', onChoice);
+  ipcMain.on('close:prompt-opened', onOpened);
+  watchdog = setTimeout(() => { if (!done) { cleanup(); hideToTray(); } }, 4000);
+  runInRenderer('window.App && App.askCloseChoice && App.askCloseChoice()');
+}
+
 /* 开机自启：打包后 execPath 就是应用本体；开发态跑的是 electron.exe，得把工程目录当参数带上 */
 function autoLaunchArgs() {
   return app.isPackaged ? ['--hidden'] : [path.resolve(__dirname), '--hidden'];
@@ -386,6 +442,14 @@ ipcMain.handle('app:setAutoLaunch', (e, on) => {
 /* 渲染进程把「现在在计什么」推给托盘，鼠标悬停就能看见，不用打开窗口 */
 ipcMain.on('tray:hint', (e, text) => {
   if (tray && !tray.isDestroyed()) tray.setToolTip('着陆 · ' + (text || '在后台待着'));
+});
+
+/* 关窗偏好：设置面板可以查看 / 改回「每次问我」 */
+ipcMain.handle('close:getPref', () => getCloseAction());
+ipcMain.handle('close:setPref', (e, action) => {
+  const v = (action === 'tray' || action === 'quit') ? action : 'ask';
+  writePrefs({ closeAction: v });
+  return getCloseAction();
 });
 
 /* 计时进行中时关掉后台节流：窗口藏起来后 Chromium 会把定时器降频，
@@ -443,12 +507,16 @@ function createWindow() {
   });
   mainWindow.on('close', (e) => {
     saveWindowState(mainWindow);
-    /* 关窗口 = 缩到托盘，不退出（有托盘时才这么做；托盘没建起来就保持老行为） */
-    if (!isQuitting && tray) {
-      e.preventDefault();
-      mainWindow.hide();
-      trayHintOnce();
-    }
+    /* 真退出（菜单/托盘里的退出）或托盘没建起来 → 按老规矩直接关 */
+    if (isQuitting || !tray) return;
+    /* 记住为「彻底退出」→ 不拦这一下，让窗口正常关掉，进程在 window-all-closed 里退出。
+       （别在这里 app.quit()：那是在一个已被 preventDefault 的 close 里嵌套退出，Electron 会中止它） */
+    if (getCloseAction() === 'quit') { isQuitting = true; return; }
+    e.preventDefault();
+    /* 窗口本来就看不见（系统或脚本发的 WM_CLOSE）→ 不打扰，直接收进托盘 */
+    if (!mainWindow.isVisible()) { hideToTray(); return; }
+    if (getCloseAction() === 'tray') { hideToTray(); return; }
+    askCloseChoice();      /* 第一次（或他选了「每次问我」）→ 问一次 */
   });
   mainWindow.on('closed', () => { mainWindow = null; });
 
@@ -501,8 +569,9 @@ app.whenReady().then(() => {
 app.on('before-quit', () => { isQuitting = true; });
 
 app.on('window-all-closed', () => {
-  /* 有托盘就留在后台（计时还在走），没有才按老规矩退出 */
-  if (process.platform !== 'darwin' && !tray) app.quit();
+  /* 窗口真被关掉只可能是「用户选了彻底退出」：缩托盘那一支在 close 里 preventDefault 拦住了，
+     所以这里照老规矩退出即可（macOS 惯例除外）。 */
+  if (process.platform !== 'darwin') app.quit();
 });
 
 /* 只允许一个实例跑，避免两个窗口抢同一个 localStorage */

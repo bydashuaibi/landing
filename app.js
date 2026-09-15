@@ -2401,7 +2401,8 @@ var App = {
       + '</div>'
       + '<div class="field" style="margin-top:14px"><label>后台常驻</label>'
       +   '<div class="hint" style="margin:0 0 8px">关掉窗口只是缩到右下角托盘，程序继续跑、计时照常走（托盘悬停能看到剩余时间）。要彻底退出：右键托盘图标 → 退出着陆。</div>'
-      +   '<button class="btn ghost sm" id="s_autostart">开机自动启动：读取中…</button>'
+      +   '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" id="s_autostart">开机自动启动：读取中…</button>'
+      +   '<button class="btn ghost sm" id="s_closepref">关闭窗口时：读取中…</button></div>'
       + '</div>'
       + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
 
@@ -2446,8 +2447,66 @@ var App = {
       if(!confirm('载入示例数据？会覆盖当前的任务设置（倾倒、情绪、伙伴、记忆保留）。')) return;
       seedDemo(); save(); closeSheet(); render(); toast('示例数据已载入');
     };
+
+    /* 关窗偏好：点 × 是"每次问我 / 直接缩托盘 / 直接退出" */
+    var cpBtn = $('s_closepref');
+    if(cpBtn){
+      var cpLabel = {ask:'每次问我', tray:'缩到托盘', quit:'直接退出'};
+      if(window.landing && window.landing.closePref){
+        window.landing.closePref.get().then(function(v){ cpBtn.textContent = '关闭窗口时：'+(cpLabel[v]||cpLabel.ask); });
+        cpBtn.onclick = function(){
+          window.landing.closePref.get().then(function(v){
+            /* 点一下按 问我 → 托盘 → 退出 → 问我 循环 */
+            var next = v==='ask' ? 'tray' : (v==='tray' ? 'quit' : 'ask');
+            return window.landing.closePref.set(next);
+          }).then(function(applied){
+            cpBtn.textContent = '关闭窗口时：'+(cpLabel[applied]||cpLabel.ask);
+            toast('关闭窗口时：'+(cpLabel[applied]||cpLabel.ask));
+          });
+        };
+      } else {
+        cpBtn.textContent = '关闭窗口时：仅桌面版可设';
+        cpBtn.disabled = true;
+      }
+    }
+  },
+
+  /* --- 关窗选择：桌面版点 × 时由主进程调用（弹在应用自己的界面里） --- */
+  askCloseChoice:function(){
+    if(!(window.landing && window.landing.closeChoice)) return;
+    if(window.landing.closePromptOpened) window.landing.closePromptOpened();  /* 告诉主进程"弹层出来了，别走兜底超时" */
+    var running = !!(STATE.timer && !STATE.timer.finished);
+    var task = timerTask();
+    openSheet('<h2>要关掉着陆吗？</h2>'
+      + '<div class="hint">关掉窗口有两种方式，你说了算。</div>'
+      + (running ? '<div class="hint" style="color:var(--terracotta-d)">「'+esc(task?task.name:(STATE.timer.name||'专注'))+'」正在计时 —— 选托盘就继续走，选退出会按暂停存好、下次打开接着算。</div>' : '')
+      + '<div class="wk-pick">'
+      +   '<button class="wk-choice" id="cc_tray"><b>最小化到托盘</b><span>计时继续跑，点右下角图标随时回来</span></button>'
+      +   '<button class="wk-choice" id="cc_quit"><b>彻底退出</b><span>关掉程序，下次打开再继续</span></button>'
+      + '</div>'
+      + '<label class="ck-row"><input type="checkbox" id="cc_remember"> 记住我的选择，以后不再问</label>'
+      + '<div class="sheet-actions"><button class="btn ghost" id="cc_cancel">再想想</button></div>');
+
+    /* ⚠️ 必须先读勾选框再 closeSheet()：关掉弹层后 #cc_remember 就没了（踩过） */
+    var ccRemember = function(){ var el = $('cc_remember'); return !!(el && el.checked); };
+    $('cc_tray').onclick=function(){ var rm=ccRemember(); closeSheet(); window.landing.closeChoice({choice:'tray', remember:rm}); };
+    $('cc_quit').onclick=function(){ var rm=ccRemember(); closeSheet(); window.landing.closeChoice({choice:'quit', remember:rm}); };
+    $('cc_cancel').onclick=function(){ closeSheet(); window.landing.closeChoice({choice:'cancel'}); };
+  },
+
+  /* 退出前把正在跑的计时按暂停存好（否则下次打开会把这段"没在学的时间"也算进去） */
+  pauseTimerForQuit:function(){
+    var t = STATE.timer;
+    if(!t || t.finished || t.paused) return;
+    if(t.mode==='stopwatch') t.accMs = timerElapsedMs();
+    else t.remainMs = timerRemainMs();
+    t.paused = true;
+    save();
   }
 };
+
+/* 关窗/退出时也走一遍：beforeunload 是同步的，能保证暂停状态落盘 */
+window.addEventListener('beforeunload', function(){ try{ App.pauseTimerForQuit(); }catch(e){} });
 
 /* ================= 事件委托 ================= */
 document.addEventListener('click',function(e){
