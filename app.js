@@ -789,8 +789,34 @@ function nudgeWindowBack(t){
   var nm = timerTask();
   var label = nm ? nm.name : (t.name || '专注');
   window.landing.nudge();
+  armRetract();
   notify('⏱ 还在计时', label + ' 已经 ' + fmtClockLong(timerElapsedMs()) + ' 了，回来瞄一眼？');
   if(window.Pet && Pet.say) Pet.say('我一直看着呢，已经 '+Math.floor(timerElapsedMs()/60000)+' 分钟了。');
+}
+
+/* 自动收回：被叫回来的窗口如果没人理，20 秒后自己缩回托盘。
+   为什么放在渲染进程算：只有这里知道"他到底动手了没有"。
+   手势（点/按/滚）一律视为他在用它 —— 那就别收，留给他。
+   他自己手动关掉了也不重复收（document.hidden 已经是 true）。 */
+var _retractTimer = null;
+function _retractCleanup(){
+  if(_retractTimer){ clearTimeout(_retractTimer); _retractTimer = null; }
+  ['pointerdown','keydown','wheel'].forEach(function(ev){
+    window.removeEventListener(ev, _cancelRetract, true);
+  });
+}
+function _cancelRetract(){ _retractCleanup(); }
+function _fireRetract(){
+  _retractCleanup();
+  if(document.hidden) return;
+  if(window.landing && window.landing.retract) window.landing.retract();
+}
+function armRetract(){
+  _retractCleanup();
+  ['pointerdown','keydown','wheel'].forEach(function(ev){
+    window.addEventListener(ev, _cancelRetract, true);
+  });
+  _retractTimer = setTimeout(_fireRetract, SW_RETRACT_MS);
 }
 
 function renderTimerBar(){
@@ -941,6 +967,7 @@ var SW_MIN_MS = 60000;
 var SW_MAX_MS = 4*3600*1000;
 var SW_NAG_MS = 60*60*1000;
 var SW_NUDGE_MS = 30*60*1000;
+var SW_RETRACT_MS = 20*1000;      /* 弹出来后没人理，20 秒自己收回去 */
 
 function scopeList(scope){
   if(scope==='daily') return STATE.dailyTasks;
@@ -1818,7 +1845,7 @@ function viewMe(){
 
 
 /* ================= 渲染入口 ================= */
-var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',me:'我的'};
+var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',shop:'商城',me:'我的'};
 
 /* 出错兜底：单个视图抛异常不应该让整个应用白屏，其它模块仍然能用 */
 function renderErrorView(tab, err){
@@ -1835,8 +1862,48 @@ function renderErrorView(tab, err){
     + '</div></div>';
 }
 
+/* ================= 商城（独立页） =================
+   原来商城只是宠物浮窗里的一个 tab，藏在右下角挂件后面，想逛得先找到那只猫。
+   现在它自己占一栏。内容仍由 pet.js 提供 —— 买卖、兑换、加奖励的逻辑只有一份，
+   这里只负责把它撑成一整页，并把点击转回去。 */
+var _shopRetry = 0;
+function viewShop(){
+  var body = null;
+  try{
+    body = (window.Pet && Pet.shopHTML) ? Pet.shopHTML() : null;
+  }catch(err){
+    console.error('[着陆] 商城渲染失败：', err);
+  }
+  if(body === null){
+    body = '<div class="hint">商城还在装货，稍等一下…</div>';
+    if(_shopRetry < 10){
+      _shopRetry++;
+      setTimeout(function(){ if(CUR_TAB==='shop') render(); }, 300);
+    }
+  }else{
+    _shopRetry = 0;
+  }
+  return '<div class="mod-head"><div class="kicker">小鱼干换来的</div>'
+    + '<div class="warp-head" data-warp><h2>商城</h2></div>'
+    + '<p>单次做满 60 分钟换 1~3 条小鱼干 🐟。换吃的、换装扮，也能换你自己定的现实奖励 —— '
+    + '奖励不是"努力的理由"，是"努力过之后的证据"。</p></div>'
+    + '<div class="card" id="shopPage">' + body + '</div>';
+}
+/* 独立页用的是挂件那套 data-pact，但挂件的事件是绑在它自己面板上的（够不到这里），
+   所以在页面这一层再挂一次，把点击转给 Pet.shopAct。 */
+function bindShopActions(){
+  var box = $('shopPage');
+  if(!box) return;
+  box.addEventListener('click', function(e){
+    var el = e.target.closest('[data-pact]');
+    if(!el) return;
+    e.preventDefault();
+    if(window.Pet && Pet.shopAct) Pet.shopAct(el.dataset.pact, el.dataset.id);
+  });
+}
+
 function render(){
-  var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,me:viewMe};
+  var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
 
   var html;
@@ -1867,6 +1934,7 @@ function render(){
   if(CUR_TAB==='weekly'){ initCountUp(); }
 
   if(CUR_TAB==='companion'){ var c=$('chat'); if(c) c.scrollTop=c.scrollHeight; }
+  if(CUR_TAB==='shop'){ bindShopActions(); }
   if(CUR_TAB==='me'){ bindMeActions(); }
 
   /* 玻璃折射标题 */

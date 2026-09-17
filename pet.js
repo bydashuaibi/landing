@@ -459,6 +459,33 @@
     L.save(); renderPanel();
   }
 
+  /* ================= 「商城」独立页面 =================
+     主界面多了一个「商城」栏，内容就是同一套商城，只是从挂件面板里搬到了整页。
+     逻辑一行不复制：页面只管要 HTML、把点击转回来，
+     买卖/兑换/加奖励仍然走上面那几个函数，数据只有一个来源。
+     idp 是输入框的前缀 —— 面板里是 pp、独立页里是 shop，
+     免得不小心 getElementById 拿到另一个界面的输入框。 */
+  function shopHTML() {
+    if (!booted) { boot(); if (!booted) return null; }   /* 主界面可能比挂件先要渲染 */
+    return tabShop(ensure(), 'shop');
+  }
+  function shopAct(act, id) {
+    if (act === 'buy') buy(id);
+    else if (act === 'use') useItem(id);
+    else if (act === 'redeem') redeem(id);
+    else if (act === 'delrw') delReward(id);
+    else if (act === 'tododone') todoDone(id);
+    else if (act === 'addrw') {
+      var nEl = $('shopRwName'), cEl = $('shopRwCost');
+      var nm = nEl ? nEl.value : '', cost = cEl ? cEl.value : '';
+      if (!nm || !String(nm).trim() || !parseInt(cost, 10)) { L.toast('写个名字和价格'); return; }
+      addReward(nm, cost);
+      if (nEl) nEl.value = '';
+      if (cEl) cEl.value = '';
+    }
+    if (L.render) L.render();     /* 整页要跟着重画，面板那边 renderPanel 会自己 guard */
+  }
+
   /* ================= 样式 ================= */
   var CSS = [
     /* ===== 挂件：一个「小舞台」，不是一张飘着的贴图 ===== */
@@ -896,7 +923,8 @@
     return h;
   }
 
-  function tabShop(p) {
+  function tabShop(p, idp) {
+    idp = idp || 'pp';            /* 输入框 id 前缀：挂件面板 pp / 独立页 shop */
     var h = '<div class="pp-sec">余额 <b>' + p.fish + '</b> 🐟 · 鱼干来自单次完成 ≥60 分钟的任务</div>';
 
     h += '<div class="pp-sec" style="margin-top:6px"><b>吃的</b></div>';
@@ -928,8 +956,8 @@
         + '<span class="pp-acts"><button class="btn primary sm" data-pact="redeem" data-id="' + r.id + '">兑换</button>'
         + '<button class="btn ghost sm" data-pact="delrw" data-id="' + r.id + '">删</button></span></div>';
     });
-    h += '<div class="pp-field"><input id="ppRwName" placeholder="奖励名称，比如「看一集番」" maxlength="20">'
-      + '<input id="ppRwCost" type="number" placeholder="鱼干" style="max-width:78px">'
+    h += '<div class="pp-field"><input id="' + idp + 'RwName" placeholder="奖励名称，比如「看一集番」" maxlength="20">'
+      + '<input id="' + idp + 'RwCost" type="number" placeholder="鱼干" style="max-width:78px">'
       + '<button class="btn ghost sm" data-pact="addrw">加</button></div>';
 
     var todo = p.todo.filter(function (t) { return !t.done; });
@@ -1457,6 +1485,8 @@
     poke: pokeCat,
     state: ensure,
     renderPage: renderPage,
+    shopHTML: shopHTML,      /* 「商城」整页用 */
+    shopAct: shopAct,
     open: function (what, tab) { if (!booted) boot(); openPanel(tab); },
     close: closePanel,
 

@@ -58,5 +58,7 @@ contextBridge.exposeInMainWorld('landing', {
   },
   timerActive: (on) => ipcRenderer.send('timer:active', !!on),
   /* 后台计时时把窗口叫回来（主进程会先确认窗口确实不可见，不会抢焦点） */
-  nudge: () => ipcRenderer.send('window:nudge')
+  nudge: () => ipcRenderer.send('window:nudge'),
+  /* 叫回来之后没人理 → 让它自己缩回托盘 */
+  retract: () => ipcRenderer.send('window:retract')
 });

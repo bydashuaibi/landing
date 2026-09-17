@@ -211,7 +211,7 @@ ipcMain.handle('app:openDataDir', async () => {
    不额外建一套 IPC 事件通道——这些函数本来就是给 UI 用的。 */
 const TABS = [
   ['今日', 'today'], ['任务', 'tasks'], ['周报', 'weekly'], ['日报', 'digest'],
-  ['陪伴', 'companion'], ['伙伴', 'pet'], ['我的', 'me']
+  ['陪伴', 'companion'], ['伙伴', 'pet'], ['商城', 'shop'], ['我的', 'me']
 ];
 
 function runInRenderer(js) {
@@ -471,6 +471,16 @@ ipcMain.on('window:nudge', () => {
   /* Windows 会拦掉后台程序抢前台焦点（只闪一下任务栏），所以别指望 focus()，
      把窗口顶到 Z 序上层就够了：他切回来第一眼就能看见计时条。 */
   try { mainWindow.moveTop(); } catch (e) {}
+});
+
+/* 自动收回：渲染进程判定"他 20 秒内没碰过窗口"，就让我们把它收回去。
+   交互判定（点/按/滚）放在渲染进程做，主进程不猜。
+   ⚠️ 这里刻意直接 hide()，不走 hideToTray()——那会弹一次"缩到托盘了"的气泡，
+   每 20 秒来一次就成骚扰了。 */
+ipcMain.on('window:retract', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (isQuitting || !mainWindow.isVisible()) return;
+  mainWindow.hide();
 });
 
 /* ---------- 建窗 ---------- */
