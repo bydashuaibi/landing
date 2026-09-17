@@ -767,6 +767,32 @@ function pushBackgroundState(){
   }
 }
 
+/* 后台弹窗提醒：窗口藏进托盘 / 被最小化之后，每满 30 分钟把它叫回来一次。
+   为什么要这个：计时是"开着窗口静悄悄走"，但他多半会顺手把窗口收了去做别的事。
+   到点只在系统通知里露一行字很容易被淹掉（全屏游戏里更是根本看不见）。
+   规则：
+     · 只在窗口真的看不见时才弹 —— 他正盯着界面的时候绝不抢焦点
+     · 从"窗口藏起来"那一刻开始算；每弹回来一次就重新计 30 分钟
+     · 暂停中不弹（暂停了就不该打扰）
+   网页版没有这个桥，直接跳过，不报错。 */
+var _hiddenSince = 0;
+function timerWantsNudge(t){
+  if(!t || t.finished || t.paused) return false;
+  if(!window.landing || !window.landing.nudge) return false;
+  if(!document.hidden){ _hiddenSince = 0; return false; }
+  if(!_hiddenSince){ _hiddenSince = Date.now(); return false; }   /* 刚藏起来，先记基准 */
+  if(Date.now() - _hiddenSince < SW_NUDGE_MS) return false;
+  _hiddenSince = Date.now();
+  return true;
+}
+function nudgeWindowBack(t){
+  var nm = timerTask();
+  var label = nm ? nm.name : (t.name || '专注');
+  window.landing.nudge();
+  notify('⏱ 还在计时', label + ' 已经 ' + fmtClockLong(timerElapsedMs()) + ' 了，回来瞄一眼？');
+  if(window.Pet && Pet.say) Pet.say('我一直看着呢，已经 '+Math.floor(timerElapsedMs()/60000)+' 分钟了。');
+}
+
 function renderTimerBar(){
   var el = timerBarEl(), t = STATE.timer;
   pushBackgroundState();
@@ -795,6 +821,8 @@ function ensureTimerTick(){
   _timerTick = setInterval(function(){
     var t = STATE.timer;
     if(!t){ clearInterval(_timerTick); _timerTick=null; return; }
+    /* 藏在后台的计时，每 30 分钟把窗口叫回来一次（正计时/倒计时都算） */
+    if(timerWantsNudge(t)) nudgeWindowBack(t);
     if(t.mode==='stopwatch'){
       var el2 = timerElapsedMs();
       /* 忘记停的保护：单次超过 4 小时先封顶暂停，不悄悄记一整天 */
@@ -907,10 +935,12 @@ function openTimerFinishSheet(early){
    和倒计时相反：不设目标、不到点响铃、不出现「未达标」字样。
    结束时按实际时长落账，时长本身就是打卡；日常任务同一天多次计时会累加进同一条记录，
    所以一天仍然只算一次打卡，但时长是累计的。
-   防呆三件套：<1 分钟默认丢掉；单次超过 4 小时自动封顶暂停；每 60 分钟提醒一次还在跑。 */
+   防呆三件套：<1 分钟默认丢掉；单次超过 4 小时自动封顶暂停；每 60 分钟提醒一次还在跑。
+   另外：窗口躲进托盘之后，每 30 分钟把窗口弹回来一次（见 SW_NUDGE_MS）。 */
 var SW_MIN_MS = 60000;
 var SW_MAX_MS = 4*3600*1000;
 var SW_NAG_MS = 60*60*1000;
+var SW_NUDGE_MS = 30*60*1000;
 
 function scopeList(scope){
   if(scope==='daily') return STATE.dailyTasks;

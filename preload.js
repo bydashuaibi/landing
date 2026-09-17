@@ -14,6 +14,7 @@
  *   closeChoice({choice,remember}) / closePromptOpened()    点 × 时的选择（托盘 / 退出 / 记住）
  *   closePref.get() / closePref.set(action)                关窗偏好：ask | tray | quit
  *   timerActive(bool)                                      计时中→关后台节流，保证到点准时
+ *   nudge()                                                后台计时每 30 分钟把窗口叫回来
  *   isDesktop = true                                       前端据此决定用哪套实现
  */
 const { contextBridge, ipcRenderer } = require('electron');
@@ -55,5 +56,7 @@ contextBridge.exposeInMainWorld('landing', {
     get: () => ipcRenderer.invoke('close:getPref'),
     set: (action) => ipcRenderer.invoke('close:setPref', action)
   },
-  timerActive: (on) => ipcRenderer.send('timer:active', !!on)
+  timerActive: (on) => ipcRenderer.send('timer:active', !!on),
+  /* 后台计时时把窗口叫回来（主进程会先确认窗口确实不可见，不会抢焦点） */
+  nudge: () => ipcRenderer.send('window:nudge')
 });

@@ -460,6 +460,19 @@ ipcMain.on('timer:active', (e, active) => {
   }
 });
 
+/* 后台计时提醒：窗口藏在托盘里时，渲染进程每 30 分钟要求把它叫回来一次。
+   渲染进程自己 show() 不了窗口，所以这件事必须走主进程。
+   ⚠️ 只在窗口确实看不见时才动 —— 他本来就在看界面的时候绝不抢焦点
+   （否则每 30 分钟把他正在打的字打断一次，比不提醒还烦）。 */
+ipcMain.on('window:nudge', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isVisible() && !mainWindow.isMinimized()) return;
+  showMainWindow();
+  /* Windows 会拦掉后台程序抢前台焦点（只闪一下任务栏），所以别指望 focus()，
+     把窗口顶到 Z 序上层就够了：他切回来第一眼就能看见计时条。 */
+  try { mainWindow.moveTop(); } catch (e) {}
+});
+
 /* ---------- 建窗 ---------- */
 let mainWindow = null;
 
