@@ -49,8 +49,14 @@
     { k: 'mood', name: '心情', emoji: '💛', hint: '摸摸、说说话、一起玩都会涨；很久不理它会淡下去',
       tiers: [{ min: 0, t: '有点闷' }, { min: 30, t: '平平' }, { min: 60, t: '不错' }, { min: 85, t: '美滋滋' }] },
     { k: 'wits', name: '灵性', emoji: '✨', hint: '聊天和记录会涨，只涨不掉',
-      tiers: [{ min: 0, t: '懵懵的' }, { min: 20, t: '机灵' }, { min: 50, t: '懂你' }, { min: 80, t: '通透' }] }
+      tiers: [{ min: 0, t: '懵懵的' }, { min: 20, t: '机灵' }, { min: 50, t: '懂你' }, { min: 80, t: '通透' }] },
+    /* 默契不需要你多做任何事 —— 你专注的时候它本来就在旁边。
+       这是唯一一个"只靠陪着你"就涨的维度，也是最慢的（满 100 约 25 小时专注）。 */
+    { k: 'rapport', name: '默契', emoji: '🤝', hint: '你专注时它陪着，每 15 分钟 +1，只涨不掉',
+      tiers: [{ min: 0, t: '刚认识' }, { min: 20, t: '搭子' }, { min: 50, t: '老搭档' }, { min: 80, t: '不用说话也懂' }] }
   ];
+  var RAPPORT_MS = 15 * 60 * 1000;      /* 每陪练 15 分钟 → 默契 +1 */
+  var RAPPORT_CAP_MS = 2 * 3600 * 1000; /* 单次结算最多算 2 小时，避免挂了通宵的计时器一次性刷满 */
   function dimById(k) { return DIMS.filter(function (d) { return d.k === k; })[0]; }
   function dimTierIdx(d, v) { var k = 0; for (var i = 0; i < d.tiers.length; i++) { if (v >= d.tiers[i].min) k = i; } return k; }
   function dimTier(d, v) { return d.tiers[dimTierIdx(d, v)].t; }
@@ -89,10 +95,13 @@
     if (p.mood === undefined) p.mood = 60;
     if (p.wits === undefined) p.wits = 10;
     if (p.lastInteractAt === undefined) p.lastInteractAt = Date.now();
-    if (!p.dimSeen) p.dimSeen = { energy: 0, mood: 0, wits: 0 };
+    if (p.rapport === undefined) p.rapport = 0;
+    if (p.focusAccMs === undefined) p.focusAccMs = 0;
+    if (!p.dimSeen) p.dimSeen = { energy: 0, mood: 0, wits: 0, rapport: 0 };
     if (p.dimSeen.energy === undefined) p.dimSeen.energy = 0;
     if (p.dimSeen.mood === undefined) p.dimSeen.mood = 0;
     if (p.dimSeen.wits === undefined) p.dimSeen.wits = 0;
+    if (p.dimSeen.rapport === undefined) p.dimSeen.rapport = 0;
     if (!p.unlocked) p.unlocked = [];
     if (!p.witCount) p.witCount = { chats: 0, mems: 0 };
     if (p.witChatsGranted === undefined) p.witChatsGranted = 0;
@@ -144,12 +153,28 @@
 
     if (!p.noHunger && !p.sleeping) p.hunger = Math.max(0, p.hunger - Math.min(22, hrs * 0.75));
 
+    var t = ST().timer;
     if (p.sleeping) {
       p.energy = clamp(p.energy + hrs * 8, 0, 100);
     } else {
       var night = nightOverlapHours(p.lastTickAt, now);
-      var t = ST().timer;
       if (night > 0 && t && !t.finished) p.energy = clamp(p.energy - night * 6, 0, 100);
+    }
+
+    /* 默契：你专注的时候它本来就在旁边，所以这个维度不需要你多做任何事。
+       只算「本次结算窗口」∩「这次计时真正开始之后」的那一段，不重复计；
+       单次封顶 2 小时，免得挂了一整晚的计时器回来一次性刷满。 */
+    if (t && !t.finished && !t.paused) {
+      var lo = Math.max(p.lastTickAt, t.startedAt || p.lastTickAt);
+      var span = Math.min(Math.max(0, now - lo), RAPPORT_CAP_MS);
+      if (span > 0) {
+        p.focusAccMs = (p.focusAccMs || 0) + span;
+        var rGain = Math.floor(p.focusAccMs / RAPPORT_MS);
+        if (rGain > 0) {
+          p.focusAccMs -= rGain * RAPPORT_MS;
+          p.rapport = clamp(p.rapport + rGain, 0, 100);
+        }
+      }
     }
 
     /* 休息日不衰减心情：他都说了在休息，宠物凭什么闹情绪。
@@ -260,11 +285,17 @@
     dimUp: {
       energy: ['我有点撑不住了…你也早点歇。', '咖啡不如睡觉，真的。', '睡了一觉，满血了。'],
       mood: ['今天有点闷，不过看到你就好了。', '我心情不错。', '跟你待着就是好。'],
-      wits: ['我开始记得住一些事了。', '你上次说的那个，后来怎么样了？', '你最近在想什么，我大概能猜到一点。']
+      wits: ['我开始记得住一些事了。', '你上次说的那个，后来怎么样了？', '你最近在想什么，我大概能猜到一点。'],
+      rapport: ['我们好像有点默契了。', '不用说话也知道你要干嘛。', '你一动，我就知道下一步。']
     },
     recite: ['山中何事？松花酿酒，春水煎茶。', '风来疏竹，风过而竹不留声。',
       '莫听穿林打叶声，何妨吟啸且徐行。', '此心安处，便是吾乡。'],
     roll: ['（它滚了一圈）', '地上凉快。', '一起？', '（翻过来躺着不动了）'],
+    /* 状态决定口气：它今天什么状态，比现在几点更该被听见 */
+    tired: ['……我有点困。', '眼皮有点重，不过我在。', '陪得有点久了，你也是。', '（打了个哈欠）'],
+    gloomy: ['……不太想说话，但我在。', '我在这儿，不用管我。', '有点闷，一会儿就好了。'],
+    chipper: ['今天心情好！', '要不要一起做点什么？', '我今天挺有精神的。', '嘿嘿。'],
+    wise: ['你上次说的那个，后来怎么样了？', '今天的下一步是什么？', '我大概知道你在想什么。', '不急，一件一件来。'],
     upgrade: ['我们好像…更熟了？', '嗯，我喜欢你在的时候。'],
     late: ['你还在吗？我一直都在。', '刚才那段时间去哪了，我不问。你回来了就好。'],
     play: ['！这个我能追一天。', '来了来了！', '再动一下，就动一下下。', '（扑）'],
@@ -279,6 +310,8 @@
   };
   function hourNow() { return new Date().getHours(); }
   function dailyLine() {
+    var m = moodLine(ensure());
+    if (m) return m;
     var h = hourNow();
     if (h < 5) return pick(LINES.night);
     if (h < 11) return pick(LINES.morning);
@@ -286,8 +319,19 @@
     if (h < 23) return pick(LINES.evening);
     return pick(LINES.night);
   }
+  /* 说什么话：先看状态，再看时段。
+     精力/心情低 → 蔫、闷；心情高 → 雀跃；灵性上来 → 说话开始有想法（这条最像"它在长大"） */
+  function moodLine(p) {
+    if (p.energy < 30) return pick(LINES.tired);
+    if (p.mood < 30) return pick(LINES.gloomy);
+    if (p.mood >= 85) return pick(LINES.chipper);
+    if (p.wits >= 50) return pick(LINES.wise);
+    return null;
+  }
   function idleLine(p) {
     if (p.hunger < 28) return pick(LINES.hungry);
+    var m = moodLine(p);
+    if (m) return m;
     var h = hourNow();
     if (h < 5) return pick(LINES.night);
     return pick(LINES.idle);
@@ -734,6 +778,15 @@
     '.pw-root.t-mid  .pw-ring{border-color:rgba(34,211,238,.40);box-shadow:0 0 0 6px rgba(34,211,238,.09)}',
     '.pw-root.t-high .pw-ring{border-color:rgba(94,234,212,.52);box-shadow:0 0 0 6px rgba(94,234,212,.13),0 0 22px rgba(224,169,59,.20)}',
     '.pw-root.is-hungry .pw-ring{border-color:rgba(224,169,59,.72);animation:pwHungry 2.4s ease-in-out infinite}',
+    /* 三维度的观感：精力低 → 蔫一点、呼吸慢；心情低 → 发灰；心情高 → 亮、轻快。
+       ⚠️ 基础 .pw-canvasbox 的 filter 里含着 drop-shadow，这里必须整条重写 ——
+       只写 saturate/grayscale 会把阴影一起干掉（真踩过） */
+    '.pw-root.is-tired .pw-canvasbox{filter:drop-shadow(0 10px 18px rgba(46,36,25,.20)) saturate(.82) brightness(.93);animation:pwSlow 6.4s ease-in-out infinite}',
+    '.pw-root.is-tired .pw-ring{border-color:rgba(143,163,176,.40)}',
+    '.pw-root.is-gloomy .pw-canvasbox{filter:drop-shadow(0 10px 18px rgba(46,36,25,.20)) grayscale(.38) saturate(.72) brightness(.96)}',
+    '.pw-root.is-chipper .pw-canvasbox{filter:drop-shadow(0 10px 18px rgba(46,36,25,.20)) saturate(1.15) brightness(1.05);animation:pwPerk 3.2s ease-in-out infinite}',
+    '@keyframes pwSlow{0%,100%{transform:translateY(0)}50%{transform:translateY(2px)}}',
+    '@keyframes pwPerk{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}',
     '@keyframes pwHungry{0%,100%{box-shadow:0 0 0 5px rgba(224,169,59,.10)}50%{box-shadow:0 0 0 11px rgba(224,169,59,.02)}}',
     /* 悬停时微微抬起来 */
     '.pw-stage:hover .pw-canvasbox{transform:translateY(-3px);transition:transform .25s var(--e-out)}',
@@ -1600,6 +1653,11 @@
       root.classList.add('t-' + tier);
       root.classList.toggle('is-hungry', hungry);
       root.classList.toggle('sleeping', !!p.sleeping);
+      /* 精力/心情直接决定"看起来怎么样" —— 数字之外，一眼也能看出来。
+         （灵性不走外观，走台词：见 moodLine） */
+      root.classList.toggle('is-tired', p.energy < 30 && !p.sleeping);
+      root.classList.toggle('is-gloomy', p.mood < 30);
+      root.classList.toggle('is-chipper', p.mood >= 85);
     }
   }
 
