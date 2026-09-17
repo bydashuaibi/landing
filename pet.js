@@ -753,6 +753,8 @@
     '.pp-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}',
     '.pp-who{flex:1;min-width:0}',
     '.pp-who .pp-name,.pp-who .pp-id{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    /* 三维度那一行要允许换行：宽度不够时宁可折行，也别把「✨灵性 …」截掉 */
+    '.pp-who .pp-id.pp-dims{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.6}',
     '.pp-avatar{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--khaki),var(--tawny));display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}',
     '.pp-name{font-weight:800;font-size:16px;line-height:1.2}',
     '.pp-lv{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(194,168,120,.24);color:#8a6d3b;white-space:nowrap}',
@@ -1012,9 +1014,11 @@
     h += '<div class="pp-head"><div class="pp-avatar">🐱</div>'
       + '<div class="pp-who"><div class="pp-name">' + L.esc(p.name) + '</div>'
       + '<div class="pp-id">今日状态 ' + Math.round(v) + '/100 · 连续着陆 ' + L.landingDays() + ' 天</div>'
-      + '<div class="pp-id">' + dimsHTML(p) + '</div></div>'
+      + '</div>'
       + '<span class="pp-lv">' + lv + '</span>'
       + '<button class="pp-x" data-pact="close">✕</button></div>';
+    /* 三维度独占一行放在头像区下面：放在名字那一列里会被 nowrap 挤断 */
+    h += '<div class="pp-id pp-dims">' + dimsHTML(p) + '</div>';
 
     h += '<div class="pp-bars">'
       + '<div class="pp-bar-row"><span class="lb">🍚 饱食</span><span class="pp-bar"><i class="h" style="width:' + Math.round(p.hunger) + '%"></i></span><span class="vv">' + Math.round(p.hunger) + '</span></div>'
