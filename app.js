@@ -1178,6 +1178,7 @@ function grantFish(n, reason){
   return n;
 }
 function awardFish(minutes, reason){
+  if(window.Pet && Pet.onRecord) Pet.onRecord(minutes);
   return grantFish(fishForMinutes(minutes), reason+'（'+(minutes||0)+' 分钟）');
 }
 function addMemory(kind, text, tags){
@@ -1788,6 +1789,9 @@ function viewMe(){
     + '<div>小鱼干：<b>'+petState().fish+'</b> 条</div>'
     + '<div>记忆库：<b>'+STATE.memories.length+'</b> 条</div></div>'
     + svgMood + '</div>';
+
+  /* 宠物数值总览：精力 / 心情 / 灵性 三维度 + 已解锁的小动作（B 档养成反馈） */
+  if(window.Pet && Pet.statsHTML){ var _ps = Pet.statsHTML(); if(_ps) h += _ps; }
 
   /* 记忆库（与伙伴的对话也归档到这里） */
   var mems = STATE.memories.slice(-10).reverse();

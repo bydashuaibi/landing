@@ -34,6 +34,36 @@
   function levelIdx(i) { var k = 0; for (var n = 0; n < LEVELS.length; n++) { if (i >= LEVELS[n].min) k = n; } return k; }
   function levelName(i) { return LEVELS[levelIdx(i)].name; }
 
+  /* ================= 三个新维度：精力 / 心情 / 灵性 =================
+     为什么加：以前只有"饿不饿"和"熟不熟"，抚摸 / 说话 / 逗玩三个按钮作用完全一样，
+     选哪个都没区别。加维度的目的不是数字更多，是让不同行为产生不同结果。
+     三条自我约束（跟整站「不催不罚」一致）：
+       1. 只有精力会因为"你熬夜"掉，而且掉得有理由 —— 你熬，它也陪着熬
+       2. 心情掉得极慢、有下限 20，绝不掉到谷底给人压力
+       3. 灵性只涨不掉
+     注意：app.js 的 catVitality() 是"今天的综合状态"（由倾倒/打卡算出来，过零点归零重来），
+     跟这里的 energy 不是一回事 —— 所以它的显示名改成了「今日状态」，把「精力」让给真正的状态值。 */
+  var DIMS = [
+    { k: 'energy', name: '精力', emoji: '⚡', hint: '睡觉、记录会回；你 0-5 点还在专注，它会跟着熬',
+      tiers: [{ min: 0, t: '蔫了' }, { min: 30, t: '还行' }, { min: 60, t: '有精神' }, { min: 85, t: '活蹦乱跳' }] },
+    { k: 'mood', name: '心情', emoji: '💛', hint: '摸摸、说说话、一起玩都会涨；很久不理它会淡下去',
+      tiers: [{ min: 0, t: '有点闷' }, { min: 30, t: '平平' }, { min: 60, t: '不错' }, { min: 85, t: '美滋滋' }] },
+    { k: 'wits', name: '灵性', emoji: '✨', hint: '聊天和记录会涨，只涨不掉',
+      tiers: [{ min: 0, t: '懵懵的' }, { min: 20, t: '机灵' }, { min: 50, t: '懂你' }, { min: 80, t: '通透' }] }
+  ];
+  function dimById(k) { return DIMS.filter(function (d) { return d.k === k; })[0]; }
+  function dimTierIdx(d, v) { var k = 0; for (var i = 0; i < d.tiers.length; i++) { if (v >= d.tiers[i].min) k = i; } return k; }
+  function dimTier(d, v) { return d.tiers[dimTierIdx(d, v)].t; }
+
+  /* 互动涨心情：不同动作给的不一样，三个按钮才算真的有了差别 */
+  var MOOD_GAIN = { pat: 5, chat: 3, play: 8, lift: 5, chin: 6, call: 2, daze: 6, feed: 4, roll: 8, recite: 6 };
+  function touch(kind) {
+    var p = ensure();
+    p.mood = clamp(Math.round((p.mood + (MOOD_GAIN[kind] || 2)) * 10) / 10, 0, 100);
+    p.lastInteractAt = Date.now();
+    return p;
+  }
+
   var ITEMS = [
     { id: 'fish_snack', name: '小鱼干', emoji: '🐟', cost: 1, kind: 'food', hunger: 12, intimacy: 1, desc: '它最爱的日常口粮' },
     { id: 'can', name: '猫罐头', emoji: '🥫', cost: 5, kind: 'food', hunger: 35, intimacy: 3, desc: '开罐会有声音的那种' },
@@ -53,6 +83,19 @@
     if (p.hunger === undefined) p.hunger = 70;
     if (p.intimacy === undefined) p.intimacy = 6;
     if (p.fish === undefined) p.fish = 3;
+    /* 三个新维度。老存档读出来自动拿默认值 —— 宠物字段是在这个 ensure() 里逐个补的
+       （不是 app.js 的 migrate()），所以新增字段零迁移风险。 */
+    if (p.energy === undefined) p.energy = 80;
+    if (p.mood === undefined) p.mood = 60;
+    if (p.wits === undefined) p.wits = 10;
+    if (p.lastInteractAt === undefined) p.lastInteractAt = Date.now();
+    if (!p.dimSeen) p.dimSeen = { energy: 0, mood: 0, wits: 0 };
+    if (p.dimSeen.energy === undefined) p.dimSeen.energy = 0;
+    if (p.dimSeen.mood === undefined) p.dimSeen.mood = 0;
+    if (p.dimSeen.wits === undefined) p.dimSeen.wits = 0;
+    if (!p.unlocked) p.unlocked = [];
+    if (!p.witCount) p.witCount = { chats: 0, mems: 0 };
+    if (p.witChatsGranted === undefined) p.witChatsGranted = 0;
     if (!p.gear) p.gear = { neck: null, face: null, head: null };
     if (p.gear.neck === undefined) p.gear.neck = null;
     if (p.gear.face === undefined) p.gear.face = null;
@@ -89,16 +132,99 @@
     return p;
   }
 
-  /* 饱食衰减：每 2 小时 -1.5（每天约 -18），单次最多 -22。饿只影响表情和台词。
-     开了「不要让它饿」就完全不衰减——它一直在，不催你。 */
+  /* 结算三件事：饱食 / 精力 / 心情。改这段之前先读注释。
+     · 饱食：每 2 小时 -1.5（每天约 -18），单次最多 -22；睡觉或开了「不要让它饿」→ 不掉（原行为，别改坏）
+     · 精力：睡觉 → 每小时 +8；你 0-5 点还在专注计时 → 每小时 -6
+     · 心情：超过 48 小时没任何互动 → 每天 -5，下限 20（绝不掉到谷底）
+     · 灵性：只涨不掉，不在这里结算 */
   function decay() {
     var p = ensure(), now = Date.now();
-    if (p.noHunger || p.sleeping) { p.lastTickAt = now; return; }   /* 睡觉 / 关掉饥饿 都不掉饱食 */
     var hrs = (now - p.lastTickAt) / 3600000;
     if (hrs < 0.4) return;
-    p.hunger = Math.max(0, p.hunger - Math.min(22, hrs * 0.75));
+
+    if (!p.noHunger && !p.sleeping) p.hunger = Math.max(0, p.hunger - Math.min(22, hrs * 0.75));
+
+    if (p.sleeping) {
+      p.energy = clamp(p.energy + hrs * 8, 0, 100);
+    } else {
+      var night = nightOverlapHours(p.lastTickAt, now);
+      var t = ST().timer;
+      if (night > 0 && t && !t.finished) p.energy = clamp(p.energy - night * 6, 0, 100);
+    }
+
+    var idleDays = (now - p.lastInteractAt) / 86400000;
+    if (idleDays > 2) {
+      var over = Math.min(14, idleDays - 2);   /* 离线再久也最多结算两周 */
+      p.mood = clamp(Math.max(20, p.mood - over * 5), 0, 100);
+    }
+
     p.lastTickAt = now;
     L.save();
+  }
+
+  /* 一个真实时间窗里，落在「凌晨 0:00-5:00」的部分有多少小时。
+     跨天也算得对 —— 关一晚上再打开，中间那几个小时照样计入。 */
+  function nightOverlapHours(a, b) {
+    if (!(b > a)) return 0;
+    var total = 0, cur = new Date(a), guard = 0;
+    cur.setHours(0, 0, 0, 0);
+    while (cur.getTime() < b && guard++ < 40) {
+      var s = cur.getTime(), e = s + 5 * 3600000;
+      var lo = Math.max(a, s), hi = Math.min(b, e);
+      if (hi > lo) total += (hi - lo) / 3600000;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return total;
+  }
+
+  /* 成长结算：灵性增长 + 升档反馈 + 小动作解锁。
+     集中在一处做，免得散落到各个 interact 里对不上。 */
+  function settleGrowth() {
+    var p = ensure(), grew = false;
+
+    var chats = (p.witCount && p.witCount.chats) || 0;
+    var wantChat = Math.floor(chats / 10);
+    if (wantChat > (p.witChatsGranted || 0)) {
+      p.wits = clamp(p.wits + (wantChat - (p.witChatsGranted || 0)), 0, 100);
+      p.witChatsGranted = wantChat;
+      grew = true;
+    }
+
+    var mems = (ST().memories || []).length;
+    if (!p.witCount.mems) p.witCount.mems = mems;   /* 首次先对齐，别把历史记录一次性算进来 */
+    else if (mems > p.witCount.mems) {
+      p.wits = clamp(Math.round((p.wits + Math.min(5, mems - p.witCount.mems) * 0.5) * 10) / 10, 0, 100);
+      p.witCount.mems = mems;
+      grew = true;
+    }
+
+    /* 小动作解锁 */
+    if (p.wits >= 50 && p.unlocked.indexOf('recite') < 0) {
+      p.unlocked.push('recite'); grew = true;
+      setTimeout(function () { say('我想……念一句。', 4600); }, 900);
+    }
+    if (p.mood >= 80 && p.unlocked.indexOf('roll') < 0) {
+      p.unlocked.push('roll'); grew = true;
+      setTimeout(function () { say('今天想在地上滚一下。', 4600); }, 1400);
+    }
+
+    /* 升档：说一句专属台词 + 记一条里程碑 */
+    var up = [];
+    DIMS.forEach(function (d) {
+      var idx = dimTierIdx(d, p[d.k]);
+      if (idx > (p.dimSeen[d.k] || 0)) { p.dimSeen[d.k] = idx; up.push({ d: d, idx: idx }); }
+    });
+    if (up.length) {
+      up.forEach(function (u) {
+        L.addMemory('milestone', u.d.emoji + ' ' + u.d.name + '到了「' + u.d.tiers[u.idx].t + '」', ['伙伴']);
+      });
+      var top = up[up.length - 1];
+      var line = (LINES.dimUp[top.d.k] || [])[top.idx - 1];
+      if (line) setTimeout(function () { say(line, 5000); }, 200);
+      grew = true;
+    }
+
+    if (grew) L.save();
   }
 
   function addIntimacy(n) {
@@ -127,6 +253,15 @@
     pat: ['呼噜呼噜…', '嗯…这里，对。', '再摸一下。', '（眯眼）'],
     patCool: ['刚摸过啦，让我缓一下。', '它在呼噜，别打扰。'],
     fish: ['鱼干到手！', '这个我会存起来的。', '嘿嘿。', '又攒了一点。'],
+    /* 维度升档时说的话（数组第 n-1 项对应升到第 n 档；第 0 档是初始档，不播） */
+    dimUp: {
+      energy: ['我有点撑不住了…你也早点歇。', '咖啡不如睡觉，真的。', '睡了一觉，满血了。'],
+      mood: ['今天有点闷，不过看到你就好了。', '我心情不错。', '跟你待着就是好。'],
+      wits: ['我开始记得住一些事了。', '你上次说的那个，后来怎么样了？', '你最近在想什么，我大概能猜到一点。']
+    },
+    recite: ['山中何事？松花酿酒，春水煎茶。', '风来疏竹，风过而竹不留声。',
+      '莫听穿林打叶声，何妨吟啸且徐行。', '此心安处，便是吾乡。'],
+    roll: ['（它滚了一圈）', '地上凉快。', '一起？', '（翻过来躺着不动了）'],
     upgrade: ['我们好像…更熟了？', '嗯，我喜欢你在的时候。'],
     late: ['你还在吗？我一直都在。', '刚才那段时间去哪了，我不问。你回来了就好。'],
     play: ['！这个我能追一天。', '来了来了！', '再动一下，就动一下下。', '（扑）'],
@@ -185,6 +320,7 @@
     p.stats.fed += 1;
     p.lastFedAt = Date.now();
     addIntimacy(it.intimacy || 1);
+    touch('feed');
     L.addMemory('feed', '喂了小陆一份「' + it.name + '」（饱食 +' + it.hunger + '）', ['投喂']);
     L.save();
     say(pick(LINES.fed), 3600);
@@ -200,6 +336,7 @@
     var gain = 1 + (p.toys.indexOf('toy_wand') >= 0 ? 1 : 0);
     p.stats.patted += 1;
     addIntimacy(gain);
+    touch('pat');
     L.addMemory('pet', '摸了摸小陆（亲密 +' + gain + '）', ['抚摸']);
     L.save();
     say(pick(LINES.pat), 3600);
@@ -210,7 +347,7 @@
 
   /* ================= 更多互动 ================= */
   /* 全部「只加不减」，冷却只是防止连点，不是惩罚 */
-  var CD = { play: 25000, lift: 15000, chin: 45000, call: 6000 };
+  var CD = { play: 25000, lift: 15000, chin: 45000, call: 6000, recite: 60000, roll: 30000 };
 
   function cdLeft(k) {
     var p = ensure(); p.cd = p.cd || {};
@@ -231,6 +368,9 @@
     var p = ensure();
     if (name === 'sleep') { toggleSleep(); return; }
     if (name === 'daze') { startDaze(); return; }
+    /* 小动作要解锁才能用（B 档的养成反馈） */
+    if (name === 'recite' && p.unlocked.indexOf('recite') < 0) { L.toast('灵性到 50，它才会念诗'); return; }
+    if (name === 'roll' && p.unlocked.indexOf('roll') < 0) { L.toast('心情到 80，它才肯跟你打滚'); return; }
     var left = cdLeft(name);
     if (left > 0) { L.toast('等一下下，' + Math.ceil(left / 1000) + ' 秒后再来'); return; }
     wake();
@@ -238,26 +378,39 @@
 
     if (name === 'play') {
       var bonus = p.toys.indexOf('toy_wand') >= 0 ? 1 : 0;
-      addIntimacy(2 + bonus);
+      addIntimacy(2 + bonus); touch('play');
       L.addMemory('pet', '陪它玩了一会儿（亲密 +' + (2 + bonus) + '）', ['互动']);
       say(pick(LINES.play), 3600);
       floatText('💗 +' + (2 + bonus));
       if (cat) cat.play('hop', 1.5);
     } else if (name === 'lift') {
-      addIntimacy(1);
+      addIntimacy(1); touch('lift');
       L.addMemory('pet', '把它举高高了（亲密 +1）', ['互动']);
       say(pick(LINES.lift), 3600);
       floatText('💗 +1');
       if (cat) cat.play('lift', 1.5);
     } else if (name === 'chin') {
-      addIntimacy(2);
+      addIntimacy(2); touch('chin');
       L.addMemory('pet', '挠了挠它的下巴（亲密 +2）', ['互动']);
       say(pick(LINES.chin), 3600);
       floatText('💗 +2');
       if (cat) cat.play('chin', 1.6);
     } else if (name === 'call') {
+      touch('call');
       say(pick(LINES.call), 2600);
       if (cat) cat.play('call', 0.9);
+    } else if (name === 'recite') {
+      touch('recite'); addIntimacy(1);
+      L.addMemory('pet', '让它念了句诗（心情 +' + MOOD_GAIN.recite + '）', ['互动']);
+      say(pick(LINES.recite), 5200);
+      floatText('✨');
+      if (cat) cat.play('call', 1.2);
+    } else if (name === 'roll') {
+      touch('roll'); addIntimacy(1);
+      L.addMemory('pet', '和它一起打了个滚（心情 +' + MOOD_GAIN.roll + '）', ['互动']);
+      say(pick(LINES.roll), 3600);
+      floatText('💛 +' + MOOD_GAIN.roll);
+      if (cat) cat.play('hop', 1.6);
     }
     L.save();
     refresh(); renderPanel();
@@ -302,6 +455,7 @@
       clearInterval(dazeTimer); dazeTimer = null;
       p.dazeUntil = 0; L.save();
       addIntimacy(2);
+      touch('daze');
       L.addMemory('pet', '一起发呆满一分钟（亲密 +2）', ['陪伴']);
       if (cat) cat.setState({ daze: false });
       say(pick(LINES.dazeEnd), 4200);
@@ -346,6 +500,8 @@
     p.chat.push({ role: 'user', text: text, at: Date.now() });
     if (p.chat.length > 140) p.chat.splice(0, p.chat.length - 140);
     p.stats.chats += 1;
+    touch('chat');
+    var pc0 = ensure(); pc0.witCount.chats = (pc0.witCount.chats || 0) + 1;
     L.addMemory('chat', '我：' + text, ['对话']);
     var cooled = (Date.now() - p.lastChatAt) > 300000;
     if (cooled) { p.lastChatAt = Date.now(); addIntimacy(1); }
@@ -465,6 +621,49 @@
      买卖/兑换/加奖励仍然走上面那几个函数，数据只有一个来源。
      idp 是输入框的前缀 —— 面板里是 pp、独立页里是 shop，
      免得不小心 getElementById 拿到另一个界面的输入框。 */
+  /* 三个维度的紧凑展示（挂件面板用一行）
+     带上维度名，别只给表情 —— 否则「⚡80」没人知道那是什么 */
+  function dimsHTML(p) {
+    p = p || ensure();
+    return DIMS.map(function (d) {
+      return d.emoji + d.name + ' ' + Math.round(p[d.k]);
+    }).join(' · ');
+  }
+
+  /* 「我的」页的宠物数值总览卡（B 档要求的养成反馈面板） */
+  function statsHTML() {
+    if (!booted) { boot(); if (!booted) return ''; }
+    var p = ensure();
+    var rows = DIMS.map(function (d) {
+      var v = clamp(Math.round(p[d.k]), 0, 100);
+      return '<div style="display:flex;align-items:center;gap:10px;margin-top:10px">'
+        + '<span style="min-width:78px;font-size:13px">' + d.emoji + ' ' + d.name + '</span>'
+        + '<span style="flex:1;height:8px;border-radius:99px;background:rgba(46,36,25,.10);overflow:hidden">'
+        + '<i style="display:block;height:100%;width:' + v + '%;border-radius:99px;background:currentColor;opacity:.55"></i></span>'
+        + '<span style="min-width:92px;text-align:right;font-size:12px;opacity:.75">' + v + ' · ' + dimTier(d, p[d.k]) + '</span>'
+        + '</div><div class="hint" style="margin:4px 0 0">' + d.hint + '</div>';
+    }).join('');
+    var acts = [];
+    if (p.unlocked.indexOf('recite') >= 0) acts.push('🪶 念诗');
+    if (p.unlocked.indexOf('roll') >= 0) acts.push('🌀 一起打滚');
+    return '<div class="card"><h2>🐾 ' + L.esc(p.name) + ' 的状态</h2>'
+      + '<div class="hint">亲密 ' + Math.round(p.intimacy) + '/100（' + levelName(p.intimacy) + '）· 饱食 '
+      + Math.round(p.hunger) + '/100 · 小鱼干 ' + p.fish + ' 条</div>'
+      + rows
+      + '<div class="hint" style="margin-top:12px">解锁的小动作：'
+      + (acts.length ? acts.join(' · ') : '还没有 —— 灵性 50 解锁「念诗」，心情 80 解锁「一起打滚」')
+      + '</div></div>';
+  }
+
+  /* 记完一次计时 → 给它回点精力（这是 B 档里精力的主要来源） */
+  function onRecord(minutes) {
+    var p = ensure();
+    if (!minutes || minutes <= 0) return;
+    p.energy = clamp(p.energy + 4, 0, 100);
+    p.lastInteractAt = Date.now();
+    L.save();
+  }
+
   function shopHTML() {
     if (!booted) { boot(); if (!booted) return null; }   /* 主界面可能比挂件先要渲染 */
     return tabShop(ensure(), 'shop');
@@ -812,7 +1011,8 @@
 
     h += '<div class="pp-head"><div class="pp-avatar">🐱</div>'
       + '<div class="pp-who"><div class="pp-name">' + L.esc(p.name) + '</div>'
-      + '<div class="pp-id">活力 ' + Math.round(v) + '/100 · 连续着陆 ' + L.landingDays() + ' 天</div></div>'
+      + '<div class="pp-id">今日状态 ' + Math.round(v) + '/100 · 连续着陆 ' + L.landingDays() + ' 天</div>'
+      + '<div class="pp-id">' + dimsHTML(p) + '</div></div>'
       + '<span class="pp-lv">' + lv + '</span>'
       + '<button class="pp-x" data-pact="close">✕</button></div>';
 
@@ -857,6 +1057,8 @@
       + '<button class="btn ghost sm" data-pact="act" data-id="call">📣 喊它</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="daze">☁️ 一起发呆</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="sleep">' + (p.sleeping ? '☀️ 叫醒' : '💤 让它睡') + '</button>'
+      + (p.unlocked.indexOf('recite') >= 0 ? '<button class="btn ghost sm" data-pact="act" data-id="recite">🪶 念诗</button>' : '')
+      + (p.unlocked.indexOf('roll') >= 0 ? '<button class="btn ghost sm" data-pact="act" data-id="roll">🌀 一起打滚</button>' : '')
       + '</div>'
       + '<button class="btn ghost sm block" data-pact="goto-page" style="margin-top:9px">🐾 详情设定与全部数据 →</button>'
       + '<div class="pp-sec" style="margin-top:12px">'
@@ -1045,7 +1247,7 @@
     /* 主视觉 + 状态 + 快捷互动 */
     h += '<div class="pg-hero">'
       + '<div class="pg-stage"><div class="pg-cat" id="pgCat"></div>'
-      + '<div class="pg-badge">' + L.tierText(T) + ' · 活力 ' + Math.round(v) + '</div></div>'
+      + '<div class="pg-badge">' + L.tierText(T) + ' · 今日状态 ' + Math.round(v) + '</div></div>'
       + '<div class="pg-side">'
       + '<div class="pg-name">' + L.esc(p.name) + '<span class="pp-lv">' + lv + '</span></div>'
       + '<div class="pp-bars">' + bar('🍚 饱食', p.hunger, 'h') + bar('💗 亲密', p.intimacy, 'i')
@@ -1380,6 +1582,7 @@
     if (!L) return;
     var p = ensure();
     decay();
+    settleGrowth();
     var v = L.vitality();
     if (cat) {
       cat.setVitality(v);
@@ -1487,6 +1690,9 @@
     renderPage: renderPage,
     shopHTML: shopHTML,      /* 「商城」整页用 */
     shopAct: shopAct,
+    statsHTML: statsHTML,    /* 「我的」页的宠物数值总览 */
+    dimsHTML: dimsHTML,
+    onRecord: onRecord,
     open: function (what, tab) { if (!booted) boot(); openPanel(tab); },
     close: closePanel,
 
