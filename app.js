@@ -86,6 +86,7 @@ function blankState(){
     pet: {},            // 伙伴（由 pet.js 负责默认值与演化）
     oneThing: null,     // 今天一件：{date,text,done,dumpId?}
     restDays: [],       // 休息日：['YYYY-MM-DD',...] 手动记账，只能往回补不能往未来
+    softLandOff: '',    // 回归日他点过「看全部待办」的日期（当天不再收起待办）
     seeded: true,       // 标记：已初始化过（避免老库升级时被重新播种）
     settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
   };
@@ -164,6 +165,7 @@ function migrate(){
   s.settings = s.settings || {};
   if(s.oneThing === undefined) s.oneThing = null;
   s.restDays = s.restDays || [];        /* 老存档读出来没有这个字段，必须补上 */
+  if(s.softLandOff === undefined) s.softLandOff = '';
 
   /* 迁移旧 v1 数据中的 dumps/weather/companion/community/settings */
   if(!s.dumps.length && s.dumps_v1) s.dumps = s.dumps_v1;
@@ -1247,6 +1249,40 @@ function takeRestDay(d){
   return true;
 }
 
+/* ================= 软着陆：休息之后的回归日 =================
+   真正让人放弃的瞬间，不是休息那天，是**休完第二天早上打开 app 那一刻**。
+   迎面一句"你有 5 项待办、3 个未达标"，昨天那一天就白休了。
+
+   所以回归日做两件事：
+     1. 顶部换成一句话 + 一个按钮，直接指向「今天一件事」（不铺开待办）
+     2. 把「今天还没动」那块收起来 —— 它是纯粹的待办压力源
+   其余功能照常（快捷打卡、倾倒台、情绪气象都还在）：不是把 app 伪装成坏掉的样子，
+   只是换个入口。他点「看全部待办」就（本次会话内）恢复原样，选择权留给他。
+   只影响这一天：判断条件是"昨天是休息日"，过了零点自然消失。 */
+/* 他点了「看全部待办」就把今天标记掉 —— 存进 STATE 而不是内存变量，
+   否则刷新/重开 app 那张卡又冒出来，等于没听他的。 */
+
+/* 昨天往前连着休息了几天（不含今天） */
+function restStreakBeforeToday(){
+  var n = 0, cur = addDays(today(),-1);
+  while(isRestDay(cur) && n < 60){ n++; cur = addDays(cur,-1); }
+  return n;
+}
+/* 今天是回归日吗：昨天在休息、今天不是（今天还休就没必要"回来"），且他没点过"看全部" */
+function isSoftLanding(){
+  return STATE.softLandOff !== today() && !isRestToday() && restStreakBeforeToday() > 0;
+}
+function softLandingCard(){
+  var d = restStreakBeforeToday();
+  return '<div class="card"><h2>🌤 回来了</h2>'
+    + '<div class="hint">' + (d === 1 ? '昨天休息得怎么样？' : ('你歇了 ' + d + ' 天，欢迎回来。')) + '</div>'
+    + '<div class="hint">不用补昨天的，也不用追进度。今天挑一件最小的开始就行 —— 做了算数，不做也算数。</div>'
+    + '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">'
+    + '<button class="btn primary sm" data-act="softLandOne">挑今天的一件事</button>'
+    + '<button class="btn ghost sm" data-act="softLandShowAll">看全部待办</button>'
+    + '</div></div>';
+}
+
 /* 补记入口：最近 7 天里还没记过的、最多显示 3 个，别把界面塞满 */
 function pastRestChips(){
   var out = [];
@@ -1380,9 +1416,28 @@ function viewToday(){
     + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
-  /* 每周任务：今天还没动的那几个（伙伴已改为全局悬浮挂件，见右下角） */
+  /* 顶部第一块：休息中 / 休息完刚回来 —— 两者互斥，撑不住和刚缓过来要看到的东西不一样。
+     ⚠️ 必须排在最前面：它比"今天还没动"更该被先看到。 */
+  if(isRestToday()){
+    h += '<div class="card"><h2>🛋 今天休息</h2>'
+      + '<div class="hint">已经在账上了。今天不打卡也<b>不会断</b>连续天数，宠物也不掉心情。</div>'
+      + '<div class="hint">想动一动不用忍着 —— 打卡随时可以，多记一笔不亏。</div></div>';
+  } else if(isSoftLanding()){
+    h += softLandingCard();
+  } else {
+    /* ⚠️ 按钮放左边：右下角是悬浮的宠物挂件，卡片底部的右侧按钮会被它盖住（真踩过） */
+    h += '<div class="card"><div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">'
+      + '<button class="btn ghost sm" data-act="restToday">今天休息</button>'
+      + '<span class="muted" style="font-size:12px"><b>今天撑不住？</b>记一天休息：连续天数冻结，宠物回点精力。</span>'
+      + '</div>'
+      + '<div class="hint" style="margin-top:8px">休息是记账、不是跳过：一天只能记一次，记了不能撤。'
+      + pastRestChips() + '</div></div>';
+  }
+
+  /* 每周任务：今天还没动的那几个（伙伴已改为全局悬浮挂件，见右下角）
+     回归日先把它收起来 —— 它是最直接的待办压力源，而他刚休息完。 */
   var weeklyTodo = STATE.weeklyTasks.filter(function(w){ return w.enabled && !isWeeklyCheckedToday(w); });
-  if(weeklyTodo.length){
+  if(weeklyTodo.length && !isSoftLanding()){
     h += '<div class="card"><div class="row between"><h2>🏃 今天还没动</h2>'
       + '<span class="muted" style="font-size:12px">每日目标 · 本周达标</span></div>'
       + '<div class="hint">打开这里就是胜利。打卡后选「已完成」直接记账，或选「现在开始」跟着倒计时做。</div>';
@@ -1441,22 +1496,6 @@ function viewToday(){
       + '<button class="btn primary" data-act="newOne">'+icon('plus')+' 定一件</button>';
   }
   h += '</div>';
-
-  /* 休息日：撑不住的那天，他一眼就该看见这个按钮 —— 所以放在最前面。
-     休息中不隐藏打卡：想动一动不用忍着，多记一笔不亏。 */
-  if(isRestToday()){
-    h += '<div class="card"><h2>🛋 今天休息</h2>'
-      + '<div class="hint">已经在账上了。今天不打卡也<b>不会断</b>连续天数，宠物也不掉心情。</div>'
-      + '<div class="hint">想动一动不用忍着 —— 打卡随时可以，多记一笔不亏。</div></div>';
-  }else{
-    /* ⚠️ 按钮放左边：右下角是悬浮的宠物挂件，卡片底部的右侧按钮会被它盖住（真踩过） */
-    h += '<div class="card"><div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">'
-      + '<button class="btn ghost sm" data-act="restToday">今天休息</button>'
-      + '<span class="muted" style="font-size:12px"><b>今天撑不住？</b>记一天休息：连续天数冻结，宠物回点精力。</span>'
-      + '</div>'
-      + '<div class="hint" style="margin-top:8px">休息是记账、不是跳过：一天只能记一次，记了不能撤。'
-      + pastRestChips() + '</div></div>';
-  }
 
   /* 快捷打卡区：启用的日常任务 + 每周任务 */
   var activeDailies = STATE.dailyTasks.filter(function(d){return d.enabled;});
@@ -2411,6 +2450,19 @@ var App = {
     render();
   },
   restPast:function(d){ if(takeRestDay(d)){ toast('已把 '+d+' 记成休息日'); render(); } },
+  /* 软着陆：只把他往「最小的一步」上引，不铺开待办 */
+  softLandOne:function(){
+    var ot = STATE.oneThing;
+    if(ot && ot.date===today() && !ot.done){
+      CUR_TAB='today'; render();
+      var el = document.querySelector('.one-thing');
+      if(el) el.scrollIntoView({block:'center', behavior:'smooth'});
+      toast('今天的一件事已经定好了，去做它就行');
+      return;
+    }
+    App.newOne();
+  },
+  softLandShowAll:function(){ STATE.softLandOff = today(); save(); render(); },
   refreshDigest:function(){
     toast('正在拉取最新数据…');
     fetchDigest(true).then(function(){
@@ -2701,6 +2753,8 @@ document.addEventListener('click',function(e){
   else if(act==='quickCheckin') App.quickCheckin(id);
   else if(act==='restToday') App.restToday();
   else if(act==='restPast') App.restPast(el.dataset.date);
+  else if(act==='softLandOne') App.softLandOne();
+  else if(act==='softLandShowAll') App.softLandShowAll();
 
   /* 倾倒台 / 情绪气象 */
   else if(act==='dumpAdd') App.dumpAdd();
