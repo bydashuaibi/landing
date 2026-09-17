@@ -85,6 +85,7 @@ function blankState(){
     memories: [],       // 记忆库：{id,at,kind,text,tags}
     pet: {},            // 伙伴（由 pet.js 负责默认值与演化）
     oneThing: null,     // 今天一件：{date,text,done,dumpId?}
+    restDays: [],       // 休息日：['YYYY-MM-DD',...] 手动记账，只能往回补不能往未来
     seeded: true,       // 标记：已初始化过（避免老库升级时被重新播种）
     settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
   };
@@ -162,6 +163,7 @@ function migrate(){
   s.pet = s.pet || {};
   s.settings = s.settings || {};
   if(s.oneThing === undefined) s.oneThing = null;
+  s.restDays = s.restDays || [];        /* 老存档读出来没有这个字段，必须补上 */
 
   /* 迁移旧 v1 数据中的 dumps/weather/companion/community/settings */
   if(!s.dumps.length && s.dumps_v1) s.dumps = s.dumps_v1;
@@ -395,7 +397,8 @@ function checkAutoPause(){
       var dayBefore = addDays(yesterday,-1);
       var hasDayBefore = g.records.some(function(r){return r.date===dayBefore;});
       var hasToday = g.records.some(function(r){return r.date===today();});
-      if(!hasDayBefore && !hasToday){
+      /* 休息日不算"漏"：昨天或前天有休息记录，就别暂停他 */
+      if(!hasDayBefore && !hasToday && !isRestDay(yesterday) && !isRestDay(dayBefore)){
         g.status='paused';
         g.pausedAt=today();
         paused.push(g.name);
@@ -1186,7 +1189,7 @@ function addMemory(kind, text, tags){
   STATE.memories.push({id:uid('m'), at:Date.now(), kind:kind||'note', text:text, tags:tags||[]});
   if(STATE.memories.length>1000) STATE.memories.splice(0, STATE.memories.length-1000);
 }
-var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日'};
+var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日', rest:'休息'};
 
 /* ================= 赛博伙伴：活力全部来自你已经做的事 ================= */
 /* 设计原则：不新增「喂猫」任务。你倾倒、打卡、完成一件，它自然长。
@@ -1200,9 +1203,60 @@ function catLandingDays(){
     (t.records||[]).forEach(function(r){ if(r.date) days[r.date] = 1; });
   });
   STATE.weather.forEach(function(w){ if(w.date) days[w.date] = 1; });
-  var n = 0, cur = today();
-  while(days[cur]){ n++; cur = addDays(cur,-1); }
+  var n = 0, cur = today(), guard = 0;
+  /* 今天正在休息 → 从昨天接着数。
+     否则休息当天会显示成 0，那就成了"休息 = 连续天数归零"，跟这个功能的初衷正好相反。 */
+  while(isRestDay(cur) && guard++ < 4000) cur = addDays(cur,-1);
+  /* 夹在中间的休息日：链条照旧往下走，但**不计入**。
+     算成打卡 → 数字虚高，自己知道是假的，这数字就废了；
+     直接断掉 → 等于惩罚休息。冻结是唯一诚实的做法。 */
+  while((days[cur] || isRestDay(cur)) && guard++ < 4000){
+    if(days[cur]) n++;
+    cur = addDays(cur,-1);
+  }
   return n;
+}
+
+/* ================= 休息日 =================
+   为什么要有这个：连续着陆天数、长周期自动暂停、日常未打卡、宠物心情衰减
+   这四处都会因为你休息一天而"惩罚"你。四个都得堵上，缺一个这功能就是假的。
+
+   但休息不能变成"跳过" —— 一按所有红色消失，按第七次这个 app 就没说服力了。
+   所以它是"记账"：
+     · 一个自然日只能记一次，写进 restDays，并写一条记忆留痕
+     · 没有撤销入口（有代价的行为才有信息量）
+     · 连续天数"冻结"：不减，也不算成打卡（不算成打卡是为了不自欺、不吹牛）
+     · 休息日给宠物回点精力/心情（休息本来就该恢复）
+     · 连续休息递减，免得变成刷数值的手段
+   补记只能往回（最多 7 天），绝不往未来标 —— "下周三我要休息"只会变成提前找退路。 */
+function isRestDay(d){ return (STATE.restDays||[]).indexOf(d) >= 0; }
+function isRestToday(){ return isRestDay(today()); }
+function restTotal(){ return (STATE.restDays||[]).length; }
+
+function takeRestDay(d){
+  d = d || today();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  if(d > today()) return false;              /* 不许往未来标 */
+  STATE.restDays = STATE.restDays || [];
+  if(STATE.restDays.indexOf(d) >= 0) return false;   /* 一天只能记一次 */
+  STATE.restDays.push(d);
+  STATE.restDays.sort();
+  addMemory('rest', '给这天记了休息：'+d+(d===today()?'（今天）':'（补记）'), ['休息']);
+  save();
+  if(window.Pet && Pet.onRestDay) Pet.onRestDay(d);   /* 休息了就该回点血 */
+  return true;
+}
+
+/* 补记入口：最近 7 天里还没记过的、最多显示 3 个，别把界面塞满 */
+function pastRestChips(){
+  var out = [];
+  for(var i=1;i<=7 && out.length<3;i++){
+    var d = addDays(today(),-i);
+    if(isRestDay(d)) continue;
+    out.push('<button class="btn ghost sm" data-act="restPast" data-date="'+d+'">'+d.slice(5)+'</button>');
+  }
+  if(!out.length) return '';
+  return '<span style="margin-left:7px">补前几天：</span>' + out.join(' ');
 }
 
 function catVitality(){
@@ -1387,6 +1441,22 @@ function viewToday(){
       + '<button class="btn primary" data-act="newOne">'+icon('plus')+' 定一件</button>';
   }
   h += '</div>';
+
+  /* 休息日：撑不住的那天，他一眼就该看见这个按钮 —— 所以放在最前面。
+     休息中不隐藏打卡：想动一动不用忍着，多记一笔不亏。 */
+  if(isRestToday()){
+    h += '<div class="card"><h2>🛋 今天休息</h2>'
+      + '<div class="hint">已经在账上了。今天不打卡也<b>不会断</b>连续天数，宠物也不掉心情。</div>'
+      + '<div class="hint">想动一动不用忍着 —— 打卡随时可以，多记一笔不亏。</div></div>';
+  }else{
+    /* ⚠️ 按钮放左边：右下角是悬浮的宠物挂件，卡片底部的右侧按钮会被它盖住（真踩过） */
+    h += '<div class="card"><div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">'
+      + '<button class="btn ghost sm" data-act="restToday">今天休息</button>'
+      + '<span class="muted" style="font-size:12px"><b>今天撑不住？</b>记一天休息：连续天数冻结，宠物回点精力。</span>'
+      + '</div>'
+      + '<div class="hint" style="margin-top:8px">休息是记账、不是跳过：一天只能记一次，记了不能撤。'
+      + pastRestChips() + '</div></div>';
+  }
 
   /* 快捷打卡区：启用的日常任务 + 每周任务 */
   var activeDailies = STATE.dailyTasks.filter(function(d){return d.enabled;});
@@ -1786,6 +1856,7 @@ function viewMe(){
     + '<div>每周：<b>'+STATE.weeklyTasks.filter(function(w){return w.enabled;}).length+'</b> 进行中</div>'
     + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
     + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
+    + '<div>休息日：<b>'+restTotal()+'</b> 天</div>'
     + '<div>小鱼干：<b>'+petState().fish+'</b> 条</div>'
     + '<div>记忆库：<b>'+STATE.memories.length+'</b> 条</div></div>'
     + svgMood + '</div>';
@@ -2333,6 +2404,13 @@ var App = {
 
   /* --- 日报 --- */
   goDigest:function(){ CUR_TAB='digest'; render(); },
+  /* 休息日：没有取消入口 —— 这是刻意的，有代价的行为才有信息量 */
+  restToday:function(){
+    if(takeRestDay(today())) toast('今天记成休息日了。连续天数冻结，宠物也回点血。');
+    else toast('今天已经记过了');
+    render();
+  },
+  restPast:function(d){ if(takeRestDay(d)){ toast('已把 '+d+' 记成休息日'); render(); } },
   refreshDigest:function(){
     toast('正在拉取最新数据…');
     fetchDigest(true).then(function(){
@@ -2621,6 +2699,8 @@ document.addEventListener('click',function(e){
   else if(act==='changeOne') App.changeOne();
   else if(act==='newOne') App.newOne();
   else if(act==='quickCheckin') App.quickCheckin(id);
+  else if(act==='restToday') App.restToday();
+  else if(act==='restPast') App.restPast(el.dataset.date);
 
   /* 倾倒台 / 情绪气象 */
   else if(act==='dumpAdd') App.dumpAdd();

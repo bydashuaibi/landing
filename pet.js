@@ -152,8 +152,11 @@
       if (night > 0 && t && !t.finished) p.energy = clamp(p.energy - night * 6, 0, 100);
     }
 
+    /* 休息日不衰减心情：他都说了在休息，宠物凭什么闹情绪。
+       不处理的话，「休息一天」会导致猫心情变差 —— 那就成了最讽刺的 bug。 */
     var idleDays = (now - p.lastInteractAt) / 86400000;
-    if (idleDays > 2) {
+    var restingToday = (ST().restDays || []).indexOf(L.ymd(new Date(now))) >= 0;
+    if (idleDays > 2 && !restingToday) {
       var over = Math.min(14, idleDays - 2);   /* 离线再久也最多结算两周 */
       p.mood = clamp(Math.max(20, p.mood - over * 5), 0, 100);
     }
@@ -653,6 +656,25 @@
       + '<div class="hint" style="margin-top:12px">解锁的小动作：'
       + (acts.length ? acts.join(' · ') : '还没有 —— 灵性 50 解锁「念诗」，心情 80 解锁「一起打滚」')
       + '</div></div>';
+  }
+
+  /* 休息日回血：休息本来就该恢复，这是三维度里唯一"什么都不做但状态变好"的一天。
+     ⚠️ 连续休息要递减（第 1 天 +15 / 第 2-3 天 +8 / 之后不加），
+     否则休息会变成刷数值的手段 —— 休息是用来恢复的，不是用来养的。 */
+  function onRestDay(d) {
+    var p = ensure();
+    var rests = ST().restDays || [];
+    if (rests.indexOf(d) < 0) return;
+    var run = 0, cur = d;
+    while (rests.indexOf(cur) >= 0 && run < 30) { run++; cur = L.addDays(cur, -1); }
+    var eGain = run === 1 ? 15 : (run <= 3 ? 8 : 0);
+    var mGain = run === 1 ? 8 : (run <= 3 ? 4 : 0);
+    if (eGain > 0) {
+      p.energy = clamp(p.energy + eGain, 0, 100);
+      p.mood = clamp(p.mood + mGain, 0, 100);
+      p.lastInteractAt = Date.now();   /* 休息也算"有联系"，别让衰减逻辑误判 */
+      L.save();
+    }
   }
 
   /* 记完一次计时 → 给它回点精力（这是 B 档里精力的主要来源） */
@@ -1190,7 +1212,7 @@
 
   function tabMem() {
     var all = ST().memories || [];
-    var KINDS = [['', '全部'], ['chat', '对话'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['note', '记录']];
+    var KINDS = [['', '全部'], ['chat', '对话'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['note', '记录'], ['rest', '休息']];
     var h = '<div class="pp-sec">它记得你做的事，也记得你说过的话。共 ' + all.length + ' 条。</div>';
     h += '<div class="pp-tabs">' + KINDS.map(function (k) {
       return '<button class="pp-tab' + (memKind === k[0] ? ' on' : '') + '" data-pact="memkind" data-k="' + k[0] + '">' + k[1] + '</button>';
@@ -1697,6 +1719,7 @@
     statsHTML: statsHTML,    /* 「我的」页的宠物数值总览 */
     dimsHTML: dimsHTML,
     onRecord: onRecord,
+    onRestDay: onRestDay,
     open: function (what, tab) { if (!booted) boot(); openPanel(tab); },
     close: closePanel,
 
