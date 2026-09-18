@@ -225,9 +225,13 @@ class JwglClient {
     const list = [];
     const hits = String(menuHtml || '').match(/\/kbcx\/[A-Za-z0-9_]+\.html[^"'\s\\]*/g) || [];
     hits.forEach((u) => { if (list.indexOf(u) < 0) list.push(u); });
+    /* 扫菜单拿到的排最前（那是本校真实入口）；下面是主流部署形态兜底。
+       注意本校登录页是 /xtgl/...（**不带 /jwglxt 前缀**），所以无前缀候选放前面。 */
     [
+      '/kbcx/xskbcx_cxXsgrkb.html?gnmkdm=N2151',
       '/kbcx/xskbcx_cxXsKb.html?gnmkdm=N2151',
-      '/kbcx/xskbcx_cxXsgrkb.html?gnmkdm=N2151'
+      '/jwglxt/kbcx/xskbcx_cxXsgrkb.html?gnmkdm=N2151',
+      '/jwglxt/kbcx/xskbcx_cxXsKb.html?gnmkdm=N2151'
     ].forEach((u) => { if (list.indexOf(u) < 0) list.push(u); });
     return list;
   }
@@ -235,7 +239,16 @@ class JwglClient {
   /* xnm = 学年（2026 表示 2026-2027 学年）；xqm = 3 第一学期 / 12 第二学期 / 16 第三学期 */
   async fetchSchedule(xnm, xqm) {
     const menu = await this.request('/xtgl/index_initMenu.html');
-    if (/login_slogin/i.test(menu.body)) return { ok: false, error: '未登录或会话已过期', expired: true };
+    if (/login_slogin/i.test(menu.body) || menu.status === 302) {
+      return { ok: false, error: '未登录或会话已过期', expired: true };
+    }
+
+    /* ⚠️ 正方有个隐蔽要求：查询前**必须先 GET 一次功能首页**，服务端会把
+       gnmkdm（功能编号）注册进本次会话；跳过这步直接 POST，很多版本会回空或报错。
+       这步失败了不要紧，继续往下试。 */
+    try {
+      await this.request('/kbcx/xskbcx_cxXskbcxIndex.html?gnmkdm=N2151&layout=default');
+    } catch (e) { /* 注册失败不致命，后面 POST 照样试 */ }
 
     const tried = [];
     for (const url of this._scheduleCandidates(menu.body)) {
@@ -243,12 +256,23 @@ class JwglClient {
       try {
         r = await this.request(url, {
           method: 'POST',
-          body: { xnm: String(xnm || ''), xqm: String(xqm || '') },
-          headers: { 'X-Requested-With': 'XMLHttpRequest', Referer: MENU_URL }
+          /* ⚠️ kzlx=ck（查看）和 xsdm=（空）是正方新版课表接口要的参数，漏了可能回空数据 */
+          body: { xnm: String(xnm || ''), xqm: String(xqm || ''), kzlx: 'ck', xsdm: '' },
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            Referer: BASE + '/kbcx/xskbcx_cxXskbcxIndex.html?gnmkdm=N2151&layout=default'
+          }
         });
       } catch (e) {
         tried.push({ url: url, error: String(e.message || e) });
         continue;
+      }
+      /* ⚠️ 901 不是标准 HTTP 码，是本校服务端的特殊响应，实测含义明确：
+         未登录时，凡是带 X-Requested-With 的 AJAX 请求一律回 901（不带则 302 踢登录页）。
+         所以它**不代表路径错**，而是「这次请求的会话没被认」。直接判定会话失效。 */
+      if (r.status === 901) {
+        tried.push({ url: url, status: 901, note: '会话未被认可（901）' });
+        return { ok: false, error: '会话已失效，请重新登录', expired: true, tried: tried };
       }
       let json = null;
       try { json = JSON.parse(r.body); } catch (e) { /* 不是 JSON */ }
@@ -257,9 +281,12 @@ class JwglClient {
         status: r.status,
         length: r.body.length,
         json: !!json,
+        kbCount: (json && json.kbList) ? json.kbList.length : undefined,
         head: json ? undefined : stripTags(r.body).slice(0, 100)
       });
-      if (json && (json.kbList || Array.isArray(json))) {
+      /* 判据放宽：只要回了 JSON 且带 kbList 就算接口对了 —— 哪怕这次 0 条，
+         也说明是学期参数不对，而不是路径不对（这两件事排查方向完全不同）。 */
+      if (json && json.kbList) {
         return { ok: true, url: url, raw: json, tried: tried };
       }
     }

@@ -347,14 +347,25 @@ function currentTerm(now) {
 
 /* 正方的 kbList → 我们自己认的结构。
    ⚠️ 刻意**不带 raw**：那会把整份原始条目塞进渲染进程、进而写进 localStorage。 */
+const WD_NAMES = {
+  '星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4,
+  '星期五': 5, '星期六': 6, '星期日': 7, '星期天': 7, '周天': 7
+};
+/* 星期几：优先用数字字段 xqj，没有就退回中文名 xqjmc（不同版本给的字段不一样） */
+function weekdayOf(k) {
+  const n = parseInt(k.xqj, 10);
+  if (n >= 1 && n <= 7) return n;
+  return WD_NAMES[k.xqjmc] || 0;
+}
 function parseSchedule(raw) {
   const list = (raw && raw.kbList) || [];
   const items = list.map((k, i) => ({
     id: 'c' + i,
     name: k.kcmc || '',
-    teacher: k.xm || '',
-    room: k.xqmc || k.cdmc || '',
-    weekday: parseInt(k.xqj, 10) || 0,        // 1=周一 … 7=周日
+    teacher: k.xm || k.jsxm || '',
+    /* ⚠️ 教室是 cdmc（场地名称）。xqmc 在正方里是**校区名**，别当教室用，只能兜底。 */
+    room: k.cdmc || k.jxdd || k.xqmc || '',
+    weekday: weekdayOf(k),                     // 1=周一 … 7=周日
     periods: k.jcs || '',                      // 节次，如 "1-2"
     weeks: k.zcd || '',                        // 周次，如 "1-16周"
     credit: k.xf || ''
@@ -439,6 +450,14 @@ ipcMain.handle('jwgl:schedule', async (e, opts) => {
     const r = await jwglClient.fetchSchedule(t.xnm, t.xqm);
     if (!r.ok) {
       if (r.expired) { jwglClient = null; clearSession(); return { ok: false, needLogin: true, error: r.error }; }
+      /* 失败也要落盘：把每个候选路径的状态码留下来，事后一眼看出是路径错还是参数错。
+         （只记 URL 和状态码，不含任何凭据） */
+      try {
+        ensureDataDir();
+        fs.writeFileSync(path.join(DATA_DIR, 'jwgl-schedule-fail.json'), JSON.stringify({
+          at: new Date().toISOString(), error: r.error, term: currentTerm(new Date()), tried: r.tried
+        }, null, 2));
+      } catch (e2) { /* 落盘失败不影响功能 */ }
       return { ok: false, error: r.error, tried: r.tried };
     }
     const parsed = parseSchedule(r.raw);
