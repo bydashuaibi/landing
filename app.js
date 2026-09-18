@@ -1531,11 +1531,62 @@ function ensureSchedule(force){
     }
   }).catch(function(){ _schedBusy = false; });
 }
+/* --- 教学周：算出「这周是第几周」，并按周次表达式判断这周上不上 --- */
+var DEFAULT_WEEK = 3;   /* master 说这周是第三周 —— 没配过就按它反推第 1 周是哪天 */
+function mondayOf(d){
+  var t = new Date(d); t.setHours(0,0,0,0);
+  var wd = t.getDay() === 0 ? 7 : t.getDay();
+  t.setDate(t.getDate() - (wd - 1));
+  return t;
+}
+/* 第 1 周的周一。没配过就按「本周 = 第 3 周」反推，之后每周自动 +1，不用他手动改 */
+function termStart(){
+  var s = STATE.schedule;
+  if(s && s.termStart){
+    var d = new Date(s.termStart);
+    if(!isNaN(d.getTime())) return d;
+  }
+  var m = mondayOf(new Date());
+  m.setDate(m.getDate() - (DEFAULT_WEEK - 1) * 7);
+  return m;
+}
+function currentWeek(){
+  var d0 = mondayOf(termStart()), d1 = mondayOf(new Date());
+  return Math.floor((d1 - d0) / 604800000) + 1;
+}
+/* 周次表达式 → 这周上不上。见过的格式：1-16周 / 1-16周(单) / 1-8周,10-16周 / 第3周
+   ⚠️ 认不出来时**一律返回 true**（宁可多显示一节，也别把要上的课藏了） */
+function weekHit(weeks, w){
+  var s = String(weeks || '');
+  if(!s) return true;
+  if(/单/.test(s) && w % 2 !== 1) return false;
+  if(/双/.test(s) && w % 2 !== 0) return false;
+  var hit = false, any = false, m;
+  var re = /(\d+)\s*[-~－]\s*(\d+)/g;
+  while((m = re.exec(s))){ any = true; if(w >= +m[1] && w <= +m[2]) hit = true; }
+  var rest = s.replace(/\d+\s*[-~－]\s*\d+/g, ' ');
+  var re2 = /(\d+)/g;
+  while((m = re2.exec(rest))){ any = true; if(+m[1] === w) hit = true; }
+  return any ? hit : true;
+}
+function periodNum(p){
+  var m = /(\d+)/.exec(String(p || ''));
+  return m ? +m[1] : 99;
+}
+/* 课程色：按名字取一个稳定色相 —— 同一门课永远是同一个颜色，今天明天看起来都认识 */
+var SCHED_HUES = [210, 12, 145, 42, 268, 190, 330, 96];
+function courseHue(name){
+  var h = 0, s = String(name || '');
+  for(var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000003;
+  return SCHED_HUES[h % SCHED_HUES.length];
+}
 function todayCourses(){
   var s = STATE.schedule;
   if(!s || !s.items) return [];
-  var wd = dayOfWeek();
-  return s.items.filter(function(c){ return c.weekday === wd; });
+  var wd = dayOfWeek(), w = currentWeek();
+  return s.items.filter(function(c){
+    return c.weekday === wd && weekHit(c.weeks, w);
+  }).sort(function(a, b){ return periodNum(a.periods) - periodNum(b.periods); });
 }
 function renderTodayCourses(){
   if(!hasJwglBridge()) return '';
@@ -1546,22 +1597,32 @@ function renderTodayCourses(){
       + '<button class="btn ghost sm" data-act="openSettings">去连接</button></div>'
       + '<div class="hint">连上教务系统后，这里会显示今天的课。学号密码用系统加密存在本机，不上传、不进代码。</div></div>';
   }
+  var w = currentWeek();
   var list = todayCourses();
+  /* 同一天里被周次过滤掉的有几节 —— 说一声，别让他以为课丢了 */
+  var allDay = (s.items || []).filter(function(c){ return c.weekday === dayOfWeek(); });
+  var off = Math.max(0, allDay.length - list.length);
   var h = '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
-    + '<span class="muted" style="font-size:12px">' + esc(s.termCode || '') + '</span></div>';
+    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + list.length + ' 节</span></div>';
   if(!list.length){
-    h += '<div class="hint">今天没课 —— 那时间就都是你自己的。</div>';
+    h += '<div class="hint">今天没课'
+      + (off ? '（第 ' + w + ' 周不上的 ' + off + ' 节已收起）' : '')
+      + ' —— 那时间就都是你自己的。</div>';
   } else {
-    h += '<div class="sched-list">';
+    h += '<div class="sched-grid">';
     list.forEach(function(c){
-      h += '<div class="sched-row">'
-        + '<span class="sr-time">' + esc(c.periods) + '节</span>'
-        + '<span class="sr-main"><b>' + esc(c.name) + '</b>'
-        + (c.room ? '<i>' + esc(c.room) + '</i>' : '') + '</span>'
-        + '<span class="sr-meta">' + esc(c.weeks || '') + '</span>'
+      var hue = courseHue(c.name);
+      h += '<div class="sched-block" style="--bc:hsl(' + hue + ',62%,52%);'
+        + '--bc-soft:hsla(' + hue + ',62%,52%,.13)">'
+        + '<div class="sb-per">第 ' + esc(c.periods) + ' 节</div>'
+        + '<div class="sb-name">' + esc(c.name) + '</div>'
+        + (c.room ? '<div class="sb-room">📍 ' + esc(c.room) + '</div>' : '')
+        + (c.teacher ? '<div class="sb-tea">👤 ' + esc(c.teacher) + '</div>' : '')
         + '</div>';
     });
     h += '</div>';
+    if(off) h += '<div class="hint" style="margin-top:9px">本周（第 ' + w + ' 周）不上的 '
+      + off + ' 节已收起 —— 只留今天真要去的。</div>';
   }
   return h + '</div>';
 }
@@ -1613,8 +1674,15 @@ function viewToday(){
     + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
-  /* 天气条：一行轻环境信息，夹在 hero 和休息卡之间 —— 不抢「撑不住」的位置 */
+  /* 天气条：一行轻环境信息，夹在 hero 和下面内容之间 */
   h += renderWxBar();
+
+  /* 课表置顶：今天真有课，就该第一眼看到。
+     ⚠️ 例外：今天休息 / 刚休息回来 —— 那两张情绪卡比课表更该先被看到，课表让位排到它们后面。
+        （这个应用的重点是「别被压垮」，课表再急也不能把「撑不住」埋了） */
+  var schedCard = renderTodayCourses();
+  var emotionFirst = isRestToday() || isSoftLanding();
+  if(!emotionFirst) h += schedCard;
 
   /* 顶部第一块：休息中 / 休息完刚回来 —— 两者互斥，撑不住和刚缓过来要看到的东西不一样。
      ⚠️ 必须排在最前面：它比"今天还没动"更该被先看到。 */
@@ -1654,8 +1722,9 @@ function viewToday(){
     h += '</div>';
   }
 
-  /* 今天的课（连了教务系统才出现；没连就不打扰他） */
-  h += renderTodayCourses();
+  /* 今天的课：非情绪优先时已经插在天气条下面了，这里补上让位的情况
+     （连了教务系统才出现；没连 / 今天没课就不打扰他） */
+  if(emotionFirst) h += schedCard;
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -2905,9 +2974,23 @@ var App = {
     var s=STATE.settings;
     openSheet('<h2>'+icon('cog')+' 设置</h2>'
       + '<div class="field"><label>GitHub Token（可选，提升日报拉取限额）</label><input id="s_gh" type="password" value="'+esc(s.githubToken||'')+'" placeholder="不填也能拉取日报"></div>'
-      + '<div class="field"><label>AI 接口地址（baseUrl）</label><input id="s_base" value="'+esc(s.aiBaseUrl||'')+'" placeholder="https://api.openai.com/v1"></div>'
-      + '<div class="field"><label>API Key</label><input id="s_key" type="password" value="'+esc(s.aiKey||'')+'" placeholder="sk-..."></div>'
-      + '<div class="field"><label>模型名</label><input id="s_model" value="'+esc(s.aiModel||'')+'" placeholder="gpt-4o-mini"></div>'
+      + '<div class="field"><label>AI 接口（陪伴、宠物聊天共用）</label>'
+      +   '<div class="hint" style="margin:0 0 8px">现在接的是 <b>DeepSeek</b>：点一下按钮自动填地址和模型，'
+      +   '只粘 Key 就行。填完记得点「测试连接」，能省掉后面一堆莫名其妙的报错。</div>'
+      +   '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+      +     '<button class="btn ghost sm" id="s_ai_ds">用 DeepSeek</button>'
+      +     '<button class="btn ghost sm" id="s_ai_oai">用 OpenAI</button>'
+      +   '</div>'
+      +   '<input id="s_base" value="'+esc(s.aiBaseUrl||'')+'" placeholder="https://api.deepseek.com/v1">'
+      +   '<input id="s_key" type="password" value="'+esc(s.aiKey||'')+'" placeholder="sk-…（API Key）" style="margin-top:8px">'
+      +   '<input id="s_model" value="'+esc(s.aiModel||'')+'" placeholder="deepseek-chat" style="margin-top:8px">'
+      +   '<div class="row" style="gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap">'
+      +     '<button class="btn ghost sm" id="s_ai_test">测试连接</button>'
+      +     '<span id="s_ai_tip" class="muted" style="font-size:12px"></span>'
+      +   '</div>'
+      +   '<div class="hint" style="margin-top:6px">Key 存在本机浏览器存储里（明文）。'
+      +   '它是你自己的机器、自己的 key，但导出的备份文件别随手发给别人。</div>'
+      + '</div>'
       + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="s_reset">清空全部数据</button><button class="btn primary" id="s_save">保存</button></div>'
       + '<div class="row between" style="margin-top:14px;gap:10px;flex-wrap:wrap">'
       + '<button class="btn ghost sm" id="s_export">导出备份</button>'
@@ -2944,11 +3027,58 @@ var App = {
       }
     }
 
+    /* --- AI 配置：一键填 DeepSeek / OpenAI + 测试连接 --- */
+    function aiTip(t){ var e = $('s_ai_tip'); if(e) e.textContent = t || ''; }
+    var dsBtn = $('s_ai_ds'), oaiBtn = $('s_ai_oai'), testBtn = $('s_ai_test');
+    if(dsBtn) dsBtn.onclick = function(){
+      $('s_base').value = 'https://api.deepseek.com/v1';
+      $('s_model').value = 'deepseek-chat';
+      aiTip('已填 DeepSeek —— 粘上 Key 点「测试连接」');
+      $('s_key').focus();
+    };
+    if(oaiBtn) oaiBtn.onclick = function(){
+      $('s_base').value = 'https://api.openai.com/v1';
+      $('s_model').value = 'gpt-4o-mini';
+      aiTip('已填 OpenAI —— 粘上 Key 点「测试连接」');
+      $('s_key').focus();
+    };
+    if(testBtn) testBtn.onclick = function(){
+      var base = $('s_base').value.trim(),
+          key  = $('s_key').value.trim(),
+          model= $('s_model').value.trim() || 'deepseek-chat';
+      if(!base || !key){ aiTip('先把地址和 Key 填上'); return; }
+      testBtn.disabled = true; aiTip('连接中…');
+      fetch(base.replace(/\/+$/, '') + '/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({model:model, messages:[{role:'user',content:'只回复一个字：在'}],
+          max_tokens:8, temperature:0})
+      }).then(function(r){
+        return r.ok ? r.json()
+                    : r.text().then(function(t){ return {_err:r.status, _t:String(t).slice(0,200)}; });
+      }).then(function(j){
+        testBtn.disabled = false;
+        if(j._err){
+          var why = j._err === 401 ? 'Key 不对（401）'
+                  : j._err === 404 ? '地址或模型名不对（404）'
+                  : j._err === 402 ? '余额不足（402）'
+                  : ('HTTP ' + j._err);
+          aiTip('✗ ' + why + ' —— ' + (j._t || '').slice(0, 80));
+        } else {
+          var c = j.choices && j.choices[0] && j.choices[0].message.content;
+          aiTip('✓ 通了。模型回：' + String(c || '').slice(0, 24));
+        }
+      }).catch(function(e){
+        testBtn.disabled = false;
+        aiTip('✗ 连不上：' + e.message + '（断网 / 校外 / 地址写错都这样）');
+      });
+    };
+
     $('s_save').onclick=function(){
       STATE.settings.githubToken=$('s_gh').value.trim();
       STATE.settings.aiBaseUrl=$('s_base').value.trim();
       STATE.settings.aiKey=$('s_key').value.trim();
-      STATE.settings.aiModel=$('s_model').value.trim()||'gpt-4o-mini';
+      STATE.settings.aiModel=$('s_model').value.trim()||'deepseek-chat';
       save(); closeSheet(); toast('已保存');
     };
     $('s_reset').onclick=function(){

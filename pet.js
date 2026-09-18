@@ -540,6 +540,8 @@
     return pick(['嗯嗯，我在听。', '然后呢？', '（歪头）', '记下了。', '跟我说说细节？', '这事你以前也提过，我记得。', '喵。']);
   }
 
+  var aiBusy = false;   /* AI 正在想 —— 没有这个，他点完发送要干等几秒，会以为坏了 */
+
   function chat(text) {
     text = (text || '').trim();
     if (!text) return;
@@ -553,10 +555,10 @@
     var cooled = (Date.now() - p.lastChatAt) > 300000;
     if (cooled) { p.lastChatAt = Date.now(); addIntimacy(1); }
     L.save();
-    renderPanel(); refresh();
+    renderPanel(); refresh(); scrollChat();
 
     var hasAI = !!(ST().settings && ST().settings.aiKey);
-    if (hasAI) aiReply();
+    if (hasAI) { aiBusy = true; aiReply(); }
     else setTimeout(function () { pushPet(localReply(text)); }, 420 + Math.random() * 520);
   }
 
@@ -567,8 +569,18 @@
     L.addMemory('chat', p.name + '：' + text, ['对话']);
     L.save();
     say(text, 5400);
-    if ($('petPage')) { L.render(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
-    renderPanel(); refresh();
+    if ($('petPage')) { L.render(); scrollChat(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
+    renderPanel(); refresh(); scrollChat();
+  }
+
+  /* 新消息在底部，不滚一下他看不见（聊天区有 max-height） */
+  function scrollChat() {
+    setTimeout(function () {
+      ['pgChat', 'ppChatBox'].forEach(function (id) {
+        var b = document.getElementById(id);
+        if (b) b.scrollTop = b.scrollHeight;
+      });
+    }, 0);
   }
 
   function aiReply() {
@@ -586,7 +598,11 @@
       return { role: m.role === 'user' ? 'user' : 'assistant', content: m.text };
     }));
     L.callAI(msgs).then(function (r) {
+      aiBusy = false;
       pushPet(r.error ? '（' + r.error + '）' : (r.content || '').slice(0, 200));
+    }).catch(function () {
+      aiBusy = false;
+      pushPet('（它没接上，等会儿再试试）');
     });
   }
   function todayCount(kind) {
@@ -858,6 +874,8 @@
     '.pp-msg{max-width:86%;padding:9px 12px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap;word-break:break-word}',
     '.pp-msg.pet{background:rgba(194,168,120,.20);align-self:flex-start;border-bottom-left-radius:4px}',
     '.pp-msg.me{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}',
+    /* AI 正在想：给个气泡，不然点完发送干等几秒像卡住了 */
+    '.pp-msg.typing{opacity:.6;font-style:italic;background:rgba(194,168,120,.14)}',
     '.pp-inrow{display:flex;gap:8px;margin-top:10px}',
     '.pp-inrow input,.pp-field input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:13.5px;background:rgba(255,255,255,.84);color:var(--ink);width:100%}',
     '.pp-field{display:flex;gap:8px;margin:8px 0}',
@@ -1198,6 +1216,7 @@
     p.chat.slice(-40).forEach(function (m) {
       h += '<div class="pp-msg ' + (m.role === 'user' ? 'me' : 'pet') + '">' + L.esc(m.text) + '</div>';
     });
+    if (aiBusy) h += '<div class="pp-msg pet typing">它正在想…</div>';
     h += '</div>';
     h += '<div class="pp-inrow"><input id="ppChatIn" placeholder="跟它说点什么…" maxlength="200">'
       + '<button class="btn primary sm" data-pact="send">发送</button></div>';
@@ -1383,6 +1402,7 @@
     p.chat.slice(-30).forEach(function (m) {
       h += '<div class="pp-msg ' + (m.role === 'user' ? 'me' : 'pet') + '">' + L.esc(m.text) + '</div>';
     });
+    if (aiBusy) h += '<div class="pp-msg pet typing">它正在想…</div>';
     h += '</div><div class="pp-inrow"><input id="pgChatIn" placeholder="跟它说点什么…" maxlength="200">'
       + '<button class="btn primary sm" data-pact="send">发送</button></div></div>';
 
