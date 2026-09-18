@@ -1588,6 +1588,104 @@ function todayCourses(){
     return c.weekday === wd && weekHit(c.weeks, w);
   }).sort(function(a, b){ return periodNum(a.periods) - periodNum(b.periods); });
 }
+/* ============ 各周课表 ============
+   今日页那张卡只给「今天 + 本周要上的」，保持不变；想知道任意一周长什么样，
+   从课表卡右上角的「各周课表」进来。 */
+var _schedWeek = 0;                       /* 0 = 没选过，打开时默认跳到本周 */
+var WEEK_NAMES = ['一','二','三','四','五','六','日'];
+/* 周数上限：优先信课表里写的最大周次，但不少于 16 也不少于当前周（别把后面的周切没了） */
+function schedMaxWeek(){
+  var items = (STATE.schedule && STATE.schedule.items) || [];
+  var mx = 0, m, re = /(\d+)/g;
+  items.forEach(function(c){
+    var t = String(c.weeks || ''); re.lastIndex = 0;
+    while((m = re.exec(t))){ var n = +m[1]; if(n > mx && n <= 30) mx = n; }
+  });
+  mx = Math.max(mx, currentWeek(), 16);
+  return Math.min(mx, 24);
+}
+/* 第 w 周的周一 */
+function weekMonday(w){
+  var d = mondayOf(termStart());
+  d.setDate(d.getDate() + (w - 1) * 7);
+  return d;
+}
+function mdShort(d){ return (d.getMonth() + 1) + '/' + d.getDate(); }
+/* 第 w 周要上的课（不按天分，全周） */
+function weekCourses(w){
+  var s = STATE.schedule;
+  if(!s || !s.items) return [];
+  return s.items.filter(function(c){ return weekHit(c.weeks, w); });
+}
+/* 节次行：取本学期出现过的所有节次，去重排序。
+   ⚠️ 用**全部**课而不是某周的课 —— 不然换一周网格行数会跳来跳去，看着像坏了 */
+function schedPeriodRows(){
+  var items = (STATE.schedule && STATE.schedule.items) || [];
+  var seen = {}, rows = [];
+  items.forEach(function(c){
+    var k = String(c.periods || '').trim();
+    if(k && !seen[k]){ seen[k] = 1; rows.push(k); }
+  });
+  rows.sort(function(a, b){ return periodNum(a) - periodNum(b); });
+  return rows;
+}
+function schedWeekHTML(w){
+  var cur = currentWeek(), maxW = schedMaxWeek();
+  var list = weekCourses(w), rows = schedPeriodRows();
+  var mon = weekMonday(w);
+  var h = '<h2>📅 第 ' + w + ' 周课表'
+    + (w === cur ? ' <span class="wk-cur">本周</span>' : '') + '</h2>'
+    + '<div class="hint" style="margin:0 0 12px">' + mdShort(mon) + ' – '
+    + mdShort(new Date(mon.getTime() + 6 * 86400000))
+    + ' · 这周 ' + list.length + ' 节</div>';
+
+  /* 周选择条：有课的周实心，没课的周淡化 —— 一眼看出哪几周是空的 */
+  h += '<div class="wk-bar">';
+  for(var i = 1; i <= maxW; i++){
+    var n = weekCourses(i).length;
+    h += '<button class="wk-chip' + (i === w ? ' on' : '') + (n ? '' : ' off')
+      + '" data-act="schedWeeks" data-w="' + i + '">' + i + '</button>';
+  }
+  h += '</div>';
+
+  if(!list.length){
+    h += '<div class="hint">第 ' + w + ' 周整周都没课。</div>';
+  } else {
+    h += '<div class="wk-scroll"><div class="wk-table">';
+    h += '<div class="wk-c"></div>';
+    for(var d = 0; d < 7; d++){
+      var dd = new Date(mon.getTime() + d * 86400000);
+      h += '<div class="wk-th' + (ymd(dd) === today() ? ' today' : '') + '">周'
+        + WEEK_NAMES[d] + '<span>' + mdShort(dd) + '</span></div>';
+    }
+    rows.forEach(function(p){
+      h += '<div class="wk-tp">' + esc(p) + ' 节</div>';
+      for(var wd = 1; wd <= 7; wd++){
+        var cs = list.filter(function(c){
+          return c.weekday === wd && String(c.periods).trim() === p;
+        });
+        if(!cs.length){ h += '<div class="wk-cell"></div>'; continue; }
+        h += '<div class="wk-cell has">';
+        cs.forEach(function(c){
+          var hue = courseHue(c.name);
+          h += '<div class="wk-blk" style="--bc:hsl(' + hue + ',62%,52%);'
+            + '--bc-soft:hsla(' + hue + ',62%,52%,.13)">'
+            + '<b>' + esc(c.name) + '</b>'
+            + (c.room ? '<i>' + esc(c.room) + '</i>' : '')
+            + (c.teacher ? '<i>' + esc(c.teacher) + '</i>' : '')
+            + '</div>';
+        });
+        h += '</div>';
+      }
+    });
+    h += '</div></div>';
+  }
+  h += '<div class="sheet-actions">'
+    + '<button class="btn ghost" data-act="schedWeeks" data-w="' + cur + '">回到本周</button>'
+    + '<button class="btn" data-act="closeSheet">关掉</button>'
+    + '</div>';
+  return h;
+}
 function renderTodayCourses(){
   if(!hasJwglBridge()) return '';
   var s = STATE.schedule;
@@ -1603,7 +1701,10 @@ function renderTodayCourses(){
   var allDay = (s.items || []).filter(function(c){ return c.weekday === dayOfWeek(); });
   var off = Math.max(0, allDay.length - list.length);
   var h = '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
-    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + list.length + ' 节</span></div>';
+    + '<div class="row" style="gap:9px;align-items:center">'
+    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + list.length + ' 节</span>'
+    + '<button class="btn ghost sm" data-act="schedWeeks" title="看任意一周的完整课表">各周课表</button>'
+    + '</div></div>';
   if(!list.length){
     h += '<div class="hint">今天没课'
       + (off ? '（第 ' + w + ' 周不上的 ' + off + ' 节已收起）' : '')
@@ -2363,9 +2464,9 @@ function initCountUp(){
 }
 
 /* ================= 模态框 ================= */
-function openSheet(html){
+function openSheet(html, cls){
   var s=$('sheet');
-  s.innerHTML='<div class="sheet">'+html+'</div>';
+  s.innerHTML='<div class="sheet'+(cls?' '+cls:'')+'">'+html+'</div>';
   s.classList.remove('hidden');
   s.classList.add('show');
 }
@@ -2968,6 +3069,18 @@ var App = {
     toast('正在同步课表…');
     ensureSchedule(true);
   },
+  /* 各周课表：今日页课表卡右上角进来。带 w 就跳那一周，不带就沿用上次看的（没有则本周） */
+  schedWeeks:function(w){
+    var s = STATE.schedule;
+    if(!s || !s.items || !s.items.length){
+      toast('课表还没拉到 —— 先去设置里连一下教务系统');
+      return;
+    }
+    w = (+w) || _schedWeek || currentWeek();
+    w = Math.max(1, Math.min(w, schedMaxWeek()));
+    _schedWeek = w;
+    openSheet(schedWeekHTML(w), 'wide');
+  },
 
   /* --- 设置 --- */
   openSettings:function(){
@@ -3245,6 +3358,7 @@ document.addEventListener('click',function(e){
   else if(act==='jwglCancel') App.jwglCancel();
   else if(act==='jwglLogout') App.jwglLogout();
   else if(act==='jwglSync') App.jwglSync();
+  else if(act==='schedWeeks') App.schedWeeks(el.dataset.w);
   else if(act==='goToday'){ CUR_TAB='today'; render(); }
 });
 
