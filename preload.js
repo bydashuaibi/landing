@@ -15,6 +15,7 @@
  *   closePref.get() / closePref.set(action)                关窗偏好：ask | tray | quit
  *   timerActive(bool)                                      计时中→关后台节流，保证到点准时
  *   nudge()                                                后台计时每 30 分钟把窗口叫回来
+ *   weather.get()                                          今日天气（IP 定位 + Open-Meteo，主进程代取）
  *   isDesktop = true                                       前端据此决定用哪套实现
  */
 const { contextBridge, ipcRenderer } = require('electron');
@@ -38,6 +39,11 @@ contextBridge.exposeInMainWorld('landing', {
 
   info: () => ipcRenderer.invoke('app:info'),
   openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
+
+  /* 天气：主进程代取——渲染进程受 CSP（connect-src 只放行 https）限制，连不了 http 的定位接口 */
+  weather: {
+    get: () => ipcRenderer.invoke('weather:get')
+  },
 
   tray: {
     setHint: (text) => ipcRenderer.send('tray:hint', String(text || ''))

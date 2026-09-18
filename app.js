@@ -77,7 +77,8 @@ function blankState(){
     reports: {},        // {weekKey:{generatedAt,summary,moodTrack,dailyCards}}
     digest: {},         // {date:{fetchedAt,categories:{label:[{name,desc,stars,url,lang}]}}}
     dumps: [],          // 倾倒台
-    weather: [],        // 情绪气象 [{date,mood,note}]
+    weather: [],        // 情绪气象 [{date,mood,note}]（⚠️ 与下面的 wx 无关，别混）
+    wx: null,           // 今日天气快照（IP 定位 + Open-Meteo，由主进程代取）
     companion: {messages: []},
     community: {nick:''},
     weeklyTasks: [],    // 每周任务：{id,name,type('exercise'|'custom'),category,dailyGoalMin,weeklyGoalDays,enabled,records:[{date,minutes,mode,plannedMin,ts}],createdAt}
@@ -151,6 +152,7 @@ function migrate(){
   s.digest = s.digest || {};
   s.dumps = s.dumps || [];
   s.weather = s.weather || [];
+  if(s.wx === undefined) s.wx = null;      /* 今日天气快照，老存档必须补默认值 */
   s.companion = s.companion || {messages:[]};
   s.community = s.community || {nick:''};
   s.weeklyTasks = s.weeklyTasks || [];
@@ -1406,6 +1408,74 @@ function renderMoodCard(){
   return h+'</div>';
 }
 
+/* ================= 今日天气 ================= */
+/* 数据由主进程代取（见 main.js 的 weather:get）：ip-api 定位 → Open-Meteo 取天气。
+   缓存放在 STATE.wx，30 分钟内不重复请求；取不到就静默降级，不弹窗打扰。
+   ⚠️ 字段叫 wx 不叫 weather —— STATE.weather 已经被「情绪气象」占用了。 */
+var WX_TTL = 30 * 60 * 1000;
+var _wxBusy = false;
+
+/* WMO 天气码 → [图标, 中文]（Open-Meteo 用的就是这套码） */
+var WX_CODES = {
+  0:['☀️','晴'], 1:['🌤️','基本晴'], 2:['⛅','局部多云'], 3:['☁️','阴'],
+  45:['🌫️','雾'], 48:['🌫️','雾凇'],
+  51:['🌦️','毛毛雨'], 53:['🌦️','毛毛雨'], 55:['🌦️','毛毛雨'],
+  56:['🌧️','冻毛毛雨'], 57:['🌧️','冻毛毛雨'],
+  61:['🌦️','小雨'], 63:['🌧️','中雨'], 65:['🌧️','大雨'],
+  66:['🌧️','冻雨'], 67:['🌧️','冻雨'],
+  71:['🌨️','小雪'], 73:['🌨️','中雪'], 75:['❄️','大雪'], 77:['🌨️','米雪'],
+  80:['🌦️','阵雨'], 81:['🌧️','阵雨'], 82:['⛈️','强阵雨'],
+  85:['🌨️','阵雪'], 86:['❄️','阵雪'],
+  95:['⛈️','雷阵雨'], 96:['⛈️','雷暴冰雹'], 99:['⛈️','雷暴冰雹']
+};
+function wxInfo(code){ return WX_CODES[code] || ['🌡️','—']; }
+function wxNum(v, suf){
+  return (v===null || v===undefined || isNaN(v)) ? '' : (Math.round(v) + (suf||''));
+}
+function wxFresh(){
+  var w = STATE.wx;
+  return !!(w && w.ok && w.at && (Date.now() - w.at) < WX_TTL);
+}
+function ensureWx(force){
+  if(_wxBusy) return;
+  if(!force && wxFresh()) return;
+  if(!window.landing || !window.landing.weather) return;   /* 网页版没有这个桥：静默跳过 */
+  _wxBusy = true;
+  window.landing.weather.get().then(function(res){
+    _wxBusy = false;
+    if(!res) return;
+    var prev = STATE.wx || {};
+    var pc = prev.current || {}, rc = res.current || {};
+    STATE.wx = res;
+    save();
+    /* 数据真的变了才重绘，别打断他正在做的事 */
+    var changed = prev.ok !== res.ok
+      || Math.round(pc.temperature_2m) !== Math.round(rc.temperature_2m)
+      || pc.weather_code !== rc.weather_code;
+    if(changed && CUR_TAB === 'today') render();
+  }).catch(function(){ _wxBusy = false; });
+}
+function renderWxBar(){
+  var w = STATE.wx;
+  if(!w) return '';
+  if(!w.ok){
+    return '<div class="wxbar"><span class="wx-emoji">🌡️</span>'
+      + '<span class="wx-desc">天气没取到</span>'
+      + '<button class="wx-retry" data-act="wxRetry">重试</button></div>';
+  }
+  var cur = w.current || {}, d = w.daily || {};
+  var info = wxInfo(cur.weather_code);
+  var hi = (d.temperature_2m_max || [])[0], lo = (d.temperature_2m_min || [])[0];
+  var range = (wxNum(hi) && wxNum(lo)) ? (wxNum(hi) + '° / ' + wxNum(lo) + '°') : '';
+  return '<div class="wxbar">'
+    + '<span class="wx-emoji">' + info[0] + '</span>'
+    + '<span class="wx-temp">' + wxNum(cur.temperature_2m) + '°</span>'
+    + '<span class="wx-desc">' + info[1] + '</span>'
+    + '<span class="wx-city">' + esc(w.city || '') + '</span>'
+    + (range ? '<span class="wx-range">' + range + '</span>' : '')
+    + '</div>';
+}
+
 /* ================= 视图：今日 ================= */
 function viewToday(){
   var h = '';
@@ -1416,6 +1486,9 @@ function viewToday(){
     + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
+  /* 天气条：一行轻环境信息，夹在 hero 和休息卡之间 —— 不抢「撑不住」的位置 */
+  h += renderWxBar();
+
   /* 顶部第一块：休息中 / 休息完刚回来 —— 两者互斥，撑不住和刚缓过来要看到的东西不一样。
      ⚠️ 必须排在最前面：它比"今天还没动"更该被先看到。 */
   if(isRestToday()){
@@ -2824,6 +2897,7 @@ document.addEventListener('click',function(e){
 
   /* 错误兜底 */
   else if(act==='retryRender') render();
+  else if(act==='wxRetry'){ toast('重新取天气…'); ensureWx(true); }
   else if(act==='goToday'){ CUR_TAB='today'; render(); }
 });
 
@@ -2885,6 +2959,7 @@ function init(){
     fishForMinutes:fishForMinutes,
     renderTimerBar:renderTimerBar,
     today:today, ymd:ymd, addDays:addDays, esc:esc, icon:icon, uid:uid,
+    wx:function(force){ ensureWx(!!force); return STATE.wx; },
     MEM_KIND:MEM_KIND, CATEGORIES:CATEGORIES,
     tab:function(t){ CUR_TAB=t; render(); }
   };
@@ -2907,6 +2982,10 @@ function init(){
   if(!STATE.digest[today()]){
     fetchDigest(false).then(function(){ /* 静默拉取，不弹提示 */ });
   }
+
+  /* 今日天气：启动拉一次，之后每 30 分钟检查（内部有新鲜度判断，不会真去重复请求） */
+  ensureWx(false);
+  setInterval(function(){ ensureWx(false); }, WX_TTL);
 }
 init();
 })();

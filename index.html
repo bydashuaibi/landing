@@ -89,6 +89,19 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .hidden{display:none!important}
 .muted{color:var(--muted)}
+/* 今日天气条：一行轻环境信息，跟在 hero 下面，不抢休息卡的位 */
+.wxbar{display:flex;align-items:center;gap:10px;margin:2px 0 14px;padding:9px 15px;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:14px;
+  font-size:13px;color:var(--muted);animation:riseIn .55s var(--e-out) both}
+.wxbar .wx-emoji{font-size:19px;line-height:1}
+.wxbar .wx-temp{font-family:var(--font-num);font-size:21px;font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1}
+.wxbar .wx-desc{font-weight:500;color:var(--ink)}
+.wxbar .wx-city{opacity:.8}
+.wxbar .wx-range{margin-left:auto;font-variant-numeric:tabular-nums;opacity:.8}
+.wxbar .wx-retry{margin-left:auto;background:none;border:0;padding:0;cursor:pointer;
+  color:var(--terracotta);font-size:13px;font-weight:500;font-family:inherit}
+.wxbar .wx-retry:hover{text-decoration:underline}
 .row{display:flex;align-items:center;gap:8px}
 .between{justify-content:space-between}
 .wrap{flex-wrap:wrap}
@@ -641,7 +654,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=23"></script>
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

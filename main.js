@@ -13,6 +13,8 @@ const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray,
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const http = require('http');
+const https = require('https');
 
 /* ---------- 单实例：第二次启动就把已有窗口顶到前面，别再开一个 ---------- */
 const gotLock = app.requestSingleInstanceLock();
@@ -204,6 +206,72 @@ ipcMain.handle('app:info', () => ({
 ipcMain.handle('app:openDataDir', async () => {
   const err = await shell.openPath(app.getPath('userData'));
   return { ok: !err, error: err || undefined };
+});
+
+/* ---------- 天气：必须由主进程代取 ---------- */
+/* 两个原因：① CSP 的 connect-src 只放行 https，而 ip-api 免费版只有 http；
+   ② 渲染进程直接发跨域请求还受 CORS 约束。走主进程两个问题一起解决。
+   两个数据源都免注册、免 key：ip-api 定位 → Open-Meteo 取天气。 */
+function httpGetJSON(url, timeoutMs, redirects) {
+  return new Promise((resolve, reject) => {
+    const mod = url.indexOf('https:') === 0 ? https : http;
+    const req = mod.get(url, {
+      headers: { 'User-Agent': 'landing-app/1.0', Accept: 'application/json' },
+      timeout: timeoutMs || 12000
+    }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        if ((redirects || 0) >= 3) return reject(new Error('跳转次数过多'));
+        return httpGetJSON(res.headers.location, timeoutMs, (redirects || 0) + 1)
+          .then(resolve, reject);
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error('HTTP ' + res.statusCode));
+      }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => {
+        body += c;
+        if (body.length > 1048576) req.destroy(new Error('响应过大'));
+      });
+      res.on('end', () => {
+        try { resolve(JSON.parse(body)); }
+        catch (e) { reject(new Error('响应不是合法 JSON')); }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('请求超时')));
+    req.on('error', reject);
+  });
+}
+
+ipcMain.handle('weather:get', async () => {
+  try {
+    const loc = await httpGetJSON(
+      'http://ip-api.com/json/?lang=zh-CN&fields=status,message,country,regionName,city,lat,lon,timezone');
+    if (!loc || loc.status !== 'success') {
+      return { ok: false, error: (loc && loc.message) || 'IP 定位失败' };
+    }
+    const qs = 'latitude=' + loc.lat + '&longitude=' + loc.lon
+      + '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m'
+      + '&daily=weather_code,temperature_2m_max,temperature_2m_min'
+      + '&timezone=Asia%2FShanghai&forecast_days=3';
+    const wx = await httpGetJSON('https://api.open-meteo.com/v1/forecast?' + qs);
+    return {
+      ok: true,
+      at: Date.now(),
+      /* ip-api 对国内城市的粒度不稳定（同一个出口 IP 有时给「天津」、有时给「河北」这样的区名），
+         所以直辖市/地级市一律优先用 regionName，其余情况仍用 city。 */
+      city: (/市$/.test(loc.regionName || '') ? loc.regionName : (loc.city || loc.regionName || '')),
+      region: loc.regionName || '',
+      lat: loc.lat,
+      lon: loc.lon,
+      current: wx.current || null,
+      daily: wx.daily || null
+    };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
 });
 
 /* ---------- 菜单：中文、精简，但把常用操作都放上 ---------- */
