@@ -16,6 +16,7 @@
  *   timerActive(bool)                                      计时中→关后台节流，保证到点准时
  *   nudge()                                                后台计时每 30 分钟把窗口叫回来
  *   weather.get()                                          今日天气（IP 定位 + Open-Meteo，主进程代取）
+ *   jwgl.status() / captcha() / login() / schedule() / logout()   教务系统：登录 + 课表（主进程代取）
  *   isDesktop = true                                       前端据此决定用哪套实现
  */
 const { contextBridge, ipcRenderer } = require('electron');
@@ -43,6 +44,21 @@ contextBridge.exposeInMainWorld('landing', {
   /* 天气：主进程代取——渲染进程受 CSP（connect-src 只放行 https）限制，连不了 http 的定位接口 */
   weather: {
     get: () => ipcRenderer.invoke('weather:get')
+  },
+
+  /* 教务系统（正方）：学校开着验证码，所以先 captcha() 让他填、再 login()。
+     凭据由主进程用 safeStorage 加密存盘，渲染进程拿不到已保存的密码。 */
+  jwgl: {
+    status: () => ipcRenderer.invoke('jwgl:status'),
+    captcha: () => ipcRenderer.invoke('jwgl:captcha'),
+    login: (payload) => ipcRenderer.invoke('jwgl:login', {
+      username: payload && payload.username,
+      password: payload && payload.password,
+      captcha: payload && payload.captcha,
+      remember: !(payload && payload.remember === false)
+    }),
+    schedule: (force) => ipcRenderer.invoke('jwgl:schedule', { force: !!force }),
+    logout: () => ipcRenderer.invoke('jwgl:logout')
   },
 
   tray: {

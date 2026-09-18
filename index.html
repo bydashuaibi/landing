@@ -102,6 +102,24 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .wxbar .wx-retry{margin-left:auto;background:none;border:0;padding:0;cursor:pointer;
   color:var(--terracotta);font-size:13px;font-weight:500;font-family:inherit}
 .wxbar .wx-retry:hover{text-decoration:underline}
+/* 今天的课 */
+.sched-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.sched-row{display:flex;align-items:center;gap:12px;padding:9px 13px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:12px;font-size:13px}
+.sched-row .sr-time{flex:0 0 auto;min-width:52px;font-family:var(--font-num);font-weight:600;
+  color:var(--terracotta);font-variant-numeric:tabular-nums}
+.sched-row .sr-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sched-row .sr-main b{font-weight:500;color:var(--ink)}
+.sched-row .sr-main i{font-style:normal;font-size:12px;color:var(--muted)}
+.sched-row .sr-meta{flex:0 0 auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* 教务系统登录表单 */
+.jwgl-form{display:flex;flex-direction:column;gap:8px}
+.jwgl-form input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface-2);color:var(--ink);font-size:14px;font-family:inherit}
+.jwgl-form input:focus{outline:none;border-color:var(--khaki-deep)}
+.jwgl-cap{display:flex;gap:8px;align-items:center}
+.jwgl-cap input{flex:1 1 auto}
+.jwgl-cap img{height:38px;border-radius:8px;border:1px solid var(--line);cursor:pointer;background:#fff}
 .row{display:flex;align-items:center;gap:8px}
 .between{justify-content:space-between}
 .wrap{flex-wrap:wrap}
@@ -654,7 +672,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=23"></script>
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

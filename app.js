@@ -79,6 +79,7 @@ function blankState(){
     dumps: [],          // 倾倒台
     weather: [],        // 情绪气象 [{date,mood,note}]（⚠️ 与下面的 wx 无关，别混）
     wx: null,           // 今日天气快照（IP 定位 + Open-Meteo，由主进程代取）
+    schedule: null,     // 本学期课表快照 {at,termCode,items:[{name,weekday,periods,weeks,room,teacher}]}
     companion: {messages: []},
     community: {nick:''},
     weeklyTasks: [],    // 每周任务：{id,name,type('exercise'|'custom'),category,dailyGoalMin,weeklyGoalDays,enabled,records:[{date,minutes,mode,plannedMin,ts}],createdAt}
@@ -153,6 +154,7 @@ function migrate(){
   s.dumps = s.dumps || [];
   s.weather = s.weather || [];
   if(s.wx === undefined) s.wx = null;      /* 今日天气快照，老存档必须补默认值 */
+  if(s.schedule === undefined) s.schedule = null;   /* 本学期课表快照 */
   s.companion = s.companion || {messages:[]};
   s.community = s.community || {nick:''};
   s.weeklyTasks = s.weeklyTasks || [];
@@ -1476,6 +1478,131 @@ function renderWxBar(){
     + '</div>';
 }
 
+/* ================= 教务系统课表 ================= */
+/* 数据由主进程代取（见 main.js 的 jwgl:* IPC）—— 教务系统是 http 站点，渲染进程被 CSP 挡着。
+   学校开着验证码，所以第一次要在设置里填一次；之后主进程存着会话，重启也不用重来。
+   这里只负责：缓存 → 渲染 → 驱动登录表单。 */
+var SCHED_TTL = 30 * 60 * 1000;
+var _schedBusy = false;
+var _jwglNeedLogin = false;   /* 确认过「没连过 / 会话过期」，今日页才给入口 */
+var _jwglCaptcha = '';        /* 登录表单当前用的验证码图（data URL） */
+var _jwglBusy = false;
+var _jwglStatus = {};         /* 主进程返回的教务系统状态快照 */
+
+function hasJwglBridge(){
+  return !!(window.landing && window.landing.jwgl);
+}
+function refreshJwglStatus(){
+  if(!hasJwglBridge()) return Promise.resolve(_jwglStatus);
+  return window.landing.jwgl.status().then(function(st){
+    _jwglStatus = st || {};
+    return _jwglStatus;
+  }).catch(function(){ return _jwglStatus; });
+}
+function dayOfWeek(d){
+  var t = d ? new Date(d) : new Date();
+  return t.getDay() === 0 ? 7 : t.getDay();     /* 1=周一 … 7=周日 */
+}
+function schedFresh(){
+  var s = STATE.schedule;
+  return !!(s && s.at && (Date.now() - s.at) < SCHED_TTL);
+}
+function ensureSchedule(force){
+  if(_schedBusy) return;
+  if(!force && schedFresh()) return;
+  if(!hasJwglBridge()) return;
+  _schedBusy = true;
+  window.landing.jwgl.schedule(!!force).then(function(res){
+    _schedBusy = false;
+    if(!res) return;
+    if(res.ok){
+      STATE.schedule = {
+        at: Date.now(),
+        termCode: res.termCode || '',
+        source: res.source || '',
+        items: res.items || []
+      };
+      _jwglNeedLogin = false;
+      save();
+      if(CUR_TAB === 'today') render();
+    } else if(res.needLogin){
+      _jwglNeedLogin = true;
+      if(CUR_TAB === 'today') render();
+    }
+  }).catch(function(){ _schedBusy = false; });
+}
+function todayCourses(){
+  var s = STATE.schedule;
+  if(!s || !s.items) return [];
+  var wd = dayOfWeek();
+  return s.items.filter(function(c){ return c.weekday === wd; });
+}
+function renderTodayCourses(){
+  if(!hasJwglBridge()) return '';
+  var s = STATE.schedule;
+  if(!s || !s.items || !s.items.length){
+    if(!_jwglNeedLogin) return '';
+    return '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
+      + '<button class="btn ghost sm" data-act="openSettings">去连接</button></div>'
+      + '<div class="hint">连上教务系统后，这里会显示今天的课。学号密码用系统加密存在本机，不上传、不进代码。</div></div>';
+  }
+  var list = todayCourses();
+  var h = '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
+    + '<span class="muted" style="font-size:12px">' + esc(s.termCode || '') + '</span></div>';
+  if(!list.length){
+    h += '<div class="hint">今天没课 —— 那时间就都是你自己的。</div>';
+  } else {
+    h += '<div class="sched-list">';
+    list.forEach(function(c){
+      h += '<div class="sched-row">'
+        + '<span class="sr-time">' + esc(c.periods) + '节</span>'
+        + '<span class="sr-main"><b>' + esc(c.name) + '</b>'
+        + (c.room ? '<i>' + esc(c.room) + '</i>' : '') + '</span>'
+        + '<span class="sr-meta">' + esc(c.weeks || '') + '</span>'
+        + '</div>';
+    });
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+
+/* --- 设置面板里的「教务系统」块 --- */
+function jwglPanelHTML(status){
+  status = status || {};
+  var head = '<div class="field" style="margin-top:16px"><label>教务系统（查课表）</label>';
+  if(_jwglCaptcha){
+    return head
+      + '<div class="hint" style="margin:0 0 8px">学校要求验证码，填一次就行，之后应用会记住。'
+      + '学号密码用 Windows 系统加密存在本机，不走网络、不进代码。</div>'
+      + '<div class="jwgl-form">'
+      + '<input id="jw_u" placeholder="学号" value="' + esc(status.username || '') + '">'
+      + '<input id="jw_p" type="password" placeholder="密码">'
+      + '<div class="jwgl-cap">'
+      +   '<input id="jw_c" placeholder="验证码" maxlength="6" autocomplete="off">'
+      +   '<img id="jw_img" src="' + _jwglCaptcha + '" title="点一下换一张" data-act="jwglRefreshCaptcha">'
+      + '</div></div>'
+      + '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">'
+      + '<button class="btn primary sm" data-act="jwglLogin">' + (_jwglBusy ? '登录中…' : '登录') + '</button>'
+      + '<button class="btn ghost sm" data-act="jwglCancel">取消</button>'
+      + '</div></div>';
+  }
+  if(status.hasCred){
+    return head
+      + '<div class="hint" style="margin:0 0 8px">已保存账号 <b>' + esc(status.username || '') + '</b>'
+      + (status.loggedIn ? '，当前已连接。' : '，当前未连接（取课表时会自动重连，只有会话过期才需要重新登录）。')
+      + '</div>'
+      + '<div class="row" style="gap:8px;flex-wrap:wrap">'
+      + '<button class="btn ghost sm" data-act="jwglStartLogin">重新登录</button>'
+      + '<button class="btn ghost sm" data-act="jwglSync">立即同步课表</button>'
+      + '<button class="btn danger sm" data-act="jwglLogout">断开并删除凭据</button>'
+      + '</div></div>';
+  }
+  return head
+    + '<div class="hint" style="margin:0 0 8px">连上以后，今日页会显示今天的课。'
+    + '学号密码用 Windows 系统加密存在本机，不走网络、不进代码。</div>'
+    + '<button class="btn primary sm" data-act="jwglStartLogin">连接教务系统</button></div>';
+}
+
 /* ================= 视图：今日 ================= */
 function viewToday(){
   var h = '';
@@ -1526,6 +1653,9 @@ function viewToday(){
     });
     h += '</div>';
   }
+
+  /* 今天的课（连了教务系统才出现；没连就不打扰他） */
+  h += renderTodayCourses();
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -2690,6 +2820,86 @@ var App = {
     inp.click();
   },
 
+  /* --- 教务系统（登录要输一次验证码，之后靠会话） --- */
+  jwglStartLogin:function(){
+    if(!hasJwglBridge()){ toast('这个功能要在桌面版里用'); return; }
+    _jwglBusy = true;
+    App.openSettings();                       /* 先把面板开出来，占个位 */
+    window.landing.jwgl.captcha().then(function(res){
+      _jwglBusy = false;
+      if(!res || !res.ok){
+        toast('验证码没取到：' + ((res && res.error) || '未知错误'));
+        App.openSettings();
+        return;
+      }
+      _jwglCaptcha = res.captcha;
+      App.openSettings();
+      setTimeout(function(){ var el = $('jw_u'); if(el) el.focus(); }, 60);
+    }).catch(function(e){
+      _jwglBusy = false;
+      toast('验证码没取到：' + ((e && e.message) || e));
+      App.openSettings();
+    });
+  },
+  jwglRefreshCaptcha:function(){
+    if(!hasJwglBridge()) return;
+    window.landing.jwgl.captcha().then(function(res){
+      if(res && res.ok){ _jwglCaptcha = res.captcha; App.openSettings(); }
+      else toast('换验证码失败');
+    });
+  },
+  jwglLogin:function(){
+    var u = (($('jw_u') && $('jw_u').value) || '').trim();
+    var p = (($('jw_p') && $('jw_p').value) || '');
+    var c = (($('jw_c') && $('jw_c').value) || '').trim();
+    if(!u || !p){ toast('学号和密码都要填'); return; }
+    if(!c){ toast('还要填验证码'); return; }
+
+    _jwglBusy = true;
+    App.openSettings();
+    window.landing.jwgl.login({ username:u, password:p, captcha:c }).then(function(res){
+      _jwglBusy = false;
+      if(!res || !res.ok){
+        _jwglCaptcha = (res && res.captcha) || '';
+        toast((res && res.error) || '登录失败');
+        App.openSettings();
+        return;
+      }
+      _jwglCaptcha = '';
+      toast('连上了 · ' + (res.username || ''));
+      refreshJwglStatus();
+      ensureSchedule(true);
+      App.openSettings();
+    }).catch(function(e){
+      _jwglBusy = false;
+      toast('登录出错：' + ((e && e.message) || e));
+      App.openSettings();
+    });
+  },
+  jwglCancel:function(){
+    _jwglCaptcha = '';
+    _jwglBusy = false;
+    App.openSettings();
+  },
+  jwglLogout:function(){
+    if(!hasJwglBridge()) return;
+    window.landing.jwgl.logout().then(function(){
+      _jwglCaptcha = '';
+      STATE.schedule = null;
+      _jwglNeedLogin = false;
+      save();
+      refreshJwglStatus();
+      toast('已断开，凭据已删除');
+      if(CUR_TAB === 'today') render();
+      App.openSettings();
+    });
+  },
+  jwglSync:function(){
+    if(!hasJwglBridge()) return;
+    toast('正在同步课表…');
+    ensureSchedule(true);
+  },
+
   /* --- 设置 --- */
   openSettings:function(){
     var s=STATE.settings;
@@ -2709,6 +2919,7 @@ var App = {
       +   '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" id="s_autostart">开机自动启动：读取中…</button>'
       +   '<button class="btn ghost sm" id="s_closepref">关闭窗口时：读取中…</button></div>'
       + '</div>'
+      + jwglPanelHTML(_jwglStatus)
       + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
 
     /* 开机自启：只在桌面版有桥；网页版说明一句 */
@@ -2898,6 +3109,12 @@ document.addEventListener('click',function(e){
   /* 错误兜底 */
   else if(act==='retryRender') render();
   else if(act==='wxRetry'){ toast('重新取天气…'); ensureWx(true); }
+  else if(act==='jwglStartLogin') App.jwglStartLogin();
+  else if(act==='jwglRefreshCaptcha') App.jwglRefreshCaptcha();
+  else if(act==='jwglLogin') App.jwglLogin();
+  else if(act==='jwglCancel') App.jwglCancel();
+  else if(act==='jwglLogout') App.jwglLogout();
+  else if(act==='jwglSync') App.jwglSync();
   else if(act==='goToday'){ CUR_TAB='today'; render(); }
 });
 
@@ -2986,6 +3203,18 @@ function init(){
   /* 今日天气：启动拉一次，之后每 30 分钟检查（内部有新鲜度判断，不会真去重复请求） */
   ensureWx(false);
   setInterval(function(){ ensureWx(false); }, WX_TTL);
+
+  /* 教务系统：先问一次状态 —— 连过就同步课表，没连过才在今日页给「去连接」入口 */
+  if(hasJwglBridge()){
+    refreshJwglStatus().then(function(st){
+      if(st && st.hasCred){
+        ensureSchedule(false);
+      } else {
+        _jwglNeedLogin = true;
+        if(CUR_TAB === 'today') render();
+      }
+    });
+  }
 }
 init();
 })();

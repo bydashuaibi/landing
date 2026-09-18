@@ -9,7 +9,8 @@
  *   · window.open / 页面内跳转一律拦截，外链交给系统浏览器
  *   · 渲染进程里的网络请求只允许它真正需要的域名（GitHub API + 用户自配的 AI 接口）
  */
-const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage, safeStorage } = require('electron');
+const { JwglClient } = require('./jwgl');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -272,6 +273,197 @@ ipcMain.handle('weather:get', async () => {
   } catch (e) {
     return { ok: false, error: String((e && e.message) || e) };
   }
+});
+
+/* ---------- 教务系统（正方）：登录 + 课表 ---------- */
+/* 同样必须走主进程：教务系统是 http 站点，渲染进程被 CSP 挡在外面。
+   学校确实开着验证码（2026-09-18 实测），所以流程是「取验证码 → 他填 → 提交」；
+   登录成功后会话留在内存里，之后取课表靠会话，不必反复登录。
+   凭据用 safeStorage 加密后落盘（Windows 上底层就是 DPAPI，跟系统账户绑定），
+   不写进代码、不进 git。 */
+const CRED_FILE = path.join(DATA_DIR, 'jwgl-cred.json');
+const SCHED_CACHE_MS = 30 * 60 * 1000;
+
+let jwglClient = null;      // 已登录的会话
+let jwglPending = null;     // 正在等验证码的会话
+let jwglSched = null;       // {at, data}
+
+function readCred() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    const raw = JSON.parse(fs.readFileSync(CRED_FILE, 'utf8'));
+    if (!raw || !raw.enc) return null;
+    return JSON.parse(safeStorage.decryptString(Buffer.from(raw.enc, 'base64')));
+  } catch (e) { return null; }
+}
+function writeCred(obj) {
+  try {
+    ensureDataDir();
+    const enc = safeStorage.encryptString(JSON.stringify(obj)).toString('base64');
+    fs.writeFileSync(CRED_FILE, JSON.stringify({ enc: enc, at: Date.now() }, null, 2));
+    return true;
+  } catch (e) { return false; }
+}
+function clearCred() {
+  try { fs.unlinkSync(CRED_FILE); } catch (e) { /* 本来就没有 */ }
+}
+
+/* 会话 cookie 也存一份加密的：应用重启后先拿它试，能通就不用再让他输一次验证码。
+   正方会话通常能维持挺久，这一步能省掉绝大部分重复输入。 */
+const SESSION_FILE = path.join(DATA_DIR, 'jwgl-session.json');
+function saveSession(client) {
+  try {
+    ensureDataDir();
+    const enc = safeStorage.encryptString(JSON.stringify(client.cookies)).toString('base64');
+    fs.writeFileSync(SESSION_FILE, JSON.stringify({ enc: enc, at: Date.now() }));
+    return true;
+  } catch (e) { return false; }
+}
+function restoreSession() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    const raw = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
+    if (!raw || !raw.enc) return null;
+    const cookies = JSON.parse(safeStorage.decryptString(Buffer.from(raw.enc, 'base64')));
+    if (!cookies || !Object.keys(cookies).length) return null;
+    const c = new JwglClient();
+    c.cookies = cookies;
+    return c;
+  } catch (e) { return null; }
+}
+function clearSession() {
+  try { fs.unlinkSync(SESSION_FILE); } catch (e) { /* 本来就没有 */ }
+}
+
+/* 现在是哪个学年学期：9 月起算新学年；xqm 3=第一学期 12=第二学期 16=第三学期 */
+function currentTerm(now) {
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  if (m >= 9) return { xnm: y, xqm: 3 };
+  if (m === 1) return { xnm: y - 1, xqm: 3 };
+  if (m <= 6) return { xnm: y - 1, xqm: 12 };
+  return { xnm: y - 1, xqm: 16 };
+}
+
+/* 正方的 kbList → 我们自己认的结构。
+   ⚠️ 刻意**不带 raw**：那会把整份原始条目塞进渲染进程、进而写进 localStorage。 */
+function parseSchedule(raw) {
+  const list = (raw && raw.kbList) || [];
+  const items = list.map((k, i) => ({
+    id: 'c' + i,
+    name: k.kcmc || '',
+    teacher: k.xm || '',
+    room: k.xqmc || k.cdmc || '',
+    weekday: parseInt(k.xqj, 10) || 0,        // 1=周一 … 7=周日
+    periods: k.jcs || '',                      // 节次，如 "1-2"
+    weeks: k.zcd || '',                        // 周次，如 "1-16周"
+    credit: k.xf || ''
+  })).filter((x) => x.name);
+  return { items: items, xsxx: (raw && raw.xsxx) || null };
+}
+
+ipcMain.handle('jwgl:status', () => {
+  const cred = readCred();
+  return {
+    hasCred: !!cred,
+    username: cred ? cred.username : '',
+    savedAt: cred ? cred.at : 0,
+    loggedIn: !!jwglClient,
+    canEncrypt: safeStorage.isEncryptionAvailable()
+  };
+});
+
+ipcMain.handle('jwgl:captcha', async () => {
+  try {
+    jwglPending = new JwglClient();
+    const r = await jwglPending.openLogin();
+    return { ok: true, captcha: r.captcha };
+  } catch (e) {
+    jwglPending = null;
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+ipcMain.handle('jwgl:login', async (e, payload) => {
+  const username = String((payload && payload.username) || '').trim();
+  const password = String((payload && payload.password) || '');
+  const captcha = String((payload && payload.captcha) || '').trim();
+  const remember = !(payload && payload.remember === false);
+  if (!username || !password) return { ok: false, error: '学号和密码都要填' };
+
+  try {
+    if (!jwglPending) jwglPending = new JwglClient();
+    const r = await jwglPending.submitLogin(username, password, captcha);
+    if (!r.ok) {
+      /* 失败了顺手换一张验证码，省得他还要再点一次 */
+      let img = null;
+      try {
+        jwglPending = new JwglClient();
+        img = (await jwglPending.openLogin()).captcha;
+      } catch (e2) { jwglPending = null; }
+      return { ok: false, error: r.error, captcha: img };
+    }
+    jwglClient = jwglPending;
+    jwglPending = null;
+    jwglSched = null;
+    saveSession(jwglClient);
+    if (remember) writeCred({ username: username, password: password, at: Date.now() });
+    return { ok: true, username: username };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+ipcMain.handle('jwgl:schedule', async (e, opts) => {
+  const force = !!(opts && opts.force);
+  if (!force && jwglSched && Date.now() - jwglSched.at < SCHED_CACHE_MS) {
+    return Object.assign({ ok: true, cached: true }, jwglSched.data);
+  }
+  if (!jwglClient) {
+    /* 应用重启后内存里的会话没了，先用上次存下的 cookie 试 —— 能通就不用再输验证码 */
+    const restored = restoreSession();
+    if (restored && await restored.isLoggedIn()) {
+      jwglClient = restored;
+    } else {
+      if (restored) clearSession();
+      const cred = readCred();
+      return {
+        ok: false, needLogin: true, hasCred: !!cred,
+        username: cred ? cred.username : '',
+        error: '还没连接教务系统'
+      };
+    }
+  }
+  try {
+    const t = currentTerm(new Date());
+    const r = await jwglClient.fetchSchedule(t.xnm, t.xqm);
+    if (!r.ok) {
+      if (r.expired) { jwglClient = null; clearSession(); return { ok: false, needLogin: true, error: r.error }; }
+      return { ok: false, error: r.error, tried: r.tried };
+    }
+    const parsed = parseSchedule(r.raw);
+    parsed.termCode = t.xnm + '-' + (t.xnm + 1) + ' 第'
+      + ({ 3: '一', 12: '二', 16: '三' }[t.xqm] || '?') + '学期';
+    parsed.source = r.url;
+    /* 原始响应落到 userData 便于排查学校接口变化（里面没有凭据） */
+    try {
+      ensureDataDir();
+      fs.writeFileSync(path.join(DATA_DIR, 'jwgl-schedule-raw.json'), JSON.stringify(r.raw, null, 2));
+    } catch (e2) { /* 落盘失败不影响功能 */ }
+    jwglSched = { at: Date.now(), data: parsed };
+    return Object.assign({ ok: true, cached: false }, parsed);
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+});
+
+ipcMain.handle('jwgl:logout', () => {
+  jwglClient = null;
+  jwglPending = null;
+  jwglSched = null;
+  clearCred();
+  clearSession();
+  return { ok: true };
 });
 
 /* ---------- 菜单：中文、精简，但把常用操作都放上 ---------- */
