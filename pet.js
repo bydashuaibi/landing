@@ -115,12 +115,13 @@
     if (!p.chat) p.chat = [];
     if (!p.fishLog) p.fishLog = [];
     if (!p.stats) p.stats = { fed: 0, patted: 0, chats: 0, bought: 0 };
-    if (!p.widget) p.widget = { x: null, y: null, collapsed: false, hidden: false, quiet: false, size: 'M' };
+    if (!p.widget) p.widget = { x: null, y: null, collapsed: false, hidden: false, quiet: false, size: 'M', dock: true };
     if (p.widget.x === undefined) p.widget.x = null;
     if (p.widget.y === undefined) p.widget.y = null;
     if (p.widget.collapsed === undefined) p.widget.collapsed = false;
     if (p.widget.hidden === undefined) p.widget.hidden = false;
     if (p.widget.quiet === undefined) p.widget.quiet = false;
+    if (p.widget.dock === undefined) p.widget.dock = true;
     if (p.widget.size === undefined) p.widget.size = 'M';
     if (p.noHunger === undefined) p.noHunger = false;
     if (p.sleeping === undefined) p.sleeping = false;
@@ -592,7 +593,7 @@
     renderPanel(); refresh(); scrollChat();
 
     var hasAI = !!(ST().settings && ST().settings.aiKey);
-    if (hasAI) { aiBusy = true; aiReply(); }
+    if (hasAI) { aiBusy = true; renderDock(); aiReply(); }   /* 先渲染一次，好让「正在想…」立刻出现 */
     else setTimeout(function () { pushPet(localReply(text)); }, 420 + Math.random() * 520);
   }
 
@@ -603,7 +604,8 @@
     L.addMemory('chat', p.name + '：' + text, ['对话']);
     L.save();
     say(text);            /* 时长按字数自适应；气泡取第一句，完整版在下面对话里 */
-    if ($('petPage')) { L.render(); scrollChat(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
+    armDockDim();         /* 它刚开口，对话坞别这时候淡下去 */
+    if ($('petPage')) { renderDock(); L.render(); scrollChat(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
     renderPanel(); refresh(); scrollChat();
   }
 
@@ -869,6 +871,41 @@
     '.pw-root.collapsed .pw-canvasbox{border-radius:50%;overflow:hidden}',
     '.pw-root.collapsed .pw-quick,.pw-root.collapsed .pw-tools{display:none}',
     '.pw-root.collapsed .pw-meta{display:none}',
+    /* ===== 常驻对话坞（2026-09-18）：挂件旁边一直能说话，不用先点开面板 ===== */
+    '.pw-main{display:flex;align-items:flex-end;gap:10px}',
+    '.pw-dock{width:214px;margin-bottom:18px;padding:10px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.88));border:1px solid var(--line);box-shadow:0 14px 34px rgba(46,36,25,.20);backdrop-filter:blur(18px) saturate(120%);-webkit-backdrop-filter:blur(18px) saturate(120%);display:flex;flex-direction:column;gap:7px;animation:pwDockIn .26s var(--e-out)}',
+    '.pw-dock.hidden{display:none}',
+    /* 鼠标移开几秒后淡化 —— 它常驻在那儿，但不能一直抢视线、挡住底下的东西 */
+    '.pw-dock{transition:opacity .4s var(--e-out),transform .26s var(--e-out)}',
+    '.pw-dock.dim{opacity:.58}',
+    '.pw-dock.dim:hover{opacity:1}',
+    '.pw-dk-head{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);flex:none}',
+    '.pw-dk-name{font-weight:800;color:var(--ink);font-size:12.5px}',
+    /* 绿点 = 真 AI 在回（配了 Key）；灰点 = 本地台词模式。一眼看出现在是谁在说话 */
+    '.pw-dk-dot{width:7px;height:7px;border-radius:50%;background:#c8c2b8;flex:none}',
+    '.pw-dk-dot.on{background:#5eead4;box-shadow:0 0 0 3px rgba(94,234,212,.20)}',
+    '.pw-dk-x{margin-left:auto;width:20px;height:20px;border-radius:7px;background:rgba(46,36,25,.06);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);flex:none}',
+    '.pw-dk-x:hover{background:rgba(46,36,25,.12)}',
+    '.pw-dk-log{max-height:126px;overflow:auto;display:flex;flex-direction:column;gap:5px;padding-right:2px;overscroll-behavior:contain}',
+    '.pw-dk-log::-webkit-scrollbar{width:5px}',
+    '.pw-dk-log::-webkit-scrollbar-thumb{background:rgba(46,36,25,.16);border-radius:99px}',
+    '.pw-dk-msg{font-size:11.5px;line-height:1.45;padding:6px 9px;border-radius:11px;max-width:93%;word-break:break-word;white-space:pre-wrap}',
+    '.pw-dk-msg.pet{background:rgba(194,168,120,.22);align-self:flex-start;border-bottom-left-radius:4px}',
+    '.pw-dk-msg.me{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}',
+    '.pw-dk-msg.typing{opacity:.62;font-style:italic}',
+    '.pw-dk-empty{font-size:11.5px;color:var(--muted);line-height:1.55}',
+    '.pw-dk-quick{display:flex;gap:5px;flex-wrap:wrap;flex:none}',
+    '.pw-dk-q{padding:4px 8px;border-radius:9px;font-size:11px;background:rgba(255,255,255,.72);border:1px solid var(--line);color:#5b4a35}',
+    '.pw-dk-q:hover{background:rgba(194,168,120,.20)}',
+    '.pw-dk-in{display:flex;gap:5px;flex:none}',
+    '.pw-dk-in input{flex:1;min-width:0;padding:6px 9px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.86);font-size:12px;color:var(--ink);outline:none}',
+    '.pw-dk-in input:focus{border-color:var(--terracotta)}',
+    '.pw-dk-send{padding:0 10px;border-radius:9px;border:1px solid transparent;background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;font-size:11.5px;font-weight:700;flex:none}',
+    '.pw-dk-open{width:30px;height:30px;border-radius:50%;margin-bottom:18px;background:rgba(255,255,255,.96);border:1px solid var(--line);box-shadow:0 8px 20px rgba(46,36,25,.18);display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}',
+    '.pw-dk-open.hidden{display:none}',
+    /* 收起成小圆点时、或窄屏没地方时，对话坞让位 —— 别把屏幕占满 */
+    '.pw-root.collapsed .pw-dock,.pw-root.collapsed .pw-dk-open{display:none}',
+    '@keyframes pwDockIn{from{opacity:0;transform:translateX(9px)}to{opacity:1;transform:none}}',
     '.pw-float{position:absolute;right:14px;bottom:150px;font-size:12px;font-weight:800;color:#a85d2c;pointer-events:none;animation:pwFloat 1.5s var(--e-out) forwards;white-space:nowrap;text-shadow:0 1px 3px rgba(255,255,255,.9)}',
     '@keyframes pwFloat{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-36px)}}',
     /* 面板 */
@@ -962,7 +999,7 @@
     '.pg-ibtn .e{font-size:19px;display:block;line-height:1.25}',
     '.pg-ibtn b{display:block;font-size:13.5px;color:var(--ink);margin:3px 0 2px}',
     '.pg-ibtn small{display:block;font-size:11.5px;color:var(--muted);line-height:1.45}',
-    '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pw-stage{width:116px;height:220px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:250px}}',
+    '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pw-stage{width:116px;height:220px}.pw-dock,.pw-dk-open{display:none!important}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:250px}}',
     /* 用户在系统里开了「减少动态效果」，就别抖了 */
     '@media(prefers-reduced-motion:reduce){.pw-root,.pw-stage,.pw-canvasbox,.pw-halo,.pw-ring,.pw-bubble,.pg-bub,.pw-quick,.pw-tools{transition:none!important;animation:none!important}}'
   ].join('\n');
@@ -985,7 +1022,11 @@
     root.className = 'pw-root';
     root.innerHTML =
       '<div class="pw-bubble" id="pwBubble"></div>'
-      + '<div class="pw-stage" id="pwCatBox" title="点我打开 · 按住可以拖到别处">'
+      /* 对话坞和猫并排放，作为一个整体 —— 挂件被拖到哪，对话就跟着到哪，不用另外定位 */
+      + '<div class="pw-main">'
+        + '<button class="pw-dk-open hidden" id="pwDockOpen" data-pact="dock-open" title="打开对话">💬</button>'
+        + '<div class="pw-dock" id="pwDock"></div>'
+        + '<div class="pw-stage" id="pwCatBox" title="点我打开 · 按住可以拖到别处">'
         + '<div class="pw-halo" aria-hidden="true"></div>'
         + '<div class="pw-ring" aria-hidden="true"></div>'
         + '<div class="pw-tools">'
@@ -998,7 +1039,7 @@
           + '<button class="pw-qbtn" data-pact="q-chat" title="说说话">💬</button>'
           + '<button class="pw-qbtn" data-pact="q-page" title="伙伴详情">🐾</button>'
         + '</div>'
-      + '</div>'
+      + '</div></div>'
       + '<div class="pw-meta" id="pwMeta"></div>';
     document.body.appendChild(root);
 
@@ -1072,7 +1113,7 @@
 
   function onDown(e) {
     var t = e.target;
-    if (t.closest('button') || t.closest('input')) return;
+    if (t.closest('button') || t.closest('input') || t.closest('.pw-dock')) return;
     var root = $('petWidget');
     if (!root) return;
     var r = root.getBoundingClientRect();
@@ -1125,10 +1166,12 @@
     var pp = $('petPanel');
     pp.classList.remove('hidden');
     renderPanel();
+    renderDock();      /* 面板开 → 对话坞让位，免得两块重复 */
   }
   function closePanel() {
     var pp = $('petPanel');
     if (pp) pp.classList.add('hidden');
+    renderDock();      /* 关掉面板 → 对话坞回来 */
   }
   function togglePanel() { if (isPanelOpen()) closePanel(); else openPanel(); }
 
@@ -1456,6 +1499,7 @@
         return '<button class="pg-chip' + ((p.widget.size || 'M') === k ? ' on' : '') + '" data-pact="size" data-id="' + k + '">' + k + '</button>';
       }).join('') + '</span><button class="btn ghost sm" data-pact="reset-pos">归位</button></div>';
     h += swRow('它主动说话', '关掉后它只在有事情时冒泡——不是不说话，是不打扰', !p.widget.quiet, 'tg-quiet');
+    h += swRow('挂件旁常驻对话坞', '右下角猫旁边一直能打字说话；嫌它挡地方可以关掉，用挂件的 💬 说话', p.widget.dock !== false, 'tg-dock');
     h += swRow('不要让它饿', '打开后饱食度不再随时间下降。它一直在，不催你喂', !!p.noHunger, 'tg-nohunger');
 
     /* 装扮（按部位切换） */
@@ -1565,6 +1609,7 @@
     else if (act === 'reset-pos') { p.widget.x = null; p.widget.y = null; L.save(); applyPos(); L.toast('挂件回到右下角'); }
     else if (act === 'tg-hide') { p.widget.hidden = !p.widget.hidden; L.save(); applyPos(); L.render(); }
     else if (act === 'tg-quiet') { p.widget.quiet = !p.widget.quiet; L.save(); if (!p.widget.quiet) say('那我说了。', 2600); L.render(); }
+    else if (act === 'tg-dock') { p.widget.dock = !p.widget.dock; L.save(); renderDock(); L.render(); }
     else if (act === 'tg-nohunger') {
       p.noHunger = !p.noHunger; p.lastTickAt = Date.now(); L.save();
       L.toast(p.noHunger ? '已开启：它不会再饿了' : '已关闭：饱食度会随时间慢慢下降');
@@ -1721,6 +1766,99 @@
     }
   }
 
+  /* ================= 常驻对话坞 ================= */
+  /* 挂件旁边一直开着的小对话窗口：不用先点开面板，随手就能说一句。
+     多维度的「落实」都在这儿 —— 对话记录 / 快捷话术 / 谁在回（AI 还是本地台词）/ 随手收起。 */
+  function renderDock() {
+    var p = ensure(), d = $('pwDock'), op = $('pwDockOpen');
+    if (!d) return;
+    var open = p.widget.dock !== false;          /* 默认开 */
+    /* 面板打开时让位：两块都能聊天会重复，而且面板会盖住它 */
+    if (isPanelOpen && isPanelOpen()) open = false;
+    d.classList.toggle('hidden', !open);
+    if (op) op.classList.toggle('hidden', open || (isPanelOpen && isPanelOpen()));
+    if (!open) return;
+
+    /* 重建会丢掉他正在打的字 —— 先存后还，连同光标位置（refresh 是会被定时触发的） */
+    var old = $('pwDkIn');
+    var keep = old ? old.value : '';
+    var wasFocus = !!(old && document.activeElement === old);
+    var pos = old ? old.selectionStart : null;
+
+    var aiOn = !!(ST().settings && ST().settings.aiKey);
+    var h = '<div class="pw-dk-head">'
+      + '<span class="pw-dk-dot' + (aiOn ? ' on' : '') + '" title="'
+      + (aiOn ? 'AI 已连接' : '本地台词模式（设置里配 Key 后它会更懂你）') + '"></span>'
+      + '<span class="pw-dk-name">' + L.esc(p.name) + '</span>'
+      + '<span>' + L.esc(levelName(p.intimacy)) + '</span>'
+      + '<button class="pw-dk-x" data-pact="dock-close" title="收起对话（点 💬 再打开）">−</button>'
+      + '</div>';
+
+    h += '<div class="pw-dk-log" id="pwDkLog">';
+    var recent = p.chat.slice(-6);
+    if (!recent.length) {
+      h += '<div class="pw-dk-empty">随时跟它说一句。<br>你说过的话它会记着。</div>';
+    }
+    recent.forEach(function (m) {
+      h += '<div class="pw-dk-msg ' + (m.role === 'user' ? 'me' : 'pet') + '">' + L.esc(m.text) + '</div>';
+    });
+    if (aiBusy) h += '<div class="pw-dk-msg pet typing">它正在想…</div>';
+    h += '</div>';
+
+    /* 快捷话术：不用想词，一点就发出去（走同一条 chat()，记忆/亲密度照算） */
+    h += '<div class="pw-dk-quick">' + ['今天好累', '有点慌', '做完了'].map(function (t) {
+      return '<button class="pw-dk-q" data-pact="dk-say" data-id="' + t + '">' + t + '</button>';
+    }).join('') + '</div>';
+
+    h += '<div class="pw-dk-in"><input id="pwDkIn" placeholder="跟它说点什么…" maxlength="200">'
+      + '<button class="pw-dk-send" data-pact="dk-send">发送</button></div>';
+
+    d.innerHTML = h;
+
+    var ni = $('pwDkIn');
+    if (ni) {
+      ni.value = keep;
+      if (wasFocus) {
+        ni.focus();
+        if (pos != null) { try { ni.setSelectionRange(pos, pos); } catch (e) {} }
+      }
+    }
+    var lg = $('pwDkLog');
+    if (lg) lg.scrollTop = lg.scrollHeight;
+    armDockDim();   /* 每次重绘重新评估一次：正在打字就得亮着（它自己不会递归回来） */
+  }
+
+  /* 常驻就意味着会占地方：鼠标移开一会儿就淡化，别一直挡着底下的内容。
+     打字中 / 鼠标在上头 / 刚说过话 —— 这三种情况都不淡化。 */
+  var dockDimTimer = null;
+  function armDockDim() {
+    clearTimeout(dockDimTimer);
+    var d = $('pwDock');
+    if (!d) return;
+    d.classList.remove('dim');
+    var inp = $('pwDkIn');
+    /* 只看「有没有在打的字」：光是焦点在上面（发完一句话焦点还在）不算，
+       否则它永远不会淡化，就一直挡在那儿了 */
+    if (inp && inp.value) return;
+    if (!ensure().chat.length) return;        /* 还没说过话就别淡 —— 它得先被看见 */
+    dockDimTimer = setTimeout(function () {
+      var d2 = $('pwDock');
+      if (!d2) return;
+      var i2 = $('pwDkIn');
+      if (i2 && i2.value) return;                          /* 这会儿在打字，算了 */
+      d2.classList.add('dim');
+    }, 8000);
+  }
+
+  function dockSend() {
+    var inp = $('pwDkIn');
+    var v = inp ? inp.value.trim() : '';
+    if (!v) return;
+    if (inp) inp.value = '';
+    chat(v);
+    renderDock();
+  }
+
   function refresh() {
     if (!booted) { boot(); return; }
     if (!L) return;
@@ -1741,6 +1879,7 @@
     dailyGreet(p);
     scheduleIdle();
     applyPos();
+    renderDock();
     if (isPanelOpen()) renderPanel();
   }
 
@@ -1792,9 +1931,41 @@
       /* 挂件上的快捷动作：不用先展开面板，顺手就能做 */
       else if (act === 'q-feed') { openPanel('feed'); }
       else if (act === 'q-pat') { pat(); }
-      else if (act === 'q-chat') { openPanel('chat'); }
+      /* 常驻对话坞开着时，💬 = 直接开始打字（再开一块面板就重复了） */
+      else if (act === 'q-chat') {
+        if (p2.widget.dock !== false) { p2.widget.dock = true; L.save(); renderDock(); var i4 = $('pwDkIn'); if (i4) i4.focus(); }
+        else openPanel('chat');
+      }
       else if (act === 'q-page') { closePanel(); L.tab('pet'); }
+      /* 常驻对话坞 */
+      else if (act === 'dock-close') { p2.widget.dock = false; L.save(); renderDock(); }
+      else if (act === 'dock-open') { p2.widget.dock = true; L.save(); renderDock(); var i2 = $('pwDkIn'); if (i2) i2.focus(); }
+      else if (act === 'dk-say') { chat(el.dataset.id); renderDock(); }
+      else if (act === 'dk-send') { dockSend(); }
     });
+
+    /* 对话坞里回车直接发（不用去点按钮） */
+    root.addEventListener('keydown', function (e) {
+      armDockDim();          /* 一敲键就亮起来，别让他对着半透明的东西打字 */
+      if (e.key !== 'Enter') return;
+      var t = e.target;
+      if (!t || t.id !== 'pwDkIn') return;
+      e.preventDefault();
+      e.stopPropagation();
+      dockSend();
+    });
+
+    /* 对话坞：鼠标移开一会儿就淡下去，别一直挡着下面的东西 */
+    root.addEventListener('pointermove', armDockDim);
+    var dk0 = $('pwDock');
+    if (dk0) {
+      dk0.addEventListener('mouseenter', function () {
+        clearTimeout(dockDimTimer);
+        dk0.classList.remove('dim');
+      });
+      dk0.addEventListener('mouseleave', armDockDim);
+    }
+    armDockDim();
 
     /* 面板事件（阻止冒泡，避免 app.js 的全局委托重复处理） */
     var pp = $('petPanel');
