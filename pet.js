@@ -13,7 +13,7 @@
   var L = null;                 /* app.js 桥，boot() 时才可用 */
   var booted = false;
   var cat = null;               /* CyberCat 实例 */
-  var sayTimer = null, idleTimer = null;
+  var sayTimer = null, idleTimer = null, lastSay = null;
   var panelTab = 'pet';
   var drag = null;
   var lastAct = Date.now();
@@ -338,13 +338,47 @@
   }
 
   /* ================= 气泡 ================= */
-  function say(text, ms) {
-    var b = $('pwBubble');
-    if (!b) return;
-    b.textContent = text;
-    b.classList.add('on');
+  /* 气泡能装的字有限，AI 回一长段会糊成一片 —— 优先取第一句，读得完才算数 */
+  function bubbleText(t) {
+    var s = String(t || '').replace(/\s+/g, ' ').trim();
+    if (!s) return '';
+    var m = /^[^。！？!?；;]{1,58}[。！？!?]/.exec(s);
+    if (m) return m[0];
+    return s.length > 60 ? s.slice(0, 60) + '…' : s;
+  }
+  /* 一处说话，两处冒泡：右下角挂件 + 伙伴页那只大猫。
+     他可能在主界面也可能在伙伴页，两边都得看见。 */
+  function paintSay(txt, ms) {
+    var bs = [$('pwBubble'), $('pgBub')];
+    bs.forEach(function (b) {
+      if (!b) return;
+      b.textContent = txt;
+      b.classList.add('on');
+    });
     clearTimeout(sayTimer);
-    sayTimer = setTimeout(function () { b.classList.remove('on'); }, ms || 4200);
+    sayTimer = setTimeout(function () {
+      lastSay = null;
+      bs.forEach(function (b) { if (b) b.classList.remove('on'); });
+    }, ms);
+  }
+  function say(text, ms) {
+    var full = String(text || '').trim();
+    if (!full) return;
+    var short = bubbleText(full);
+    /* 不传 ms 时按字数算停留：一句话至少 3.6s，长一点多给点，但不超过 12s */
+    var dur = ms || Math.min(12000, 3600 + short.length * 130);
+    lastSay = { text: short, until: Date.now() + dur };
+    paintSay(short, dur);
+    /* 说话时戳一下猫，让它有反应 —— 光冒字没有动作，代入感出不来 */
+    try { if (pageCat && pageCat.poke) pageCat.poke(); } catch (e) {}
+    try { if (cat && cat.poke) cat.poke(); } catch (e) {}
+  }
+  /* 伙伴页会整页重绘，气泡会被冲掉 —— 记着上次说的话，重绘完补回来 */
+  function restoreSay() {
+    if (!lastSay) return;
+    var left = lastSay.until - Date.now();
+    if (left <= 200) { lastSay = null; return; }
+    paintSay(lastSay.text, left);
   }
   function floatText(txt) {
     var root = $('petWidget');
@@ -568,7 +602,7 @@
     if (p.chat.length > 140) p.chat.splice(0, p.chat.length - 140);
     L.addMemory('chat', p.name + '：' + text, ['对话']);
     L.save();
-    say(text, 5400);
+    say(text);            /* 时长按字数自适应；气泡取第一句，完整版在下面对话里 */
     if ($('petPage')) { L.render(); scrollChat(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
     renderPanel(); refresh(); scrollChat();
   }
@@ -894,6 +928,10 @@
     '.pg-cat{width:100%;height:300px}',
     '.pg-cat canvas{display:block;width:100%;height:100%}',
     '.pg-badge{position:absolute;top:10px;right:10px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.86);border:1px solid var(--line);color:#5b4a35}',
+    /* 大猫的说话气泡 —— 和右下角挂件共用一句话，让人在伙伴页也能看见它开口 */
+    '.pg-bub{position:absolute;left:10px;top:12px;z-index:2;max-width:min(212px,60%);padding:9px 13px;border-radius:15px;border-bottom-right-radius:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);color:var(--ink);font-size:12.5px;line-height:1.5;box-shadow:0 10px 24px rgba(46,36,25,.16);opacity:0;transform:translateY(6px) scale(.96);transform-origin:bottom right;transition:opacity .24s var(--e-out),transform .24s var(--e-out);pointer-events:none;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}',
+    '.pg-bub::after{content:"";position:absolute;right:15px;bottom:-6px;width:10px;height:10px;background:inherit;border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg);border-bottom-right-radius:3px}',
+    '.pg-bub.on{opacity:1;transform:none}',
     '.pg-side{flex:1 1 280px;min-width:250px;display:flex;flex-direction:column;gap:11px}',
     '.pg-name{font-size:19px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--ink)}',
     '.pg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}',
@@ -926,7 +964,7 @@
     '.pg-ibtn small{display:block;font-size:11.5px;color:var(--muted);line-height:1.45}',
     '@media(max-width:820px){.pw-root{right:12px;bottom:92px}.pw-stage{width:116px;height:220px}.pp-root{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:66vh;border-radius:18px}.pg-cat{height:250px}}',
     /* 用户在系统里开了「减少动态效果」，就别抖了 */
-    '@media(prefers-reduced-motion:reduce){.pw-root,.pw-stage,.pw-canvasbox,.pw-halo,.pw-ring,.pw-bubble,.pw-quick,.pw-tools{transition:none!important;animation:none!important}}'
+    '@media(prefers-reduced-motion:reduce){.pw-root,.pw-stage,.pw-canvasbox,.pw-halo,.pw-ring,.pw-bubble,.pg-bub,.pw-quick,.pw-tools{transition:none!important;animation:none!important}}'
   ].join('\n');
 
   function injectCSS() {
@@ -1345,7 +1383,8 @@
     /* 主视觉 + 状态 + 快捷互动 */
     h += '<div class="pg-hero">'
       + '<div class="pg-stage"><div class="pg-cat" id="pgCat"></div>'
-      + '<div class="pg-badge">' + L.tierText(T) + ' · 今日状态 ' + Math.round(v) + '</div></div>'
+      + '<div class="pg-badge">' + L.tierText(T) + ' · 今日状态 ' + Math.round(v) + '</div>'
+      + '<div class="pg-bub" id="pgBub"></div></div>'
       + '<div class="pg-side">'
       + '<div class="pg-name">' + L.esc(p.name) + '<span class="pp-lv">' + lv + '</span></div>'
       + '<div class="pp-bars">' + bar('🍚 饱食', p.hunger, 'h') + bar('💗 亲密', p.intimacy, 'i')
@@ -1493,6 +1532,7 @@
       pageCat = CyberCat.mount(cb, { vitality: v, bare: true, hungry: p.hunger < 30, gear: p.gear });
     }
     var ch = $('pgChat'); if (ch) ch.scrollTop = ch.scrollHeight;
+    restoreSay();   /* 整页重绘会冲掉气泡，补回来 */
 
     root.addEventListener('click', pageClick);
     root.addEventListener('input', pageInput);
