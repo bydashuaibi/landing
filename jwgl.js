@@ -191,23 +191,49 @@ class JwglClient {
       headers: { Referer: LOGIN_URL, Origin: BASE, 'Upgrade-Insecure-Requests': '1' }
     });
 
-    const redirected = /index_initMenu/i.test(r.location) || /index_initMenu/i.test(r.body);
-    if (!redirected) {
-      const text = stripTags(r.body);
-      const tip = /(验证码[^。；;，]{0,16}|用户名或密码[^。；;，]{0,20}|密码错误|账号[^。；;，]{0,20}|用户不存在)/.exec(text);
-      return {
-        ok: false,
-        error: tip ? tip[0] : '登录失败（返回的不是首页）',
-        needCaptcha: /验证码/.test(text)
-      };
+    /* ⚠️ 成败**不能靠 POST 的响应判断** —— 正方各版本返回形态不统一：
+         有的 302 跳首页（body 是空的），有的 200 回 JSON/HTML 片段（里面未必有
+         "index_initMenu" 字样）。曾经按"响应里有没有 index_initMenu"判，
+         结果登录其实是成功的、却被误报成"返回的不是首页"（2026-09-18 master 实测踩到）。
+       唯一可靠的判据：**再去开一次菜单页，开得开就是登录成功了**。 */
+    const menu = await this.request('/xtgl/index_initMenu.html');
+    if (menu.status === 200 && !/login_slogin/i.test(menu.body)) {
+      return { ok: true, menuHtml: menu.body };
     }
 
-    /* 再确认一次：菜单页打得开才算真登录成功 */
-    const menu = await this.request('/xtgl/index_initMenu.html');
-    if (menu.status !== 200 || /login_slogin/i.test(menu.body)) {
-      return { ok: false, error: '会话没建立起来（被踢回登录页了）' };
+    /* 确实没通过：把线索整理出来交给主进程落盘（**只带字段名，不带任何字段值**） */
+    const text = stripTags(r.body);
+    const menuText = stripTags(menu.body);
+    /* 先认**固定短语**（干净、可控），认不到再退回正则。
+       ⚠️ 别只用正则：页面文本是连成一片的（"验证码输入错误！ 登 录 微信扫码 …"），
+       正则会把后面的页面文字一起吞进来，提示变成一坨看不懂的话。 */
+    const KNOWN = [
+      '验证码输入错误', '验证码错误', '验证码不正确', '验证码已失效',
+      '用户名或密码错误', '密码错误', '用户不存在', '账号不存在',
+      '该账号已被锁定', '账号已锁定', '未开通'
+    ];
+    let err = '';
+    for (const k of KNOWN) { if (text.indexOf(k) >= 0) { err = k; break; } }
+    if (!err) {
+      const tip = /(验证码[^。；;，\s]{0,8}|用户名或密码[^。；;，\s]{0,12}|密码错误|用户不存在)/.exec(text);
+      err = tip ? tip[0] : '';
     }
-    return { ok: true, menuHtml: menu.body };
+    return {
+      ok: false,
+      error: err || (menu.status === 302 ? '登录没通过（仍被踢回登录页）'
+        : '登录没通过（菜单页 HTTP ' + menu.status + '）'),
+      needCaptcha: /验证码/.test(text + menuText.slice(0, 2000)),
+      diag: {
+        postStatus: r.status,
+        postLocation: r.location || '',
+        postBodyHead: text.slice(0, 800),
+        menuStatus: menu.status,
+        menuLocation: menu.location || '',
+        menuHead: menuText.slice(0, 300),
+        /* 只看字段名对不对（有没有漏掉隐藏字段），值一律不带 */
+        fields: Object.keys(form)
+      }
+    };
   }
 
   /* 会话是否还有效（不需要凭据） */

@@ -406,6 +406,18 @@ ipcMain.handle('jwgl:login', async (e, payload) => {
     if (!jwglPending) jwglPending = new JwglClient();
     const r = await jwglPending.submitLogin(username, password, captcha);
     if (!r.ok) {
+      /* 登录失败也落盘：把服务端回的原文和提交的字段名留下来。
+         ⚠️ 只记学号，**绝不记密码**（diag 里也只有字段名、没有字段值）。 */
+      try {
+        ensureDataDir();
+        fs.writeFileSync(path.join(DATA_DIR, 'jwgl-login-fail.json'), JSON.stringify({
+          at: new Date().toISOString(),
+          username: username,
+          error: r.error,
+          needCaptcha: !!r.needCaptcha,
+          diag: r.diag || null
+        }, null, 2));
+      } catch (e3) { /* 落盘失败不影响功能 */ }
       /* 失败了顺手换一张验证码，省得他还要再点一次 */
       let img = null;
       try {
