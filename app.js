@@ -74,6 +74,7 @@ function blankState(){
     version: APP_CONFIG.version,
     longTasks: [],      // 长周期：{id,name,unit,total,current,deadline,category,status,records:[],createdAt}
     dailyTasks: [],     // 日常循环：{id,name,category,subCategory,type('habit'|'recharge'),enabled,records:[],createdAt}
+    mustDos: [],        // 每日必做：{id,name,enabled,records:[{date,ts}],createdAt}（ts = 首次打卡时刻）
     reports: {},        // {weekKey:{generatedAt,summary,moodTrack,dailyCards}}
     digest: {},         // {date:{fetchedAt,categories:{label:[{name,desc,stars,url,lang}]}}}
     dumps: [],          // 倾倒台
@@ -149,6 +150,7 @@ function migrate(){
   s.version = s.version || APP_CONFIG.version;
   s.longTasks = s.longTasks || [];
   s.dailyTasks = s.dailyTasks || [];
+  s.mustDos = s.mustDos || [];         /* 每日必做，老存档必须补默认值 */
   s.reports = s.reports || {};
   s.digest = s.digest || {};
   s.dumps = s.dumps || [];
@@ -184,6 +186,11 @@ function migrate(){
     d.records = d.records || [];
     if(d.enabled===undefined) d.enabled = true;
     if(d.type===undefined) d.type = 'habit';
+  });
+  s.mustDos.forEach(function(m){
+    m.records = m.records || [];
+    if(m.enabled===undefined) m.enabled = true;
+    if(!m.createdAt) m.createdAt = today();   /* 连续天数的追溯下限靠它，缺了会把历史天数算丢 */
   });
   s.weeklyTasks.forEach(function(w){
     w.records = w.records || [];
@@ -484,6 +491,158 @@ function renderDailyTaskCard(dt){
     +'<button class="btn ghost sm" data-act="editDaily" data-id="'+dt.id+'">'+icon('edit')+'</button>'
     +'<button class="btn ghost sm" data-act="delDaily" data-id="'+dt.id+'">'+icon('trash')+'</button>'
     +'</div>';
+}
+
+/* ================= 每日必做 =================
+   跟「日常循环」的区别：日常是"想做就做"，必做是"每天都要交代一下"。
+   所以它有两样日常没有的东西：
+     · 打卡时间 —— 记的是**完成的那一刻**（不是"完成了"，是好几点完成的）
+     · 全清连续天数 —— 一天里所有必做都清掉才算一天，这才叫"必做"
+   基调照旧：不催不罚。没做完不写"失败"，只写"还差 N 件"；今天还没开始不算断链。
+   一天只记一次（防止手滑连点刷时间）；再点一下就是撤销。 */
+
+function mustActive(){
+  return (STATE.mustDos||[]).filter(function(m){ return m.enabled; });
+}
+
+/* 某天的打卡记录（一天至多一条） */
+function mustRecOn(m, d){
+  return (m.records||[]).find(function(r){ return r.date===d; }) || null;
+}
+function isMustDoneToday(m){ return !!mustRecOn(m, today()); }
+
+/* 打卡时刻 → HH:MM。记的是时刻不是时长，所以不显示"X 分钟" */
+function clockOf(ts){
+  var d = new Date(ts||0);
+  var z = function(n){ return ('0'+n).slice(-2); };
+  return z(d.getHours())+':'+z(d.getMinutes());
+}
+
+/* 单条必做的连续打卡天数。
+   休息日照旧"链条继续走但不计入"（跟 catLandingDays 同一套规矩：算进去是自欺，断掉是惩罚休息）。
+   今天还没打不算断 —— 否则每天早上打开都是 0，这个数字就没意义了。 */
+function mustStreak(m){
+  var n = 0, cur = today(), guard = 0;
+  if(!mustRecOn(m, cur)) cur = addDays(cur,-1);
+  while(guard++ < 4000){
+    if(isRestDay(cur)){ cur = addDays(cur,-1); continue; }
+    if(!mustRecOn(m, cur)) break;
+    n++; cur = addDays(cur,-1);
+  }
+  return n;
+}
+
+/* 全部清掉的连续天数（这才是「必做」真正的反馈）
+   ⚠️ 后加的必做不能追溯倒算：某天之前还不存在的项不参与那天的判定。
+      否则新加一条，过去所有天数当场作废，这个数字天天归零，等于废掉。 */
+function mustAllStreak(){
+  var ms = mustActive();
+  if(!ms.length) return 0;
+  var earliest = ms.reduce(function(a,m){
+    var c = m.createdAt || '';
+    return (c && c < a) ? c : a;
+  }, today());
+  var doneAll = function(d){
+    return ms.every(function(m){
+      if((m.createdAt||'') > d) return true;    /* 那天它还没出生 */
+      return !!mustRecOn(m, d);
+    });
+  };
+  var n = 0, cur = today(), guard = 0;
+  if(!doneAll(cur)) cur = addDays(cur,-1);      /* 今天还没开始不算断 */
+  while(guard++ < 4000 && cur >= earliest){
+    if(isRestDay(cur)){ cur = addDays(cur,-1); continue; }
+    if(!doneAll(cur)) break;
+    n++; cur = addDays(cur,-1);
+  }
+  return n;
+}
+
+function mustTodayStats(){
+  var ms = mustActive();
+  var done = ms.filter(isMustDoneToday);
+  return {total:ms.length, done:done.length, items:ms};
+}
+
+/* 今日页那张卡：一行一条，点一下打勾并记下时间 */
+function renderMustCard(){
+  var ms = mustActive();
+  if(!ms.length) return '';
+
+  var st = mustTodayStats();
+  var allDone = st.done === st.total && st.total > 0;
+  var firstTs = null, lastTs = null;
+  ms.forEach(function(m){
+    var r = mustRecOn(m, today());
+    if(!r || !r.ts) return;
+    if(firstTs===null || r.ts < firstTs) firstTs = r.ts;
+    if(lastTs===null || r.ts > lastTs) lastTs = r.ts;
+  });
+  var streak = mustAllStreak();
+
+  var h = '<div class="card must-card">'
+    + '<div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
+    + '<span class="must-count'+(allDone?' all':'')+'">'+st.done+' / '+st.total+'</span></div>';
+
+  if(allDone){
+    h += '<div class="hint">今天全部清掉了 ✓'
+      + (firstTs!==null
+          ? '　打卡时间 <b class="must-ok">'+clockOf(firstTs)+'</b>'
+            + (lastTs!==firstTs ? ' ~ <b class="must-ok">'+clockOf(lastTs)+'</b>' : '')
+          : '')
+      + (streak>1 ? '　·　已连续全清 <b>'+streak+'</b> 天' : '') + '</div>';
+  } else {
+    h += '<div class="hint">点一下就打勾，软件记下时间。还差 <b>'+(st.total-st.done)+'</b> 件'
+      + (streak>1 ? '　·　已连续全清 <b>'+streak+'</b> 天' : '') + '</div>';
+  }
+
+  h += '<div class="must-list">';
+  ms.forEach(function(m){
+    var r = mustRecOn(m, today());
+    h += '<div class="must-row'+(r?' done':'')+'" data-act="mustToggle" data-id="'+m.id+'" title="'+(r?'再点一下取消今天这次打卡':'打卡')+'">'
+      + '<span class="must-box">'+(r ? icon('check') : '')+'</span>'
+      + '<span class="must-name">'+esc(m.name)+'</span>'
+      + (r
+          ? '<span class="must-time">'+clockOf(r.ts)+'</span>'
+          : '<span class="must-time blank">未打卡</span>')
+      + '</div>';
+  });
+  h += '</div>'
+    + '<div class="must-foot"><button class="btn ghost sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
+    + '<button class="btn ghost sm" data-act="goMustManage">管理 / 看记录</button></div>'
+    + '</div>';
+  return h;
+}
+
+/* 任务页的管理卡：只有这里能改名字、开关、看最近 7 天 */
+function renderMustItemCard(m){
+  var r = mustRecOn(m, today());
+  var st = mustStreak(m);
+
+  var dots = '';
+  for(var i=6;i>=0;i--){
+    var d = addDays(today(),-i);
+    var cls = mustRecOn(m,d) ? 'on' : (isRestDay(d) ? 'rest' : '');
+    dots += '<span class="mdot '+cls+'" title="'+d+(mustRecOn(m,d)?' 已打卡':'')+'"></span>';
+  }
+
+  return '<div class="task">'
+    + '<div class="tinfo">'
+    + '<div class="tname">'+esc(m.name)+(m.enabled?'':'<span class="badge-pause">已关</span>')+'</div>'
+    + '<div class="tmeta">'
+    + (r
+        ? '<span class="must-ok">✓ 今天 '+clockOf(r.ts)+' 已打卡</span>'
+        : '<span class="muted">今天还没打</span>')
+    + (st>1 ? ' · 连续 '+st+' 天' : '')
+    + '</div>'
+    + '<div class="mdots">'+dots+'<span class="mdot-hint">近 7 天</span></div>'
+    + '</div>'
+    + '<button class="btn '+(r?'ghost':'primary')+' sm" data-act="mustToggle" data-id="'+m.id+'">'
+    + icon(r?'refresh':'check')+(r?'撤销':'打卡')+'</button>'
+    + '<button class="btn ghost sm" data-act="toggleMust" data-id="'+m.id+'">'+(m.enabled?'关':'开')+'</button>'
+    + '<button class="btn ghost sm" data-act="editMust" data-id="'+m.id+'">'+icon('edit')+'</button>'
+    + '<button class="btn ghost sm" data-act="delMust" data-id="'+m.id+'">'+icon('trash')+'</button>'
+    + '</div>';
 }
 
 /* ================= 每周任务 ================= */
@@ -1778,12 +1937,17 @@ function viewToday(){
   /* 天气条：一行轻环境信息，夹在 hero 和下面内容之间 */
   h += renderWxBar();
 
+  /* 每日必做：今天要交代的那几件 + 打卡时间。排在课表前面 —— 它是对一天最直接的交代。
+     ⚠️ 跟课表同一个例外规则：今天休息 / 刚休息回来时**让位给情绪卡**（排到它们后面再出现），
+        但不像课表那样干脆不显示 —— 休息日想动一动也随时能打卡。 */
+  var mustCard = renderMustCard();
+
   /* 课表置顶：今天真有课，就该第一眼看到。
      ⚠️ 例外：今天休息 / 刚休息回来 —— 那两张情绪卡比课表更该先被看到，课表让位排到它们后面。
         （这个应用的重点是「别被压垮」，课表再急也不能把「撑不住」埋了） */
   var schedCard = renderTodayCourses();
   var emotionFirst = isRestToday() || isSoftLanding();
-  if(!emotionFirst) h += schedCard;
+  if(!emotionFirst) h += mustCard + schedCard;
 
   /* 顶部第一块：休息中 / 休息完刚回来 —— 两者互斥，撑不住和刚缓过来要看到的东西不一样。
      ⚠️ 必须排在最前面：它比"今天还没动"更该被先看到。 */
@@ -1823,9 +1987,9 @@ function viewToday(){
     h += '</div>';
   }
 
-  /* 今天的课：非情绪优先时已经插在天气条下面了，这里补上让位的情况
-     （连了教务系统才出现；没连 / 今天没课就不打扰他） */
-  if(emotionFirst) h += schedCard;
+  /* 今天的课 / 每日必做：非情绪优先时已经插在天气条下面了，这里补上让位的情况
+     （课表连了教务系统才出现；没连 / 今天没课就不打扰他） */
+  if(emotionFirst) h += mustCard + schedCard;
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
   var dg = STATE.digest[today()];
@@ -1933,6 +2097,20 @@ function viewTasks(){
     h += '<div class="empty">还没有日常任务。点「新建日常」添加。</div>';
   } else {
     STATE.dailyTasks.forEach(function(dt){ h += renderDailyTaskCard(dt); });
+  }
+
+  /* 每日必做 */
+  var mStats = mustTodayStats();
+  h += '<div class="card" id="mustSec"><div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
+    + '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 新建必做</button></div>'
+    + '<div class="hint">每天都要交代一下的那几件（吃药、记账、背词…）。点一下打勾，'
+    + '软件记下<b>打卡时刻</b>；一天只记一次，再点一下是撤销。'
+    + (mStats.total ? '今天 <b>'+mStats.done+'/'+mStats.total+'</b>。' : '')+'</div></div>';
+
+  if(!STATE.mustDos.length){
+    h += '<div class="empty">还没有必做项。点「新建必做」加一条 —— 建议不超过 3 条，多了就成了清单。</div>';
+  } else {
+    STATE.mustDos.forEach(function(m){ h += renderMustItemCard(m); });
   }
 
   /* 每周任务 */
@@ -2265,6 +2443,7 @@ function viewMe(){
   h += '<div class="card"><h2>数据概览</h2>'
     + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
     + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
+    + '<div>必做：<b>'+mustTodayStats().done+'/'+mustActive().length+'</b> 今天</div>'
     + '<div>每周：<b>'+STATE.weeklyTasks.filter(function(w){return w.enabled;}).length+'</b> 进行中</div>'
     + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
     + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
@@ -2713,6 +2892,71 @@ var App = {
   },
 
   quickCheckin:function(id){ App.checkinDaily(id); },
+
+  /* --- 每日必做 --- */
+  /* 点一下打勾并写 ts（打卡时刻）；已打过 → 再点就是撤销。
+     一天只保留一条记录：不是"限制"，是为了让那个时间真的是「第一次打完的时刻」。 */
+  mustToggle:function(id){
+    var m = STATE.mustDos.find(function(x){return x.id===id;}); if(!m) return;
+    var d = today(), idx = -1;
+    (m.records||[]).forEach(function(r,k){ if(r.date===d) idx = k; });
+
+    if(idx >= 0){
+      m.records.splice(idx,1);
+      save(); render(); toast('已撤销今天的打卡');
+      return;
+    }
+    var ts = Date.now();
+    m.records = m.records || [];
+    m.records.push({date:d, ts:ts});
+    m.records.sort(function(a,b){ return a.date<b.date ? -1 : 1; });
+    save(); render();
+    var st = mustTodayStats();
+    toast('已打卡 '+clockOf(ts)+' ✓'+(st.done===st.total ? ' · 今天全清了' : ' · 还差 '+(st.total-st.done)+' 件'));
+  },
+
+  newMust:function(){ App.openMustForm(null); },
+  editMust:function(id){ App.openMustForm(id); },
+
+  toggleMust:function(id){
+    var m = STATE.mustDos.find(function(x){return x.id===id;}); if(!m) return;
+    m.enabled = !m.enabled; save(); render(); toast(m.enabled?'已启用':'已关闭');
+  },
+
+  openMustForm:function(id){
+    var m = id ? STATE.mustDos.find(function(x){return x.id===id;}) : null;
+    var isEdit = !!m;
+    openSheet('<h2>'+(isEdit?'编辑':'新建')+'必做</h2>'
+      + '<div class="hint">每天都要做的那一件，短一点、具体一点。建议总共不超过 3 条。</div>'
+      + '<div class="field"><label>名称</label><input id="mu_name" value="'+esc(m?m.name:'')+'" placeholder="如：吃维生素 / 记账 / 背 30 个词"></div>'
+      + '<div class="hint">打卡时会自动记下<b>完成时刻</b>（几点几分），不用你填。</div>'
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
+      + '<button class="btn primary" id="mu_save">'+(isEdit?'保存':'创建')+'</button></div>');
+    $('mu_save').addEventListener('click',function(){
+      var name = $('mu_name').value.trim();
+      if(!name){ toast('写个名字'); return; }
+      if(m){ m.name = name; }
+      else{ STATE.mustDos.push({id:uid('mu'), name:name, enabled:true, records:[], createdAt:today()}); }
+      save(); closeSheet(); render(); toast(isEdit?'已更新':'已加入必做');
+    });
+  },
+
+  delMust:function(id){
+    var m = STATE.mustDos.find(function(x){return x.id===id;}); if(!m) return;
+    openSheet('<h2>删除必做？</h2><div class="hint">「'+esc(m.name)+'」及其 '+m.records.length+' 次打卡记录将被删除。</div>'
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
+      + '<button class="btn danger" id="mu_del">确认删除</button></div>');
+    $('mu_del').addEventListener('click',function(){
+      STATE.mustDos = STATE.mustDos.filter(function(x){return x.id!==id;});
+      save(); closeSheet(); render(); toast('已删除');
+    });
+  },
+
+  goMustManage:function(){
+    CUR_TAB = 'tasks'; render();
+    var el = $('mustSec');
+    if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'start'});
+  },
 
   delDaily:function(id){
     var dt=STATE.dailyTasks.find(function(x){return x.id===id;}); if(!dt)return;
@@ -3304,6 +3548,14 @@ document.addEventListener('click',function(e){
   else if(act==='checkinDaily') App.checkinDaily(id);
   else if(act==='toggleDaily') App.toggleDaily(id);
   else if(act==='delDaily') App.delDaily(id);
+
+  /* 每日必做 */
+  else if(act==='mustToggle') App.mustToggle(id);
+  else if(act==='newMust') App.newMust();
+  else if(act==='editMust') App.editMust(id);
+  else if(act==='toggleMust') App.toggleMust(id);
+  else if(act==='delMust') App.delMust(id);
+  else if(act==='goMustManage') App.goMustManage();
 
   /* 每周任务 */
   else if(act==='newWeekly') App.newWeekly();

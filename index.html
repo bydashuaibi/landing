@@ -319,6 +319,34 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .qci-timer .icon{width:13px;height:13px}
 .qci-timer.on{background:var(--terracotta);color:#fff;border-color:var(--terracotta);padding:0 8px;white-space:nowrap}
 
+/* 每日必做 */
+.must-card{border:1px solid rgba(168,138,91,.42)}
+.must-count{font-family:var(--font-num),Inter,sans-serif;font-size:13px;font-weight:800;color:var(--muted);
+  padding:3px 10px;border-radius:999px;background:rgba(46,36,25,.07);flex:none}
+.must-count.all{color:#1f7a4f;background:rgba(47,158,107,.16)}
+.must-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.must-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);
+  border-radius:12px;background:rgba(255,255,255,.55);cursor:pointer;transition:.12s}
+.must-row:hover{border-color:var(--terracotta);background:rgba(194,168,120,.18)}
+.must-row .must-box{flex:none;width:20px;height:20px;border-radius:6px;border:1.6px solid rgba(46,36,25,.28);
+  display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.7);color:#fff}
+.must-row .must-box .icon{width:13px;height:13px}
+.must-row.done{border-color:#2f9e6b;background:rgba(47,158,107,.12)}
+.must-row.done .must-box{background:#2f9e6b;border-color:#2f9e6b}
+.must-row .must-name{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.must-row.done .must-name{color:#1f7a4f}
+.must-row .must-time{flex:none;font-family:var(--font-num),Inter,sans-serif;font-size:13px;font-weight:800;
+  color:#1f7a4f;letter-spacing:.4px}
+.must-row .must-time.blank{color:var(--muted);font-weight:600;font-size:12px}
+.must-foot{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.must-ok{color:#1f7a4f;font-weight:800}
+.mdots{display:flex;align-items:center;gap:4px;margin-top:6px}
+.mdot{width:9px;height:9px;border-radius:3px;background:rgba(46,36,25,.13);display:inline-block}
+.mdot.on{background:#2f9e6b}
+.mdot.rest{background:rgba(194,168,120,.55)}
+.mdot-hint{font-size:11px;color:var(--muted);margin-left:4px}
+
 /* 倾倒台 */
 .dump{border-left:4px solid var(--khaki)}
 .dump .text{white-space:pre-wrap;word-break:break-word;margin-top:6px;color:var(--ink)}
@@ -708,7 +736,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=28"></script>
-<script src="app.js?v=29"></script>
+<script src="app.js?v=30"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>
