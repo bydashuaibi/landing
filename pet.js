@@ -1342,7 +1342,8 @@
       + '</div>'
       + '<button class="btn ghost sm block" data-pact="goto-page" style="margin-top:9px">🐾 详情设定与全部数据 →</button>'
       + '<div class="pp-sec" style="margin-top:12px">'
-      + '· 单次完成 <b>≥60 分钟</b>的任务，就能领 1~3 条小鱼干（60-119:1 / 120-179:2 / ≥180:3）<br/>'
+      + '· 做事的每一分钟都攒进池子，<b>每满 60 分钟</b>领 1 条小鱼干 🐟（零头当天清零）<br/>'
+      + '· 长周期任务的「推进量」（个/页/词）每推进一次额外 +1 条，过半 +2、完成 +5<br/>'
       + '· 鱼干可以买吃的、玩具、装扮，也可以兑换你自己定的现实奖励<br/>'
       + '· 饿了只会蔫一点、会讨食，<b>不会掉亲密度、不会枯萎</b>'
       + '</div>';
@@ -1408,7 +1409,9 @@
 
   function tabShop(p, idp) {
     idp = idp || 'pp';            /* 输入框 id 前缀：挂件面板 pp / 独立页 shop */
-    var h = '<div class="pp-sec">余额 <b>' + p.fish + '</b> 🐟 · 鱼干来自单次完成 ≥60 分钟的任务</div>';
+    var ppf = L.poolProgress ? L.poolProgress() : null;
+    var h = '<div class="pp-sec">余额 <b>' + p.fish + '</b> 🐟 · '
+      + (ppf ? '今天已攒 <b>' + ppf.minutes + '/' + ppf.need + '</b> 分钟' : '鱼干来自做事的时长') + '</div>';
 
     h += '<div class="pp-sec" style="margin-top:6px"><b>吃的</b></div>';
     ITEMS.filter(function (it) { return it.kind === 'food'; }).forEach(function (it) {
@@ -1564,7 +1567,7 @@
 
     /* 喂它 */
     h += '<div class="card"><h2>🍚 喂它</h2><div class="hint">食物用小鱼干在商城买，买完存在仓库里。'
-      + '单次完成 ≥60 分钟的任务就能赚到 1~3 条。</div>';
+      + '做事的每一分钟都攒进池子，每满 60 分钟赚 1 条。</div>';
     ITEMS.filter(function (it) { return it.kind === 'food'; }).forEach(function (it) {
       var own = p.owned[it.id] || 0;
       h += '<div class="pp-item"><span class="pp-emo">' + it.emoji + '</span>'

@@ -90,6 +90,7 @@ function blankState(){
     oneThing: null,     // 今天一件：{date,text,done,dumpId?}
     restDays: [],       // 休息日：['YYYY-MM-DD',...] 手动记账，只能往回补不能往未来
     softLandOff: '',    // 回归日他点过「看全部待办」的日期（当天不再收起待办）
+    fishPool: {date:'', minutes:0},   // 今日小鱼干时间池：攒满 60 分钟发 1 条，零头当天清零
     seeded: true,       // 标记：已初始化过（避免老库升级时被重新播种）
     settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
   };
@@ -172,6 +173,7 @@ function migrate(){
   if(s.oneThing === undefined) s.oneThing = null;
   s.restDays = s.restDays || [];        /* 老存档读出来没有这个字段，必须补上 */
   if(s.softLandOff === undefined) s.softLandOff = '';
+  if(!s.fishPool || typeof s.fishPool !== 'object') s.fishPool = {date:'', minutes:0};
 
   /* 迁移旧 v1 数据中的 dumps/weather/companion/community/settings */
   if(!s.dumps.length && s.dumps_v1) s.dumps = s.dumps_v1;
@@ -387,10 +389,12 @@ function checkLongMilestones(g){
     g._milestoneDone = true;
     msgs.push('🎉 「'+g.name+'」已完成！你做到了！');
     addMemory('milestone', '「'+g.name+'」全部完成 🎉', ['里程碑']);
+    grantFish(5, '「'+g.name+'」全部完成 🎉');
   } else if(pct>=50 && !g._milestoneHalf){
     g._milestoneHalf = true;
     msgs.push('💪 「'+g.name+'」进度已到 '+pct+'%！过半了，继续！');
     addMemory('milestone', '「'+g.name+'」进度过半（'+pct+'%）', ['里程碑']);
+    grantFish(2, '「'+g.name+'」进度过半 '+pct+'%');
   }
   return msgs;
 }
@@ -878,13 +882,27 @@ function openWeeklyCheckin(id){
 function commitWeeklyRecord(w, minutes, mode, plannedMin){
   minutes = Math.max(0, minutes||0);
   w.records = w.records||[];
+  /* ⚠️ 这个判断必须在 push **之前**取：push 完今天就有记录了，
+     "今天是不是已经打过" 会永远为真，那条鱼就白设了 */
+  var hadToday = (w.records).some(function(r){ return r.date===today(); });
   w.records.push({date:today(), minutes:minutes, mode:mode||'instant', plannedMin:plannedMin||minutes, ts:Date.now()});
   if(STATE.timer && STATE.timer.taskId===w.id) STATE.timer=null;
+  /* 有时长 → 倒进全局时间池；零时长的"打卡"（自定义型每周任务）没有时间可进池 → 按"次"给一条 */
   var f = minutes>0 ? awardFish(minutes, w.name) : 0;
+  if(minutes<=0 && !hadToday) f += awardWeeklyTap(w);
   addMemory('task', '「'+w.name+'」'+minutes+' 分钟（'+(mode==='timer'?'计时完成':modeLabel(mode||'instant'))+'）', ['每周任务']);
   var st = weeklyTaskStats(w);
   save(); closeSheet(); render(); renderTimerBar();
-  toast('已记录 '+minutes+' 分钟 · 本周达标 '+st.okDays+'/'+st.goalDays+' 天'+(f?' · +'+f+' 🐟':''));
+  toast('已记录 '+(minutes>0?(minutes+' 分钟'):'打卡')+' · 本周达标 '+st.okDays+'/'+st.goalDays+' 天'
+    +(f?(' · +'+f+' 🐟'):poolTail(f)));
+}
+
+/* 没发鱼的时候也告诉他池子攒到哪了 —— 否则"做了却没鱼"会被当成功能没生效
+   （上一轮「没看见」就是同一类问题：机制不显化 = 不存在）。 */
+function poolTail(awarded){
+  if(awarded) return '';
+  var p = poolState();
+  return p.minutes > 0 ? ' · 池子已攒 '+Math.round(p.minutes)+'/'+POOL_MIN+' 分钟' : '';
 }
 
 /* ================= 专注计时器 ================= */
@@ -1238,8 +1256,13 @@ function commitStopwatchRecord(minutes, meta){
   addMemory('task', '「'+name+'」计时 '+minutes+' 分钟（正计时 · '+scopeName(scope)+'）', ['计时']);
   STATE.timer = null;
   if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
+  /* 长周期走计时也要给「推进量」那条鱼 —— 否则同样是推进了，走打卡给、走计时不给 */
+  if(scope==='long'){
+    var amtL = parseInt(meta.amount,10)||0;
+    fish += awardLongProgress(task, amtL);
+  }
   save(); closeSheet(); render(); renderTimerBar();
-  toast('记下 '+minutes+' 分钟'+(fish?(' · +'+fish+' 🐟'):'')+(scope==='daily'?'，今天已打卡 ✓':''));
+  toast('记下 '+minutes+' 分钟'+(fish?(' · +'+fish+' 🐟'):poolTail(0))+(scope==='daily'?'，今天已打卡 ✓':''));
 
   if(scope==='long' && (parseInt(meta.amount,10)||0)>0){
     var ms = checkLongMilestones(task);
@@ -1340,11 +1363,43 @@ function notify(title, body){
   }catch(e){}
 }
 
-/* ================= 小鱼干 & 记忆库 ================= */
-/* 规则：单次完成 ≥60 分钟的任务 → 1~3 条（60-119:1 / 120-179:2 / ≥180:3） */
-function fishForMinutes(m){
-  if(!m || m<60) return 0;
-  return Math.min(3, 1+Math.floor((m-60)/60));
+/* ================= 小鱼干 & 记忆库 =================
+   🔴 规则（2026-09-20 master 重定，别再按"单次满 60 分钟"写）：
+   老规则是「单次完成 ≥60 分钟 → 1~3 条」，结果**短任务永远拿不到鱼** ——
+   跑步 30 分钟、背词 15 分钟结算下来都是 0，每周任务和长周期任务形同不发。
+   现在改成**全局累计池**：
+     · 每次记录的任务时长都倒进同一个池子（三类任务共用一个池）
+     · 每满 60 分钟发 1 条，满一次给一次（120 分钟 = 2 条）
+     · 不足 60 分钟的零头**当天清零**，不往明天滚
+   所以「跑步 30 + 背词 20 + 长周期 10」也能凑出 1 条 —— 攒得起来才有反馈。
+   另外两条（master 明确要的）：
+     · 长周期任务的**推进量**（个/页/词）也算：每推进一次额外 +1 条（"别的计数单位一次一给"）
+     · 长周期的「过半 / 完成」里程碑：+2 / +5 条（一次性，靠 `_milestoneHalf/_milestoneDone` 挡重复） */
+var POOL_MIN = 60;
+
+/* 今天的池子。跨天第一次调用就倒掉 —— 这就是"每天清除积累的时间" */
+function poolState(){
+  if(!STATE.fishPool || typeof STATE.fishPool !== 'object') STATE.fishPool = {date:'', minutes:0};
+  var p = STATE.fishPool;
+  if(p.date !== today()){ p.date = today(); p.minutes = 0; }
+  if(typeof p.minutes !== 'number' || p.minutes < 0) p.minutes = 0;
+  return p;
+}
+/* 今天池子里的进度（给界面显示用，不产生副作用） */
+function poolProgress(){
+  var p = poolState();
+  return {minutes:Math.round(p.minutes), need:POOL_MIN};
+}
+/* 把这次花的时间倒进池子；满了就发鱼。返回发了多少条 */
+function feedFishPool(minutes, reason){
+  var m = Math.round(Number(minutes)||0);
+  if(m <= 0) return 0;
+  var p = poolState();
+  p.minutes += m;
+  var n = 0;
+  while(p.minutes >= POOL_MIN){ p.minutes -= POOL_MIN; n++; }
+  if(!n) return 0;
+  return grantFish(n, (reason ? reason+' · ' : '')+'累计满 '+POOL_MIN+' 分钟'+(n>1?('×'+n):''));
 }
 function petState(){
   if(!STATE.pet) STATE.pet = {};
@@ -1366,7 +1421,30 @@ function grantFish(n, reason){
 }
 function awardFish(minutes, reason){
   if(window.Pet && Pet.onRecord) Pet.onRecord(minutes);
-  return grantFish(fishForMinutes(minutes), reason+'（'+(minutes||0)+' 分钟）');
+  return feedFishPool(minutes, reason);
+}
+/* 长周期任务的推进量（个/页/词）单独算一条鱼：每推进一次 +1（"别的计数单位一次一给"）。
+   ⚠️ **必须设单日上限**：推进量是他自己填的，没有时长的天然约束 ——
+      不封顶的话连点"确认打卡"就能刷鱼，那就不是奖励是漏洞了。
+      3 次覆盖得住真实的分段学习（早/午/晚各一段）。
+   ⚠️ 调用点必须**先 push 记录再调**（按今天的推进次数判上限）。 */
+var LONG_PROGRESS_CAP = 3;
+function awardLongProgress(g, amt){
+  var n = Math.round(Number(amt)||0);
+  if(!g || n<=0) return 0;
+  var cnt = (g.records||[]).filter(function(r){
+    return r.date===today() && (Number(r.amount)||0)>0;
+  }).length;
+  if(cnt > LONG_PROGRESS_CAP) return 0;
+  return grantFish(1, g.name+' · 推进 '+n);
+}
+/* 自定义型每周任务（不记时长）的"完成"没有量可言，一天点几次都只是重复标记
+   → 同一天只算一次完成，只给 1 条。同样要求先 push 再调。 */
+function awardWeeklyTap(w){
+  if(!w) return 0;
+  var cnt = (w.records||[]).filter(function(r){ return r.date===today(); }).length;
+  if(cnt > 1) return 0;
+  return grantFish(1, w.name+' · 完成打卡');
 }
 function addMemory(kind, text, tags){
   STATE.memories = STATE.memories||[];
@@ -1989,6 +2067,7 @@ function viewToday(){
   /* 每周任务：今天还没动的那几个（伙伴已改为全局悬浮挂件，见右下角）
      回归日先把它收起来 —— 它是最直接的待办压力源，而他刚休息完。 */
   var weeklyTodo = STATE.weeklyTasks.filter(function(w){ return w.enabled && !isWeeklyCheckedToday(w); });
+  var pp = poolProgress();    /* 今日时间池进度，给下面的文案用 */
   if(weeklyTodo.length && !isSoftLanding()){
     h += '<div class="card"><div class="row between"><h2>🏃 今天还没动</h2>'
       + '<span class="muted" style="font-size:12px">每日目标 · 本周达标</span></div>'
@@ -2057,7 +2136,10 @@ function viewToday(){
   var activeDailies = STATE.dailyTasks.filter(function(d){return d.enabled;});
   var activeWeeklies = STATE.weeklyTasks.filter(function(w){return w.enabled;});
   if(activeDailies.length || activeWeeklies.length){
-    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。单次满 60 分钟赚 1~3 条小鱼干 🐟<br>▶ 是正计时：点一下就开始，做多久算多久，不用切到任务页。</div><div class="quick-checkin">';
+    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。'
+      + '花的每一分钟都会攒进今天的池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟'
+      + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟。'
+      + '<br>▶ 是正计时：点一下就开始，做多久算多久，不用切到任务页。</div><div class="quick-checkin">';
     activeDailies.forEach(function(dt){
       var checked = isDailyCheckedToday(dt);
       h += '<div class="qci '+(checked?'done':'')+'" data-act="quickCheckin" data-id="'+dt.id+'">'
@@ -2420,8 +2502,9 @@ function bindMeActions(){
 function viewPet(){
   return '<div class="mod-head"><div class="kicker">Module 07 · Companion Pet</div>'
     + '<div class="warp-head" data-warp><h2>伙伴</h2></div>'
-    + '<p>它不是待办，是你做事时顺手养起来的一只猫：<b>完成 ≥60 分钟的任务</b>换小鱼干，'
-    + '小鱼干换吃的、玩具、装扮，也能换你自己定的现实奖励。右下角挂件是它的日常视角，这一页是它的全部细节。</p></div>'
+    + '<p>它不是待办，是你做事时顺手养起来的一只猫：<b>花的每一分钟都攒进池子，每满 60 分钟换 1 条小鱼干</b>，'
+    + '长周期任务的推进和里程碑另外算。小鱼干换吃的、玩具、装扮，也能换你自己定的现实奖励。'
+    + '右下角挂件是它的日常视角，这一页是它的全部细节。</p></div>'
     + '<div id="petPage"><div class="empty">正在唤醒…</div></div>';
 }
 
@@ -2468,6 +2551,7 @@ function viewMe(){
     + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
     + '<div>休息日：<b>'+restTotal()+'</b> 天</div>'
     + '<div>小鱼干：<b>'+petState().fish+'</b> 条</div>'
+    + '<div>今日攒时：<b>'+poolProgress().minutes+'/60</b> 分钟</div>'
     + '<div>记忆库：<b>'+STATE.memories.length+'</b> 条</div></div>'
     + svgMood + '</div>';
 
@@ -2570,7 +2654,8 @@ function viewShop(){
   }
   return '<div class="mod-head"><div class="kicker">小鱼干换来的</div>'
     + '<div class="warp-head" data-warp><h2>商城</h2></div>'
-    + '<p>单次做满 60 分钟换 1~3 条小鱼干 🐟。换吃的、换装扮，也能换你自己定的现实奖励 —— '
+    + '<p>做事的每一分钟都攒进池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟（零头当天清零）；'
+    + '长周期任务的推进和里程碑另算。换吃的、换装扮，也能换你自己定的现实奖励 —— '
     + '奖励不是"努力的理由"，是"努力过之后的证据"。</p></div>'
     + '<div class="card" id="shopPage">' + body + '</div>';
 }
@@ -2820,12 +2905,12 @@ var App = {
       g.current=(g.current||0)+amt;
       g.records.push({date:today(),amount:amt,minutes:mins,ts:Date.now()});
       if(g.current>=g.total){ g.status='done'; }
-      var fish = mins>0 ? awardFish(mins, g.name) : 0;
+      var fish = (mins>0 ? awardFish(mins, g.name) : 0) + awardLongProgress(g, amt);
       save(); closeSheet();
       var ms=checkLongMilestones(g);
       render(); renderTimerBar();
       if(ms.length){ setTimeout(function(){toast(ms[0]);},300); }
-      else{ toast('已打卡 +'+amt+' '+g.unit+(fish?(' · +'+fish+' 🐟'):'')); }
+      else{ toast('已打卡 +'+amt+' '+g.unit+(fish?(' · +'+fish+' 🐟'):poolTail(fish))); }
     });
   },
 
@@ -2906,7 +2991,7 @@ var App = {
       dt.records.push({date:today(),amount:1,minutes:mins,ts:Date.now()});
       var fish = awardFish(mins, dt.name);
       save(); closeSheet(); render();
-      toast('已打卡 '+mins+' 分钟 ✓'+(fish?(' · +'+fish+' 条小鱼干 🐟'):''));
+      toast('已打卡 '+mins+' 分钟 ✓'+(fish?(' · +'+fish+' 条小鱼干 🐟'):poolTail(fish)));
     });
   },
 
@@ -3688,7 +3773,7 @@ function init(){
     addMemory:addMemory, grantFish:grantFish, petState:petState,
     vitality:catVitality, landingDays:catLandingDays, tierText:catTierText,
     tierOf:function(v){ return window.CyberCat ? CyberCat.tierOf(v) : (v<40?'low':(v>70?'high':'mid')); },
-    fishForMinutes:fishForMinutes,
+    poolProgress:poolProgress,   /* 今日时间池进度（纯查询，无副作用）—— 旧的 fishForMinutes 已随规则废除 */
     renderTimerBar:renderTimerBar,
     today:today, ymd:ymd, addDays:addDays, esc:esc, icon:icon, uid:uid,
     wx:function(force){ ensureWx(!!force); return STATE.wx; },
