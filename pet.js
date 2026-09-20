@@ -350,10 +350,20 @@
     if (m) return m[0];
     return s.length > 60 ? s.slice(0, 60) + '…' : s;
   }
-  /* 一处说话，两处冒泡：右下角挂件 + 伙伴页那只大猫。
-     他可能在主界面也可能在伙伴页，两边都得看见。 */
+  /* 一处说话，**四个位置冒泡**：右下角挂件 / 伙伴页大猫旁 / 伙伴页「说一句话」卡里 / 面板的说话 tab 里。
+     master 要的是"输入即走、回答以气泡回来、不留问答记录"，所以他可能在哪儿打字，
+     回答就得在**他眼前**冒出来 —— 面板盖住挂件、滚动到页面下半截看不见大猫，都算看不见。
+     两处是纯文字（旁边本来就有输入框，不需要「⋯」），挂件那个才有输入态。 */
   function paintSay(txt, ms, typing) {
-    /* 伙伴页那只大猫旁边：纯文字气泡（页面级的，不是"对话框"） */
+    /* 面板里 / 伙伴页说说话卡里：就近冒泡 */
+    ['ppBub', 'pgSay'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.textContent = txt;
+      el.classList.add('on');
+      if (typing) el.classList.add('typing'); else el.classList.remove('typing');
+    });
+    /* 伙伴页那只大猫旁边 */
     var pg = $('pgBub');
     if (pg) { pg.textContent = txt; pg.classList.add('on'); }
 
@@ -369,7 +379,13 @@
     clearTimeout(sayTimer);
     sayTimer = setTimeout(function () {
       lastSay = null;
-      if (pg) pg.classList.remove('on');
+      /* 连文字一起清掉：写完就过，页面里不留任何残留（跟"不留记录"一个口径） */
+      [pg, $('ppBub'), $('pgSay')].forEach(function (el) {
+        if (!el) return;
+        el.classList.remove('on');
+        el.classList.remove('typing');
+        el.textContent = '';
+      });
       if (inputOpen) return;        /* 他正好在说话，别把输入气泡一起收掉 */
       if (b) { b.classList.remove('on'); b.innerHTML = ''; }
     }, ms);
@@ -688,6 +704,13 @@
 
   var aiBusy = false;   /* AI 正在想 —— 没有这个，他点完发送要干等几秒，会以为坏了 */
 
+  /* 说一句就走：**不留任何"你问我答"的记录**
+     master 明确要求：输入即走，直接让它回一句气泡就行，不要聊天记录。
+     所以这里做了三件事：
+     ① 不写 `addMemory('chat', ...)` —— 记忆库里只有"你做过的事"，没有对话流水
+     ② 界面上任何地方都不再有消息列表（面板说话 tab / 伙伴页说说话卡都只剩一个输入行）
+     ③ `p.chat` **仍然保留** —— 那是它"记得"的地方（喂 AI 上下文用），不显化，
+        跟他说的"只要伙伴记得就行，不需要显化"一致。删了它就会变成每句都重新认识你。 */
   function chat(text) {
     text = (text || '').trim();
     if (!text) return;
@@ -697,15 +720,15 @@
     p.stats.chats += 1;
     touch('chat');
     var pc0 = ensure(); pc0.witCount.chats = (pc0.witCount.chats || 0) + 1;
-    L.addMemory('chat', '我：' + text, ['对话']);
     var cooled = (Date.now() - p.lastChatAt) > 300000;
     if (cooled) { p.lastChatAt = Date.now(); addIntimacy(1); }
     L.save();
-    renderPanel(); refresh(); scrollChat();
+    /* 先冒「正在想…」再重绘：AI 要几秒、本地台词也有半秒空窗，不交代就像卡住了 */
+    sayTyping();
+    renderPanel(); refresh();
 
     var hasAI = !!(ST().settings && ST().settings.aiKey);
-    /* 没有 AI 时本地台词也要等半秒多 ——「它正在想…」不是 AI 专属的过渡态 */
-    if (hasAI) { aiBusy = true; sayTyping(); aiReply(); }
+    if (hasAI) { aiBusy = true; aiReply(); }
     else setTimeout(function () { pushPet(localReply(text)); }, 420 + Math.random() * 520);
   }
 
@@ -713,21 +736,11 @@
     var p = ensure();
     p.chat.push({ role: 'pet', text: text, at: Date.now() });
     if (p.chat.length > 140) p.chat.splice(0, p.chat.length - 140);
-    L.addMemory('chat', p.name + '：' + text, ['对话']);
     L.save();
-    say(text);            /* 时长按字数自适应；气泡取第一句，完整版在伙伴页/记忆库里 */
-    if ($('petPage')) { L.render(); scrollChat(); return; }   /* 伙伴页开着就整页刷新，对话立刻出现 */
-    renderPanel(); refresh(); scrollChat();
-  }
-
-  /* 新消息在底部，不滚一下他看不见（聊天区有 max-height） */
-  function scrollChat() {
-    setTimeout(function () {
-      ['pgChat', 'ppChatBox'].forEach(function (id) {
-        var b = document.getElementById(id);
-        if (b) b.scrollTop = b.scrollHeight;
-      });
-    }, 0);
+    say(text);            /* 时长按字数自适应；只取第一句，别糊成一片 */
+    /* 伙伴页开着就重绘一次（好让气泡补回原位），否则只刷面板 */
+    if ($('petPage')) { L.render(); return; }
+    renderPanel(); refresh();
   }
 
   function aiReply() {
@@ -1043,12 +1056,15 @@
     '.pp-id{font-size:11.5px;color:var(--muted);margin-top:2px}',
     '.pp-acts{display:flex;gap:6px;align-items:center;flex:none}',
     '.pp-cost{font-size:12px;font-weight:800;color:#8a5a12;white-space:nowrap}',
-    '.pp-chat{display:flex;flex-direction:column;gap:8px;max-height:236px;overflow:auto;padding:2px}',
-    '.pp-msg{max-width:86%;padding:9px 12px;border-radius:13px;font-size:13px;line-height:1.45;white-space:pre-wrap;word-break:break-word}',
-    '.pp-msg.pet{background:rgba(194,168,120,.20);align-self:flex-start;border-bottom-left-radius:4px}',
-    '.pp-msg.me{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}',
-    /* AI 正在想：给个气泡，不然点完发送干等几秒像卡住了 */
-    '.pp-msg.typing{opacity:.6;font-style:italic;background:rgba(194,168,120,.14)}',
+    /* 说话气泡（面板里 / 伙伴页「说一句话」卡里）：**没有消息列表**，
+       只有它刚说的那一句，说完自己收起来 —— 收起时 max-height/padding 归零，不占地方 */
+    '.pp-bub,.pg-say{margin:2px 0 8px;padding:0 11px;border-radius:14px;border:1px solid var(--line);background:rgba(194,168,120,.20);color:var(--ink);font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:0;overflow:hidden;opacity:0;transition:opacity .22s var(--e-out),max-height .22s var(--e-out),padding .22s var(--e-out)}',
+    '.pp-bub.on,.pg-say.on{max-height:190px;overflow:auto;opacity:1;padding:9px 11px}',
+    '.pp-bub.typing,.pg-say.typing{opacity:.62;font-style:italic}',
+    /* 不用想词，一点就发（和挂件气泡里那三个同一套） */
+    '.pp-quick{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 9px}',
+    '.pp-q{padding:4px 9px;border-radius:9px;font-size:11.5px;background:rgba(255,255,255,.75);border:1px solid var(--line);color:#5b4a35;cursor:pointer;font-family:inherit}',
+    '.pp-q:hover{background:rgba(194,168,120,.24)}',
     '.pp-inrow{display:flex;gap:8px;margin-top:10px}',
     '.pp-inrow input,.pp-field input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:13.5px;background:rgba(255,255,255,.84);color:var(--ink);width:100%}',
     '.pp-field{display:flex;gap:8px;margin:8px 0}',
@@ -1315,9 +1331,9 @@
 
     pp.innerHTML = h;
     placePanel();
-
-    var ch = $('ppChatBox');
-    if (ch) ch.scrollTop = ch.scrollHeight;
+    /* 重绘会把气泡一起冲掉（「正在想…」尤其明显，它是每次发话后立刻要看到的）——
+       所以补回来，跟伙伴页那边同一个道理 */
+    restoreSay();
   }
 
   function tabPet(p) {
@@ -1390,18 +1406,19 @@
     return h;
   }
 
+  /* 不用想词，一点就发（走同一条 chat()，记忆/亲密度照算） */
+  var QUICK_SAY = ['今天好累', '有点慌', '做完了'];
+
+  /* 面板的「说话」tab：**没有消息列表** —— 只有它刚说的那句话 + 一行输入 */
   function tabChat(p) {
     var hasAI = !!(ST().settings && ST().settings.aiKey);
-    var h = '<div class="pp-sec">和它说话会被记进<b>记忆库</b>（「我的」页也能翻）。'
+    var h = '<div class="pp-sec">说一句就走，<b>不留记录</b>。'
       + (hasAI ? '<span class="pp-badge">AI 模式</span>' : '<span class="pp-badge local">本地台词模式 · 配了 AI Key 会更懂你</span>')
       + '</div>';
-    h += '<div class="pp-chat" id="ppChatBox">';
-    if (!p.chat.length) h += '<div class="pp-sec">还没说过话。试试“今天好累”。</div>';
-    p.chat.slice(-40).forEach(function (m) {
-      h += '<div class="pp-msg ' + (m.role === 'user' ? 'me' : 'pet') + '">' + L.esc(m.text) + '</div>';
-    });
-    if (aiBusy) h += '<div class="pp-msg pet typing">它正在想…</div>';
-    h += '</div>';
+    h += '<div class="pp-bub" id="ppBub"></div>';
+    h += '<div class="pp-quick">' + QUICK_SAY.map(function (t) {
+      return '<button class="pp-q" data-pact="qsay" data-id="' + t + '">' + t + '</button>';
+    }).join('') + '</div>';
     h += '<div class="pp-inrow"><input id="ppChatIn" placeholder="跟它说点什么…" maxlength="200">'
       + '<button class="btn primary sm" data-pact="send">发送</button></div>';
     return h;
@@ -1580,17 +1597,15 @@
     });
     h += '</div>';
 
-    /* 说说话 */
-    h += '<div class="card"><h2>💬 说说话</h2><div class="hint">'
+    /* 说说话：同样不留记录 —— 输入即走，回答以气泡回来（冒在输入框正上方） */
+    h += '<div class="card"><h2>💬 说一句话</h2><div class="hint">'
       + (ST().settings.aiKey ? 'AI 模式：它会带着对你的记忆回你。' : '本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。')
-      + '每一句都会归到记忆库。</div>';
-    h += '<div class="pp-chat" id="pgChat">';
-    if (!p.chat.length) h += '<div class="pp-sec">还没说过话。试试「今天好累」。</div>';
-    p.chat.slice(-30).forEach(function (m) {
-      h += '<div class="pp-msg ' + (m.role === 'user' ? 'me' : 'pet') + '">' + L.esc(m.text) + '</div>';
-    });
-    if (aiBusy) h += '<div class="pp-msg pet typing">它正在想…</div>';
-    h += '</div><div class="pp-inrow"><input id="pgChatIn" placeholder="跟它说点什么…" maxlength="200">'
+      + '说了就走，<b>不留记录</b> —— 它会记在心里。</div>';
+    h += '<div class="pg-say" id="pgSay"></div>';
+    h += '<div class="pp-quick">' + QUICK_SAY.map(function (t) {
+      return '<button class="pp-q" data-pact="qsay" data-id="' + t + '">' + t + '</button>';
+    }).join('') + '</div>';
+    h += '<div class="pp-inrow"><input id="pgChatIn" placeholder="跟它说点什么…" maxlength="200">'
       + '<button class="btn primary sm" data-pact="send">发送</button></div></div>';
 
     /* 详情设定 */
@@ -1666,7 +1681,7 @@
     /* 危险操作 */
     h += '<div class="card"><h2>🧯 重置</h2><div class="hint">只影响伙伴，不动你的任务、倾倒和情绪记录。</div>'
       + '<div class="pg-danger">'
-      + '<button class="btn ghost sm" data-pact="clear-chat">只清对话记录</button>'
+      + '<button class="btn ghost sm" data-pact="clear-chat">让它忘掉说过的话</button>'
       + '<button class="btn ghost sm" data-pact="clear-mem">清空全部记忆</button>'
       + '<button class="btn danger sm" data-pact="reset-pet">重置伙伴（回到刚认识）</button>'
       + '</div></div>';
@@ -1679,8 +1694,7 @@
     if (cb && window.CyberCat) {
       pageCat = CyberCat.mount(cb, { vitality: v, bare: true, hungry: p.hunger < 30, gear: p.gear });
     }
-    var ch = $('pgChat'); if (ch) ch.scrollTop = ch.scrollHeight;
-    restoreSay();   /* 整页重绘会冲掉气泡，补回来 */
+    restoreSay();   /* 整页重绘会冲掉气泡，补回来（包括「正在想…」） */
 
     root.addEventListener('click', pageClick);
     root.addEventListener('input', pageInput);
@@ -1699,6 +1713,7 @@
     else if (act === 'feed') { feed(id); L.render(); }
     else if (act === 'buy') buy(id);
     else if (act === 'send') { var inp = $('pgChatIn'); var val = inp ? inp.value : ''; if (inp) inp.value = ''; chat(val); L.render(); }
+    else if (act === 'qsay') { chat(id); L.render(); }
     else if (act === 'panel-shop') openPanel('shop');
     else if (act === 'panel-mem') openPanel('mem');
     else if (act === 'rename') {
@@ -1730,9 +1745,11 @@
       L.render();
     }
     else if (act === 'clear-chat') {
-      if (window.confirm('只清掉和它的对话记录？')) {
+      /* 界面上已经没有对话记录了，清的是**它心里的那点上下文**（p.chat）——
+         按钮文案也得跟着改，不然"清对话记录"会让人以为哪儿还藏着一份 */
+      if (window.confirm('让它忘掉你们说过的话？（只影响对话上下文，不动任务和记忆库）')) {
         p.chat = []; L.save();
-        L.toast('对话记录清空了');
+        L.toast('它把聊天的事忘掉了（你做的事还记着）');
         L.render();
       }
     }
@@ -1781,6 +1798,7 @@
     else if (act === 'addrw') addReward(($('ppRwName') || {}).value, ($('ppRwCost') || {}).value);
     else if (act === 'tododone') todoDone(id);
     else if (act === 'send') doSend();
+    else if (act === 'qsay') { chat(el.dataset.id); }
     else if (act === 'memkind') { memKind = el.dataset.k; renderPanel(); }
     else if (act === 'rename') {
       var nm = ($('ppName') || {}).value || '';
