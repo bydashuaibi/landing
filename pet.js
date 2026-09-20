@@ -1487,7 +1487,8 @@
 
   function tabMem() {
     var all = ST().memories || [];
-    var KINDS = [['', '全部'], ['chat', '对话'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['note', '记录'], ['rest', '休息']];
+    /* 没有「对话」这一档了：对话不留记录（master 口径），记忆库只装"你做过的事" */
+    var KINDS = [['', '全部'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['note', '记录'], ['rest', '休息']];
     var h = '<div class="pp-sec">它记得你做的事，也记得你说过的话。共 ' + all.length + ' 条。</div>';
     h += '<div class="pp-tabs">' + KINDS.map(function (k) {
       return '<button class="pp-tab' + (memKind === k[0] ? ' on' : '') + '" data-pact="memkind" data-k="' + k[0] + '">' + k[1] + '</button>';

@@ -431,6 +431,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .bubble{max-width:82%;padding:12px 15px;border-radius:16px;font-size:14px;white-space:pre-wrap;word-break:break-word}
 .bubble.ai{background:rgba(46,36,25,.06);align-self:flex-start;border-bottom-left-radius:4px;color:var(--ink);border:1px solid var(--line)}
 .bubble.me{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+/* 陪伴页的气泡：**不留问答记录** —— 只有它刚说的那一句，说完就过。
+   收起态 display:none，所以没话说时不会留一个空框在那儿 */
+.cmp-bub{display:none;max-width:92%;padding:12px 15px;border-radius:16px;border-bottom-left-radius:4px;
+  background:rgba(46,36,25,.06);border:1px solid var(--line);color:var(--ink);
+  font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.cmp-bub.on{display:block}
+.cmp-bub.typing{opacity:.62;font-style:italic}
 .companion-input{display:flex;gap:8px;margin-top:12px}
 .companion-input textarea{flex:1;min-height:46px;background:rgba(255,255,255,.66);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:11px 13px;font-family:inherit;font-size:14px}
 
@@ -738,8 +745,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="gradient-waves.js?v=1"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
-<script src="pet.js?v=31"></script>
-<script src="app.js?v=33"></script>
+<script src="pet.js?v=32"></script>
+<script src="app.js?v=34"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

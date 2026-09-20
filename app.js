@@ -162,6 +162,13 @@ function migrate(){
   s.community = s.community || {nick:''};
   s.weeklyTasks = s.weeklyTasks || [];
   s.memories = s.memories || [];
+  /* 一次性：清掉历史里所有「对话流水」记忆（master 要求：不要有你问我答的记录）。
+     用 flag 保证只跑一次；新的对话本来就不再写进来了（pet.js 的 chat() 已去掉 addMemory）。
+     它「记得」的部分仍在 pet 的 p.chat 里（喂 AI 上下文），只是不再显化到记忆库。 */
+  if(!s.chatMemPurged){
+    s.chatMemPurged = true;
+    s.memories = s.memories.filter(function(m){ return m && m.kind !== 'chat'; });
+  }
   s.timer = s.timer || null;
   if(s.timer){
     if(!s.timer.scope) s.timer.scope = 'weekly';   /* 兼容旧版：原来只有每周任务能计时 */
@@ -2475,17 +2482,36 @@ function callAI(messages){
     .catch(function(e){ return{error:'调用失败：'+e.message}; });
 }
 
+/* ================= 陪伴页的气泡 =================
+   master 的口径：**不留问答记录**，输入即走、它回一句就行。
+   所以这里没有消息列表，只有一个气泡位。
+   ⚠️ render() 会重建整个 #view，气泡会被冲掉 —— 而"正在等 AI 回复"是最不该消失的状态，
+      所以用 `_cmpSay` 记着，render 之后调 `cmpRestore()` 补回来（跟宠物的 restoreSay 同一个套路）。
+   `STATE.companion.messages` 仍然保留 —— 那是喂 AI 的上下文（还有「近三日跟进」要用），只是不显化。 */
+var _cmpSay = null;
+function cmpSay(text, typing){
+  _cmpSay = text ? {text:text, typing:!!typing} : null;
+  cmpRestore();
+}
+function cmpRestore(){
+  var el = $('cmpBub');
+  if(!el) return;
+  if(!_cmpSay){ el.classList.remove('on'); el.classList.remove('typing'); el.textContent=''; return; }
+  el.textContent = _cmpSay.text;
+  el.classList.add('on');
+  el.classList.toggle('typing', !!_cmpSay.typing);
+}
+
 function viewCompanion(){
-  var msgs = STATE.companion.messages;
   var h = '<div class="mod-head"><div class="kicker">Module 05 · Companion</div><div class="warp-head" data-warp><h2>陪伴</h2></div>'
     + '<p>云端 AI 真在听你说话、接住你。可一键生成「近三日跟进」，把散落的记录变成你能看懂的方向。</p></div>';
   h += '<div class="card"><h2>'+icon('chat')+' AI 陪伴</h2>'
-    + '<div class="hint">不评判、不催促。把闷在心里的话说出来。'+(STATE.settings.aiKey?'':'<span style="color:var(--amber)"> 未配置 AI → 设置</span>')+'</div>'
+    + '<div class="hint">不评判、不催促。把闷在心里的话说出来 —— 说了就走，<b>不留记录</b>。'
+    + (STATE.settings.aiKey?'':'<span style="color:var(--amber)"> 未配置 AI → 设置</span>')+'</div>'
     + '<button class="btn ghost sm" data-act="followup3">'+icon('refresh')+' 近三日跟进</button></div>'
-    + '<div class="card"><div class="chat" id="chat">';
-  if(!msgs.length) h+='<div class="empty">说点什么，或者点「近三日跟进」。</div>';
-  msgs.forEach(function(m){ h+='<div class="bubble '+(m.role==='user'?'me':'ai')+'">'+esc(m.content)+'</div>'; });
-  h+='</div><div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea><button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
+    + '<div class="card"><div class="cmp-bub" id="cmpBub"></div>'
+    + '<div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea>'
+    + '<button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
   var p0 = petState();
   h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
     + '<div class="hint">它不在页面里，它在<b>右下角那个挂件</b>里——切到哪一页都跟着你。喂食、抚摸、说话、逛商城都在那儿。</div>'
@@ -2702,6 +2728,9 @@ function render(){
 
   /* 伙伴页内容由 pet.js 填（要赶在入场动画之前） */
   if(CUR_TAB==='pet' && window.Pet) Pet.renderPage();
+  /* 陪伴页的气泡也得补回来 —— render 会重建 DOM，
+     而「它正在想…」恰恰是每次发完话最该看见的状态（跟宠物那边同一个道理） */
+  if(CUR_TAB==='companion') cmpRestore();
 
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===CUR_TAB);
@@ -2717,7 +2746,7 @@ function render(){
   /* 周报统计 count-up */
   if(CUR_TAB==='weekly'){ initCountUp(); }
 
-  if(CUR_TAB==='companion'){ var c=$('chat'); if(c) c.scrollTop=c.scrollHeight; }
+  /* 陪伴页原来要滚到底部看新消息 —— 现在没有消息列表了，不用滚 */
   if(CUR_TAB==='shop'){ bindShopActions(); }
   if(CUR_TAB==='me'){ bindMeActions(); }
 
@@ -3212,13 +3241,18 @@ var App = {
     var v=inp.value.trim(); if(!v) return;
     if(!STATE.settings.aiKey){ toast('先配置 AI'); CUR_TAB='me'; render(); App.openSettings(); return; }
     STATE.companion.messages.push({role:'user',content:v,ts:Date.now()});
-    inp.value=''; save(); render();
+    inp.value=''; save();
+    cmpSay('它正在想…', true);     /* 先给个交代，再去 render —— render 末尾会把它补回来 */
+    render();
     var msgs=[{role:'system',content:SYSTEM_PROMPT}].concat(
       STATE.companion.messages.map(function(m){return{role:m.role,content:m.content};})
     );
     callAI(msgs).then(function(r){
-      STATE.companion.messages.push({role:'assistant',content:r.error?r.error:r.content,ts:Date.now()});
-      save(); render();
+      var txt = r.error ? r.error : r.content;
+      STATE.companion.messages.push({role:'assistant',content:txt,ts:Date.now()});
+      save();
+      cmpSay(txt, false);
+      render();
     });
   },
 
@@ -3236,10 +3270,15 @@ var App = {
     STATE.community = STATE.community || {nick:''};
     STATE.companion.messages.push({role:'user',content:'【近三日跟进】请生成我的日报',ts:Date.now()});
     var msgs=[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}];
-    save(); render();
+    save();
+    cmpSay('它正在想…', true);
+    render();
     callAI(msgs).then(function(r){
-      STATE.companion.messages.push({role:'assistant',content:r.error?r.error:r.content,ts:Date.now()});
-      save(); render();
+      var txt = r.error ? r.error : r.content;
+      STATE.companion.messages.push({role:'assistant',content:txt,ts:Date.now()});
+      save();
+      cmpSay(txt, false);
+      render();
     });
   },
 
