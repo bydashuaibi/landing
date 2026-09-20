@@ -321,6 +321,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* 每日必做 */
 .must-card{border:1px solid rgba(168,138,91,.42)}
+/* 空态：虚线边框 + 半透明，读起来是「邀请你设一条」而不是待办（跟 .one-thing 一个调子） */
+.must-card.must-empty{border:2px dashed rgba(168,138,91,.6);background:rgba(255,255,255,.4)}
+.must-card.must-empty .must-count{display:none}
 .must-count{font-family:var(--font-num),Inter,sans-serif;font-size:13px;font-weight:800;color:var(--muted);
   padding:3px 10px;border-radius:999px;background:rgba(46,36,25,.07);flex:none}
 .must-count.all{color:#1f7a4f;background:rgba(47,158,107,.16)}
@@ -736,7 +739,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=28"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

@@ -567,7 +567,26 @@ function mustTodayStats(){
 /* 今日页那张卡：一行一条，点一下打勾并记下时间 */
 function renderMustCard(){
   var ms = mustActive();
-  if(!ms.length) return '';
+  /* ⚠️ 一条都没有时**也必须渲染**（空态 = 一行说明 + 加一条）。
+     这里曾经 `return ''`，结果「还没建过必做项」的人在整个今日页看不到任何入口，
+     只能碰巧逛到任务页才发现有这功能 —— 功能等于不存在。（2026-09-20 master 实测踩到）
+     调性跟「今天一件」的空态 `定一件` 一致：给出口，不施压。 */
+  if(!ms.length){
+    /* 分两种空：从没设过 / 全都关掉了。后者再劝他"加一条"是错的，该说的是怎么打开 */
+    var allOff = (STATE.mustDos||[]).length > 0;
+    return '<div class="card must-card must-empty">'
+      + '<div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
+      + '<span class="must-count">0 / 0</span></div>'
+      + '<div class="hint">'+(allOff
+          ? '必做项都被你关掉了。想重新用，去任务页把它们打开就行。'
+          : '还没设必做项。每天都要交代的那几件（吃药、记账、背词…）放这儿 —— '
+            + '点一下打勾，软件记下<b>完成时刻</b>，全部清掉还会累计连续天数。')+'</div>'
+      + '<div class="must-foot">'+(allOff
+          ? '<button class="btn primary sm" data-act="goMustManage">去任务页</button>'
+          : '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
+            + '<button class="btn ghost sm" data-act="goMustManage">去任务页看看</button>')+'</div>'
+      + '</div>';
+  }
 
   var st = mustTodayStats();
   var allDone = st.done === st.total && st.total > 0;
