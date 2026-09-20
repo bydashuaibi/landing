@@ -1406,6 +1406,20 @@ function petState(){
   if(STATE.pet.fish===undefined) STATE.pet.fish=0;
   return STATE.pet;
 }
+/* 🔴 调宠物侧回调时必须包一层（2026-09-20 血案）：
+   `init()` 开头的里程碑结算会走到 grantFish → Pet.onFish → Pet.ensure()，
+   而那时 pet.js 还没 boot（它的 `L` 是 null）→ 抛错 → **整个 init() 中断**，
+   而 `window.App` / `window.Landing` 的赋值在 init() 末尾 → 双双 undefined，
+   结果就是**白屏**（#view 空的、挂件不存在）。触发条件只是"长周期任务已过半"。
+   宠物是"顺带长"的旁路，它没就绪绝不该影响核心流程 —— 所有 Pet 回调一律走这里。 */
+function petNotify(fn, a, b){
+  try{
+    if(window.Pet && typeof Pet[fn] === 'function') return Pet[fn](a, b);
+  }catch(e){
+    try{ console.warn('[app] 宠物侧回调 '+fn+' 失败（已忽略）', e); }catch(_){}
+  }
+  return undefined;
+}
 function grantFish(n, reason){
   n = Math.max(0, n|0);
   if(!n) return 0;
@@ -1416,11 +1430,11 @@ function grantFish(n, reason){
   p.fishLog.push({at:Date.now(), n:n, reason:reason});
   if(p.fishLog.length>400) p.fishLog.splice(0, p.fishLog.length-400);
   addMemory('fish', '+'+n+' 条小鱼干 · '+reason, ['小鱼干']);
-  if(window.Pet && Pet.onFish) Pet.onFish(n, reason);
+  petNotify('onFish', n, reason);
   return n;
 }
 function awardFish(minutes, reason){
-  if(window.Pet && Pet.onRecord) Pet.onRecord(minutes);
+  petNotify('onRecord', minutes);
   return feedFishPool(minutes, reason);
 }
 /* 长周期任务的推进量（个/页/词）单独算一条鱼：每推进一次 +1（"别的计数单位一次一给"）。
@@ -1505,7 +1519,7 @@ function takeRestDay(d){
   STATE.restDays.sort();
   addMemory('rest', '给这天记了休息：'+d+(d===today()?'（今天）':'（补记）'), ['休息']);
   save();
-  if(window.Pet && Pet.onRestDay) Pet.onRestDay(d);   /* 休息了就该回点血 */
+  petNotify('onRestDay', d);   /* 休息了就该回点血（失败也不能拦着记休息） */
   return true;
 }
 
@@ -3721,14 +3735,45 @@ document.addEventListener('click',function(e){
 /* ================= 启动 ================= */
 function init(){
   load();
+
+  /* 🔴 桥要**最早**挂上（2026-09-20 血案）：原来在 init() 最末尾，
+     中间任何一步抛错都会让 window.App / window.Landing 双双 undefined，
+     表现为整页白屏、pet.js 也永远 boot 不起来 —— 极难定位。
+     它们只是引用，不依赖 DOM，没有理由排在后面。 */
+  window.closeSheet=closeSheet;
+  window.App=App;
+  /* 给 pet.js 用的桥（保持 app.js 单例状态，不重复造轮子） */
+  window.Landing = {
+    state:function(){ return STATE; },
+    save:save, render:render, toast:toast,
+    openSheet:openSheet, closeSheet:closeSheet,
+    callAI:callAI,
+    addMemory:addMemory, grantFish:grantFish, petState:petState,
+    vitality:catVitality, landingDays:catLandingDays, tierText:catTierText,
+    tierOf:function(v){ return window.CyberCat ? CyberCat.tierOf(v) : (v<40?'low':(v>70?'high':'mid')); },
+    poolProgress:poolProgress,   /* 今日时间池进度（纯查询，无副作用）—— 旧的 fishForMinutes 已随规则废除 */
+    renderTimerBar:renderTimerBar,
+    today:today, ymd:ymd, addDays:addDays, esc:esc, icon:icon, uid:uid,
+    wx:function(force){ ensureWx(!!force); return STATE.wx; },
+    MEM_KIND:MEM_KIND, CATEGORIES:CATEGORIES,
+    tab:function(t){ CUR_TAB=t; render(); }
+  };
+
   var pausedNames = checkAutoPause();
 
-  /* 渲染期间不产生副作用：里程碑在这里统一结算一次 */
+  /* 渲染期间不产生副作用：里程碑在这里统一结算一次。
+     ⚠️ 整段包 try/catch —— 这是 init() 早期，任何一个任务数据异常都不该让应用起不来
+     （2026-09-20 就是这里抛过一次，直接把 window.App/Landing 带走、整页白屏）。 */
   var milestoneMsgs = [];
-  STATE.longTasks.forEach(function(g){
-    if(g.status!=='active' && g.status!=='done') return;
-    milestoneMsgs = milestoneMsgs.concat(checkLongMilestones(g));
-  });
+  try{
+    STATE.longTasks.forEach(function(g){
+      if(g.status!=='active' && g.status!=='done') return;
+      try{ milestoneMsgs = milestoneMsgs.concat(checkLongMilestones(g)); }
+      catch(e){ try{ console.warn('[app] 里程碑结算失败（已跳过）', g && g.name, e); }catch(_){} }
+    });
+  }catch(e){
+    try{ console.warn('[app] 里程碑批量结算失败（已跳过）', e); }catch(_){}
+  }
   if(pausedNames.length) save();
   if(milestoneMsgs.length){
     setTimeout(function(){ toast(milestoneMsgs[0]); }, 900);
@@ -3761,25 +3806,7 @@ function init(){
   });
   $('topSettings').addEventListener('click',function(){ App.openSettings(); });
 
-  window.closeSheet=closeSheet;
-  window.App=App;
-
-  /* 给 pet.js 用的桥（保持 app.js 单例状态，不重复造轮子） */
-  window.Landing = {
-    state:function(){ return STATE; },
-    save:save, render:render, toast:toast,
-    openSheet:openSheet, closeSheet:closeSheet,
-    callAI:callAI,
-    addMemory:addMemory, grantFish:grantFish, petState:petState,
-    vitality:catVitality, landingDays:catLandingDays, tierText:catTierText,
-    tierOf:function(v){ return window.CyberCat ? CyberCat.tierOf(v) : (v<40?'low':(v>70?'high':'mid')); },
-    poolProgress:poolProgress,   /* 今日时间池进度（纯查询，无副作用）—— 旧的 fishForMinutes 已随规则废除 */
-    renderTimerBar:renderTimerBar,
-    today:today, ymd:ymd, addDays:addDays, esc:esc, icon:icon, uid:uid,
-    wx:function(force){ ensureWx(!!force); return STATE.wx; },
-    MEM_KIND:MEM_KIND, CATEGORIES:CATEGORIES,
-    tab:function(t){ CUR_TAB=t; render(); }
-  };
+  /* 桥（window.closeSheet / window.App / window.Landing）已经在 init() 开头挂好了 —— 别挪回这儿 */
 
   /* 计时恢复：应用没开着的这段时间里到期了 → 补一个结算入口 */
   var tr = STATE.timer;
