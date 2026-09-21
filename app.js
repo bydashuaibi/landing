@@ -45,7 +45,14 @@ function parseYmd(s){ var p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); 
 function today(){ return ymd(); }
 function addDays(s,n){ var d=parseYmd(s); d.setDate(d.getDate()+n); return ymd(d); }
 function daysBetween(a,b){ return Math.round((parseYmd(b)-parseYmd(a))/86400000); }
-function weekKey(d){ d=d||today(); var dd=parseYmd(d); var mon=dd.getDate()-dd.getDay()+(dd.getDay()===0?-6:0); var m=new Date(dd); m.setDate(mon); return ymd(m); }
+/* 本周的周一（周报窗口 / 每周任务达标 / 七天格子的起点）
+   🔴 原来写的是 `getDate() - getDay() + (getDay()===0 ? -6 : 0)` —— 那是**周日=0**的口径，
+   对**周一到周六**都会算成"上一个周日"（只有周日输入是对的）。实测：
+   2026-09-21(周一) → 旧返回 09-20(周日)，整整差一天。
+   后果：周报窗口变成"周日~周六"，把**上一个教学周的周日**算进来、把本周周日漏掉。
+   2026-09-21 加"上课时间"时被它坑到 —— 周一生成的周报显示 16 节/720 分钟（多算了周日 8 节）。
+   现在统一走 mondayOf()（周一为一周之始，跟课表的周一~周日一致）。 */
+function weekKey(d){ d = d || today(); return ymd(mondayOf(parseYmd(d))); }
 function esc(s){ return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c];}); }
 function icon(n){ return '<svg class="icon"><use href="#i-'+n+'"/></svg>'; }
 function uid(p){ return (p||'id')+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -93,6 +100,7 @@ function blankState(){
     restDays: [],       // 休息日：['YYYY-MM-DD',...] 手动记账，只能往回补不能往未来
     softLandOff: '',    // 回归日他点过「看全部待办」的日期（当天不再收起待办）
     fishPool: {date:'', minutes:0},   // 今日小鱼干时间池：攒满 60 分钟发 1 条，零头当天清零
+    classFish: {date:'', minutes:0},  // 今日已把多少「上课分钟」结算进池子（幂等用，防重复发鱼）
     seeded: true,       // 标记：已初始化过（避免老库升级时被重新播种）
     settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
   };
@@ -186,6 +194,7 @@ function migrate(){
   s.restDays = s.restDays || [];        /* 老存档读出来没有这个字段，必须补上 */
   if(s.softLandOff === undefined) s.softLandOff = '';
   if(!s.fishPool || typeof s.fishPool !== 'object') s.fishPool = {date:'', minutes:0};
+  if(!s.classFish || typeof s.classFish !== 'object') s.classFish = {date:'', minutes:0};
 
   /* 迁移旧 v1 数据中的 dumps/weather/companion/community/settings */
   if(!s.dumps.length && s.dumps_v1) s.dumps = s.dumps_v1;
@@ -1397,10 +1406,14 @@ function poolState(){
   if(typeof p.minutes !== 'number' || p.minutes < 0) p.minutes = 0;
   return p;
 }
-/* 今天池子里的进度（给界面显示用，不产生副作用） */
+/* 今天池子里的进度（给界面显示用，不产生副作用）
+   ⚠️ `classMin` 是**今天课表那部分**的分钟数 —— 它早就整块倒进池子并结算掉了，
+   所以池子里的"零头"看起来会偏小（上满 8 节 = 360 分钟，正好被扣成 0）。
+   界面上必须把它显示出来，否则他会以为"我上了 8 节课怎么池子是 0"。 */
 function poolProgress(){
   var p = poolState();
-  return {minutes:Math.round(p.minutes), need:POOL_MIN};
+  return {minutes:Math.round(p.minutes), need:POOL_MIN,
+          classMin:classMinutesOn(new Date()), classPeriods:classPeriodsOn(new Date())};
 }
 /* 把这次花的时间倒进池子；满了就发鱼。返回发了多少条 */
 function feedFishPool(minutes, reason){
@@ -1806,6 +1819,8 @@ function ensureSchedule(force){
       };
       _jwglNeedLogin = false;
       save();
+      /* 刚同步到的课表也要立刻算进今天的投入/小鱼干（幂等，只倒增量） */
+      try{ settleClassFish(); }catch(e){ try{ console.warn('[app] 上课时间结算失败（已跳过）', e); }catch(_){} }
       if(CUR_TAB === 'today') render();
     } else if(res.needLogin){
       _jwglNeedLogin = true;
@@ -1841,6 +1856,67 @@ function currentWeek(){
   var d0 = mondayOf(termStart()), d1 = mondayOf(new Date());
   return Math.floor((d1 - d0) / 604800000) + 1;
 }
+
+/* ================= 课表时间 = 学习时间 =================
+   master：「把课表占的时间也算学习时间」。
+   课表接口**只给节次不给时间**（1~12 节），所以按「一节 45 分钟」折算（他确认的口径）。
+   这块是**唯一不需要他手动记录**的投入来源 —— 课表本身就推得出来。
+   ⚠️ 口径是「**占用时间**」：当天的课不管上没上完都算（他明确选了"全算"）。
+   ⚠️ 先按**节次去重**再折算，别把同一天重叠的课重复计（万一教务数据里有撞课）。 */
+var CLASS_MIN_PER_PERIOD = 45;
+function weekOfDate(d){                     /* 某个日期属第几教学周 */
+  var d0 = mondayOf(termStart()), d1 = mondayOf(d || new Date());
+  return Math.floor((d1 - d0) / 604800000) + 1;
+}
+/* 某天的课（按该天的教学周过滤）；todayCourses() 是它的特例 */
+function coursesOn(d){
+  var s = STATE.schedule;
+  if(!s || !s.items) return [];
+  var wd = dayOfWeek(d), w = weekOfDate(d);
+  return s.items.filter(function(c){
+    return c.weekday === wd && weekHit(c.weeks, w);
+  }).sort(function(a, b){ return periodNum(a.periods) - periodNum(b.periods); });
+}
+/* 一批课占掉多少**节**（按节次去重）。wd 传了就只看那一天。
+   🔴 注意「课的门数」≠「节数」：他每门课都占 2 课时（"1-2"、"3-4"），
+      4 门课 = 8 节。以前卡片上写"4 节"就是把门数当节数了（2026-09-21 master 指出）。 */
+function classPeriodsOf(items, wd){
+  var set = {}, re = /(\d+)\s*[-~－]\s*(\d+)/, re1 = /(\d+)/;
+  (items || []).forEach(function(c){
+    if(wd && c.weekday !== wd) return;
+    var s = String(c.periods || ''), m = re.exec(s);
+    if(m){ for(var k = +m[1]; k <= +m[2]; k++) set[k] = 1; }
+    else { var n = re1.exec(s); if(n) set[+n[1]] = 1; }
+  });
+  return Object.keys(set).length;
+}
+function classPeriodsOn(d){
+  return classPeriodsOf(coursesOn(d));
+}
+/* 某一整周占掉多少节（按「星期几 + 节次」去重，别把同一天重叠加起来） */
+function classPeriodsInWeek(w){
+  var items = weekCourses(w), n = 0;
+  for(var d = 1; d <= 7; d++) n += classPeriodsOf(items, d);
+  return n;
+}
+function classMinutesOn(d){
+  return classPeriodsOn(d) * CLASS_MIN_PER_PERIOD;
+}
+/* 上课时间发鱼（master 确认要发）。当天的课表分钟数是固定值，所以必须**幂等**：
+   记下今天已经结算过多少分钟，只把增量倒进池子。
+   ⚠️ 故意不走 awardFish —— 那条会给宠物加元气，上课天天自动来一大笔，宠物就没养头了。
+      鱼照发、统计照进，只是不额外加元气。 */
+function settleClassFish(){
+  var d = today();
+  if(!STATE.classFish || typeof STATE.classFish !== 'object') STATE.classFish = {date:'', minutes:0};
+  var st = STATE.classFish;
+  if(st.date !== d){ st.date = d; st.minutes = 0; }
+  var total = classMinutesOn(d);
+  var delta = total - (st.minutes || 0);
+  if(delta <= 0) return 0;
+  st.minutes = total;
+  return feedFishPool(delta, '上课');
+}
 /* 周次表达式 → 这周上不上。见过的格式：1-16周 / 1-16周(单) / 1-8周,10-16周 / 第3周
    ⚠️ 认不出来时**一律返回 true**（宁可多显示一节，也别把要上的课藏了） */
 function weekHit(weeks, w){
@@ -1868,12 +1944,7 @@ function courseHue(name){
   return SCHED_HUES[h % SCHED_HUES.length];
 }
 function todayCourses(){
-  var s = STATE.schedule;
-  if(!s || !s.items) return [];
-  var wd = dayOfWeek(), w = currentWeek();
-  return s.items.filter(function(c){
-    return c.weekday === wd && weekHit(c.weeks, w);
-  }).sort(function(a, b){ return periodNum(a.periods) - periodNum(b.periods); });
+  return coursesOn(new Date());
 }
 /* ============ 各周课表 ============
    今日页那张卡只给「今天 + 本周要上的」，保持不变；想知道任意一周长什么样，
@@ -1924,7 +1995,7 @@ function schedWeekHTML(w){
     + (w === cur ? ' <span class="wk-cur">本周</span>' : '') + '</h2>'
     + '<div class="hint" style="margin:0 0 12px">' + mdShort(mon) + ' – '
     + mdShort(new Date(mon.getTime() + 6 * 86400000))
-    + ' · 这周 ' + list.length + ' 节</div>';
+    + ' · 这周 ' + classPeriodsInWeek(w) + ' 节 · 约 ' + (classPeriodsInWeek(w) * CLASS_MIN_PER_PERIOD) + ' 分钟</div>';
 
   /* 周选择条：有课的周实心，没课的周淡化 —— 一眼看出哪几周是空的 */
   h += '<div class="wk-bar">';
@@ -1985,17 +2056,23 @@ function renderTodayCourses(){
   var w = currentWeek();
   var wMon = weekMonday(w), wSun = weekMonday(w); wSun.setDate(wSun.getDate() + 6);
   var list = todayCourses();
-  /* 同一天里被周次过滤掉的有几节 —— 说一声，别让他以为课丢了 */
-  var allDay = (s.items || []).filter(function(c){ return c.weekday === dayOfWeek(); });
-  var off = Math.max(0, allDay.length - list.length);
+  /* 🔴 这里以前写的是 `list.length + ' 节'` —— 那是**门数**不是**节数**！
+     他每门课都占 2 课时（"1-2"、"3-4"），所以 4 门课 = 8 节，卡片上却显示"4 节"。
+     2026-09-21 master 指出："我们课都是占两个课时"。统一改成按**节次去重**计数。 */
+  var pCnt = classPeriodsOn(new Date());
+  var cMin = pCnt * CLASS_MIN_PER_PERIOD;
+  /* 同一天里被周次过滤掉的有几节 —— 说一声，别让他以为课丢了。
+     算法：今天全部课的节数 − 今天要上的节数（两边都已按节次去重），**不能拿门数相减** */
+  var allP = classPeriodsOf((s.items || []).filter(function(c){ return c.weekday === dayOfWeek(); }));
+  var offCnt = Math.max(0, allP - pCnt);
   var h = '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
     + '<div class="row" style="gap:9px;align-items:center">'
-    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + mdShort(wMon) + '–' + mdShort(wSun) + ' · ' + list.length + ' 节</span>'
+    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + mdShort(wMon) + '–' + mdShort(wSun) + ' · ' + pCnt + ' 节 · 约 ' + cMin + ' 分钟</span>'
     + '<button class="btn ghost sm" data-act="schedWeeks" title="看任意一周的完整课表">各周课表</button>'
     + '</div></div>';
   if(!list.length){
     h += '<div class="hint">今天没课'
-      + (off ? '（第 ' + w + ' 周不上的 ' + off + ' 节已收起）' : '')
+      + (offCnt ? '（第 ' + w + ' 周不上的 ' + offCnt + ' 节已收起）' : '')
       + ' —— 那时间就都是你自己的。</div>';
   } else {
     h += '<div class="sched-grid">';
@@ -2010,8 +2087,8 @@ function renderTodayCourses(){
         + '</div>';
     });
     h += '</div>';
-    if(off) h += '<div class="hint" style="margin-top:9px">本周（第 ' + w + ' 周）不上的 '
-      + off + ' 节已收起 —— 只留今天真要去的。</div>';
+    if(offCnt) h += '<div class="hint" style="margin-top:9px">本周（第 ' + w + ' 周）不上的 '
+      + offCnt + ' 节已收起 —— 只留今天真要去的。上课时间已算进今天的投入。</div>';
   }
   return h + '</div>';
 }
@@ -2170,7 +2247,9 @@ function viewToday(){
   if(activeDailies.length || activeWeeklies.length){
     h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。'
       + '花的每一分钟都会攒进今天的池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟'
-      + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟。'
+      + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟'
+      + (pp.classMin ? '，另外<b>今天上课 '+pp.classPeriods+' 节（'+pp.classMin+' 分钟）</b>也已经算进去了' : '')
+      + '。'
       + '<br>▶ 是正计时：点一下就开始，做多久算多久，不用切到任务页。</div><div class="quick-checkin">';
     activeDailies.forEach(function(dt){
       var checked = isDailyCheckedToday(dt);
@@ -2293,6 +2372,20 @@ function generateWeeklyReport(){
     if(!dStats[c]) dStats[c] = {minutes:0, days:0, targetDays:7};
     dStats[c].minutes += wSum.byCat[c];
   });
+  /* 课表时间也算进「学习成长」—— master：「把课表占的时间也算学习时间」。
+     按天累加（每天的课不一样），只算**周一~今天**：周报是复盘，不是预报，未来几天不算。 */
+  var classMin = 0, classPeriodCnt = 0;
+  for(var ci = 0; ci < 7; ci++){
+    var cd = addDays(monday, ci);
+    if(cd > today()) break;
+    var cm = classMinutesOn(cd);
+    if(cm > 0){ classMin += cm; classPeriodCnt += classPeriodsOn(cd); }
+  }
+  if(classMin > 0){
+    if(!dStats.edu) dStats.edu = {minutes:0, days:0, targetDays:7};
+    dStats.edu.minutes += classMin;
+  }
+
   var totalDailyMin = 0;
   Object.keys(dStats).forEach(function(k){ totalDailyMin+=dStats[k].minutes; });
 
@@ -2328,6 +2421,9 @@ function generateWeeklyReport(){
       if(!w.enabled) return;
       (w.records||[]).forEach(function(r){ if(r.date===d) loadMin+=(r.minutes||0); });
     });
+    /* 上课也进当天的「投入」—— 否则日均投入只统计他手动记的那部分，跟总计对不上 */
+    var classMinD = classMinutesOn(d);
+    loadMin += classMinD;
 
     var wObj=STATE.weather.find(function(x){return x.date===d;});
     var rate = tasksTotal>0 ? Math.round(tasksDone/tasksTotal*100) : 0;
@@ -2357,7 +2453,11 @@ function generateWeeklyReport(){
     moodTrack: moodTrack,
     dailyCards: dailyCards,
     dailyStats: dStats,
-    weekly: wSum
+    weekly: wSum,
+    /* 本周（周一~今天）上课占的时间 —— 已经并进 dailyStats.edu 和日均投入，
+       这里单独留一份给界面标注，免得他以为"我明明在上课，投入怎么这么点" */
+    classMin: classMin,
+    classPeriods: classPeriodCnt
   };
 
   STATE.reports[wk]=report;
@@ -2379,6 +2479,11 @@ function viewWeekly(){
     + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)" data-count="'+rpt.summary.avgLoad+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">日均投入(分钟)</div></div>'
     + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div></div>'
     + '</div>';
+  /* 课表占的时间也算进去了，得说出来 —— 不然「完成率」没动而「投入」变高，他会以为哪里算错了 */
+  if(rpt.classMin > 0){
+    h += '<div class="hint" style="text-align:center;margin:-4px 0 14px">其中<b>上课 '+rpt.classPeriods+' 节 · '+rpt.classMin+' 分钟</b>'
+      + '（周一到今天，按课表占用计 45 分钟/节）—— 已归进「学习成长」。</div>';
+  }
 
   /* 每周任务：双目标达成情况 */
   if(STATE.weeklyTasks.length){
@@ -2593,6 +2698,7 @@ function viewMe(){
         + '<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="Inter,sans-serif">'+(moodLabels[w.mood]||'?')+'</text>';
     }).join(''):'<text x="'+svgW2/2+'" y="'+svgH2/2+'" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="Inter,sans-serif">暂无记录，去「今日」选心情</text>')
     + '</svg>';
+  var _ppNow = poolProgress();
   h += '<div class="card"><h2>数据概览</h2>'
     + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
     + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
@@ -2602,7 +2708,8 @@ function viewMe(){
     + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
     + '<div>休息日：<b>'+restTotal()+'</b> 天</div>'
     + '<div>小鱼干：<b>'+petState().fish+'</b> 条</div>'
-    + '<div>今日攒时：<b>'+poolProgress().minutes+'/60</b> 分钟</div>'
+    + '<div>今日攒时：<b>'+_ppNow.minutes+'/60</b> 分钟'
+      + (_ppNow.classMin ? '（含上课 '+_ppNow.classMin+'）' : '') + '</div>'
     + '<div>记忆库：<b>'+STATE.memories.length+'</b> 条</div></div>'
     + svgMood + '</div>';
 
@@ -3836,8 +3943,21 @@ function init(){
     try{ console.warn('[app] 里程碑批量结算失败（已跳过）', e); }catch(_){}
   }
   if(pausedNames.length) save();
+  /* 上课时间结算：把今天的课表分钟倒进小鱼干池（幂等，只倒增量）。
+     ⚠️ 刻意放 try/catch —— 这是 init() 早期，任何一步抛错都会把 window.App/Landing 带走、整页白屏
+     （2026-09-20 在这段里踩过一次，见上面里程碑那段的注释）。 */
+  var classFishToday = 0;
+  try{ classFishToday = settleClassFish(); }
+  catch(e){ try{ console.warn('[app] 上课时间结算失败（已跳过）', e); }catch(_){} }
   if(milestoneMsgs.length){
     setTimeout(function(){ toast(milestoneMsgs[0]); }, 900);
+  }
+  /* 上课换来的鱼要**说出来** —— 不然他打开应用莫名其妙多了几条鱼（或者反过来：上了 8 节课
+     却一条鱼没见着，就会以为没生效）。只在真发了鱼的那天提示一次。 */
+  if(classFishToday > 0){
+    setTimeout(function(){
+      toast('今天 '+classPeriodsOn(today())+' 节课也算投入 · +'+classFishToday+' 🐟');
+    }, milestoneMsgs.length ? 4200 : 1600);
   }
   if(pausedNames.length){
     setTimeout(function(){
