@@ -81,6 +81,8 @@ function blankState(){
     weather: [],        // 情绪气象 [{date,mood,note}]（⚠️ 与下面的 wx 无关，别混）
     wx: null,           // 今日天气快照（IP 定位 + Open-Meteo，由主进程代取）
     schedule: null,     // 本学期课表快照 {at,termCode,items:[{name,weekday,periods,weeks,room,teacher}]}
+    termStart: '',      // 教学周起点（第 1 周的周一，'YYYY-MM-DD'）；空 = 用常量 TERM_START
+                        // ⚠️ 故意**不放**在 schedule 里 —— 那个快照每次同步都被整体替换，会被冲掉
     companion: {messages: []},
     community: {nick:''},
     weeklyTasks: [],    // 每周任务：{id,name,type('exercise'|'custom'),category,dailyGoalMin,weeklyGoalDays,enabled,records:[{date,minutes,mode,plannedMin,ts}],createdAt}
@@ -158,6 +160,9 @@ function migrate(){
   s.weather = s.weather || [];
   if(s.wx === undefined) s.wx = null;      /* 今日天气快照，老存档必须补默认值 */
   if(s.schedule === undefined) s.schedule = null;   /* 本学期课表快照 */
+  /* 教学周起点。老存档从没有过这个字段 → 原来 currentWeek() 恒等于 3（见 termStart 注释）。
+     顺手把可能被写进 schedule 快照里的那份也认下来，避免丢掉他手改的值。 */
+  if(!s.termStart) s.termStart = (s.schedule && s.schedule.termStart) || '2026-08-31';
   s.companion = s.companion || {messages:[]};
   s.community = s.community || {nick:''};
   s.weeklyTasks = s.weeklyTasks || [];
@@ -1809,23 +1814,28 @@ function ensureSchedule(force){
   }).catch(function(){ _schedBusy = false; });
 }
 /* --- 教学周：算出「这周是第几周」，并按周次表达式判断这周上不上 --- */
-var DEFAULT_WEEK = 3;   /* master 说这周是第三周 —— 没配过就按它反推第 1 周是哪天 */
+/* 🔴 学期起点必须是**固定日期**，绝不能相对"今天"反推（2026-09-21 血案，master 亲自问到）：
+   原来 termStart() 每次都用「今天所在的那个周一 − (DEFAULT_WEEK−1) 周」重算，
+   于是 currentWeek() = (周一(今天) − 周一(起点)) / 7 + 1 **恒等于 DEFAULT_WEEK** ——
+   周数在数学上永远停在 3 涨不上去。原话：「今天已经星期一了，为什么课表没有迭代到第四周」。
+   现在：起点是下面这个绝对日期，落在 STATE.termStart，之后每周自然 +1。
+   锚点依据：master 两次确认 —— 09-18（周五）是第 3 周、09-21（周一）是第 4 周，两条都指向 08-31。
+   ⚠️ 教务接口**不返回学期起始日期**（响应里 rqazcList 是空数组、dateDigit 只是查询当天、
+      oldzc 是周次位掩码），所以只能本地锚。万一不准，去「我的 → 设置 → 教学周起点」改。
+   ⚠️ 别把它塞进 STATE.schedule —— 那个快照每次同步都被整体替换，会被冲掉。 */
+var TERM_START = '2026-08-31';   /* 第 1 周的周一 */
 function mondayOf(d){
   var t = new Date(d); t.setHours(0,0,0,0);
   var wd = t.getDay() === 0 ? 7 : t.getDay();
   t.setDate(t.getDate() - (wd - 1));
   return t;
 }
-/* 第 1 周的周一。没配过就按「本周 = 第 3 周」反推，之后每周自动 +1，不用他手动改 */
+/* 第 1 周的周一 */
 function termStart(){
-  var s = STATE.schedule;
-  if(s && s.termStart){
-    var d = new Date(s.termStart);
-    if(!isNaN(d.getTime())) return d;
-  }
-  var m = mondayOf(new Date());
-  m.setDate(m.getDate() - (DEFAULT_WEEK - 1) * 7);
-  return m;
+  var d = parseYmd(STATE.termStart || TERM_START);
+  if(isNaN(d.getTime())) d = parseYmd(TERM_START);
+  if(isNaN(d.getTime())) d = new Date();
+  return mondayOf(d);
 }
 function currentWeek(){
   var d0 = mondayOf(termStart()), d1 = mondayOf(new Date());
@@ -1973,13 +1983,14 @@ function renderTodayCourses(){
       + '<div class="hint">连上教务系统后，这里会显示今天的课。学号密码用系统加密存在本机，不上传、不进代码。</div></div>';
   }
   var w = currentWeek();
+  var wMon = weekMonday(w), wSun = weekMonday(w); wSun.setDate(wSun.getDate() + 6);
   var list = todayCourses();
   /* 同一天里被周次过滤掉的有几节 —— 说一声，别让他以为课丢了 */
   var allDay = (s.items || []).filter(function(c){ return c.weekday === dayOfWeek(); });
   var off = Math.max(0, allDay.length - list.length);
   var h = '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
     + '<div class="row" style="gap:9px;align-items:center">'
-    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + list.length + ' 节</span>'
+    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + mdShort(wMon) + '–' + mdShort(wSun) + ' · ' + list.length + ' 节</span>'
     + '<button class="btn ghost sm" data-act="schedWeeks" title="看任意一周的完整课表">各周课表</button>'
     + '</div></div>';
   if(!list.length){
@@ -3488,6 +3499,12 @@ var App = {
     var s=STATE.settings;
     openSheet('<h2>'+icon('cog')+' 设置</h2>'
       + '<div class="field"><label>GitHub Token（可选，提升日报拉取限额）</label><input id="s_gh" type="password" value="'+esc(s.githubToken||'')+'" placeholder="不填也能拉取日报"></div>'
+      + '<div class="field"><label>教学周起点（第 1 周的周一）</label>'
+      +   '<div class="hint" style="margin:0 0 8px">用来算「今天是第几周」，直接决定课表按周次怎么过滤。'
+      +   '按现在这个起点，本周是第 <b>'+currentWeek()+'</b> 周（'+mdShort(weekMonday(currentWeek()))+' 起）。'
+      +   '跟开学周对不上就改这里。</div>'
+      +   '<input id="s_term" type="date" value="'+esc(ymd(termStart()))+'">'
+      + '</div>'
       + '<div class="field"><label>AI 接口（陪伴、宠物聊天共用）</label>'
       +   '<div class="hint" style="margin:0 0 8px">现在接的是 <b>DeepSeek</b>：点一下按钮自动填地址和模型，'
       +   '只粘 Key 就行。填完记得点「测试连接」，能省掉后面一堆莫名其妙的报错。</div>'
@@ -3593,7 +3610,12 @@ var App = {
       STATE.settings.aiBaseUrl=$('s_base').value.trim();
       STATE.settings.aiKey=$('s_key').value.trim();
       STATE.settings.aiModel=$('s_model').value.trim()||'deepseek-chat';
-      save(); closeSheet(); toast('已保存');
+      /* 教学周起点：改了要**按周一归位**再存，不然他填个周三会把整周算歪 */
+      var tv=($('s_term')||{}).value;
+      if(tv){ var td=parseYmd(tv); if(!isNaN(td.getTime())) STATE.termStart=ymd(mondayOf(td)); }
+      save(); closeSheet();
+      toast('已保存 · 现在是第 '+currentWeek()+' 周');
+      render();
     };
     $('s_reset').onclick=function(){
       if(confirm('确定清空全部数据？任务、倾倒、情绪、伙伴和记忆都会没，不可恢复。')){
