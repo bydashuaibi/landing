@@ -1977,14 +1977,30 @@ function weekCourses(w){
 }
 /* 节次行：取本学期出现过的所有节次，去重排序。
    ⚠️ 用**全部**课而不是某周的课 —— 不然换一周网格行数会跳来跳去，看着像坏了 */
+/* 节次区间：'1-4' → [1,4]；'9' → [9,9]；认不出来 → null */
+function periodRange(s){
+  s = String(s || '');
+  var m = /(\d+)\s*[-~－]\s*(\d+)/.exec(s);
+  if(m) return [+m[1], +m[2]];
+  var n = /(\d+)/.exec(s);
+  return n ? [+n[1], +n[1]] : null;
+}
+function rangesOverlap(a, b){ return !!(a && b && a[0] <= b[1] && b[0] <= a[1]); }
+/* 「各周课表」网格的行 = **固定的 2 节一行**（1-2 / 3-4 / 5-6 / 7-8 / 9-10 …）。
+   🔴 以前是"把课表里出现过的 periods 字符串直接当行"，于是左边那列会混进
+      「1-4 节」「1-8 节」「5-8 节」这种**假行**（2026-09-21 master 截图指出：
+      "这个节数很奇怪，按道理只有从 1 到 8 节，加上偶尔晚上的课最多 1-10 节"）。
+   行数按本学期出现过的**最大节次**决定，所以换周不会跳来跳去。 */
 function schedPeriodRows(){
   var items = (STATE.schedule && STATE.schedule.items) || [];
-  var seen = {}, rows = [];
+  var maxP = 0;
   items.forEach(function(c){
-    var k = String(c.periods || '').trim();
-    if(k && !seen[k]){ seen[k] = 1; rows.push(k); }
+    var r = periodRange(c.periods);
+    if(r) maxP = Math.max(maxP, r[1]);
   });
-  rows.sort(function(a, b){ return periodNum(a) - periodNum(b); });
+  if(maxP <= 0) maxP = 8;
+  var rows = [];
+  for(var a = 1; a <= maxP; a += 2) rows.push(a + '-' + (a + 1));
   return rows;
 }
 function schedWeekHTML(w){
@@ -2009,26 +2025,50 @@ function schedWeekHTML(w){
   if(!list.length){
     h += '<div class="hint">第 ' + w + ' 周整周都没课。</div>';
   } else {
+    var maxP = periodRange(rows[rows.length - 1])[1];
     h += '<div class="wk-scroll"><div class="wk-table">';
-    h += '<div class="wk-c"></div>';
+    /* ⚠️ 必须**显式**写 grid-column / grid-row：下面有跨行的课块，
+       一旦依赖自动排布，被跨行块跳过的格子会让同一行后面的列整体左移（列和星期就错位了） */
+    h += '<div class="wk-c" style="grid-column:1;grid-row:1"></div>';
     for(var d = 0; d < 7; d++){
       var dd = new Date(mon.getTime() + d * 86400000);
-      h += '<div class="wk-th' + (ymd(dd) === today() ? ' today' : '') + '">周'
+      h += '<div class="wk-th' + (ymd(dd) === today() ? ' today' : '') + '" style="grid-column:' + (d + 2) + ';grid-row:1">周'
         + WEEK_NAMES[d] + '<span>' + mdShort(dd) + '</span></div>';
     }
-    rows.forEach(function(p){
-      h += '<div class="wk-tp">' + esc(p) + ' 节</div>';
+    var covered = {};   /* "行:星期" → 已被上面的跨行块占掉 */
+    rows.forEach(function(p, ri){
+      var gr = ri + 2, pr = periodRange(p);
+      h += '<div class="wk-tp" style="grid-column:1;grid-row:' + gr + '">' + esc(p) + ' 节</div>';
       for(var wd = 1; wd <= 7; wd++){
+        if(covered[ri + ':' + wd]) continue;          /* 被跨行块覆盖了，不再补空格 */
+        /* 按**跨度重叠**取课：'1-4' 的课会落在 1-2 和 3-4 两行里 */
         var cs = list.filter(function(c){
-          return c.weekday === wd && String(c.periods).trim() === p;
+          return c.weekday === wd && rangesOverlap(periodRange(c.periods), pr);
         });
-        if(!cs.length){ h += '<div class="wk-cell"></div>'; continue; }
-        h += '<div class="wk-cell has">';
+        if(!cs.length){
+          h += '<div class="wk-cell" style="grid-column:' + (wd + 1) + ';grid-row:' + gr + '"></div>';
+          continue;
+        }
+        /* 这个格子往下占几行：取本格里跨度最长的那门课 */
+        var spanRows = 1;
         cs.forEach(function(c){
-          var hue = courseHue(c.name);
+          var r = periodRange(c.periods);
+          if(!r) return;
+          var endRow = Math.ceil(Math.min(r[1], maxP) / 2);     /* 覆盖到第几个「2 节行」（从 1 数） */
+          spanRows = Math.max(spanRows, endRow - ri);
+        });
+        spanRows = Math.max(1, Math.min(spanRows, rows.length - ri));
+        for(var k = 1; k < spanRows; k++) covered[(ri + k) + ':' + wd] = 1;
+        h += '<div class="wk-cell has" style="grid-column:' + (wd + 1) + ';grid-row:' + gr + ' / span ' + spanRows + '">';
+        cs.forEach(function(c){
+          var hue = courseHue(c.name), r = periodRange(c.periods);
+          var n = r ? (r[1] - r[0] + 1) : 0;
           h += '<div class="wk-blk" style="--bc:hsl(' + hue + ',62%,52%);'
             + '--bc-soft:hsla(' + hue + ',62%,52%,.13)">'
             + '<b>' + esc(c.name) + '</b>'
+            /* 超过一行的课（4 节/8 节的实践课）标出共几节 —— 跨行的样子已经说明占了哪些节，
+               这里只补一个数字（写全「第 1-8 节 · 共 8 节」在窄列里会被截成「共 …」，反而看不懂） */
+            + (n > 2 ? '<i class="wk-n">共 ' + n + ' 节</i>' : '')
             + (c.room ? '<i>' + esc(c.room) + '</i>' : '')
             + (c.teacher ? '<i>' + esc(c.teacher) + '</i>' : '')
             + '</div>';
