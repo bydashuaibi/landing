@@ -397,6 +397,30 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(255,255,255,.66));color:var(--ink)}
 .dump-input::placeholder{color:rgba(46,36,25,.38)}
 .dump-input:focus{outline:none;border-color:rgba(192,112,60,.55);box-shadow:0 0 0 3px rgba(192,112,60,.10)}
+
+/* 放开一下（娱乐 / 放纵）—— 记一笔，不评判。
+   两类用不同色：娱乐偏清爽（青），放纵偏暖（琥珀），一眼分得清 */
+.fun-quick{display:flex;gap:7px;flex-wrap:wrap;margin:11px 0 9px}
+.fun-q{padding:6px 11px;border-radius:11px;font-size:12.5px;font-family:inherit;cursor:pointer;
+  border:1px solid var(--line);background:rgba(255,255,255,.78);color:#5b4a35;transition:background .15s}
+.fun-q:hover{background:rgba(194,168,120,.22)}
+.fun-q.k-fun{border-color:rgba(14,116,144,.30);background:rgba(34,211,238,.10);color:#0e7490}
+.fun-q.k-fun:hover{background:rgba(34,211,238,.20)}
+.fun-q.k-spree{border-color:rgba(180,120,40,.34);background:rgba(224,169,59,.14);color:#8a5a12}
+.fun-q.k-spree:hover{background:rgba(224,169,59,.26)}
+.fun-inrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fun-inrow input{flex:1;min-width:140px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;
+  font-family:inherit;font-size:13.5px;background:rgba(255,255,255,.84);color:var(--ink)}
+.fun-inrow input::placeholder{color:rgba(46,36,25,.38)}
+.fun-inrow input:focus{outline:none;border-color:rgba(192,112,60,.55);box-shadow:0 0 0 3px rgba(192,112,60,.10)}
+.fun-list{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.fun-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 8px 5px 10px;border-radius:99px;
+  font-size:12px;border:1px solid var(--line);background:rgba(255,255,255,.72);color:#5b4a35}
+.fun-tag.k-fun{border-color:rgba(14,116,144,.30);background:rgba(34,211,238,.10);color:#0e7490}
+.fun-tag.k-spree{border-color:rgba(180,120,40,.34);background:rgba(224,169,59,.14);color:#8a5a12}
+.fun-x{border:none;background:none;cursor:pointer;font-size:14px;line-height:1;padding:0 1px;
+  color:inherit;opacity:.45;font-family:inherit}
+.fun-x:hover{opacity:.9}
 .dump-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 .dump-tip{font-size:11.5px;color:var(--muted);line-height:1.4}
 .dump-list{margin-top:15px;padding-top:14px;border-top:1px dashed rgba(46,36,25,.13);display:flex;flex-direction:column;gap:10px}
@@ -489,6 +513,25 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .stat-col{flex:1;padding:14px 8px;border-radius:14px;background:rgba(255,255,255,.6);border:1px solid var(--line)}
 .stat-num{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
 .stat-label{font-size:12px;color:var(--muted);margin-top:2px}
+/* 周报的「综合总结」：规则正文 + 松紧结论 + 娱乐放纵明细 + AI 润色 */
+.sum-card .sum-verdict{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;flex:none}
+.sum-verdict.v-ok{background:rgba(34,197,94,.16);color:#15803d}
+.sum-verdict.v-tight{background:rgba(59,130,246,.16);color:#1d4ed8}
+.sum-verdict.v-loose{background:rgba(224,169,59,.22);color:#8a5a12}
+.sum-body{margin-top:10px}
+.sum-body p{margin:0 0 7px;font-size:13.5px;line-height:1.72;color:var(--ink)}
+.sum-body p.lead{font-size:14.5px;font-weight:600}
+.sum-body p:last-child{margin-bottom:0}
+.sum-fun{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;
+  padding-top:11px;border-top:1px dashed var(--line)}
+.sum-fl{font-size:12px;font-weight:600;padding:4px 9px;border-radius:99px;border:1px solid var(--line)}
+.sum-fl.k-fun{border-color:rgba(14,116,144,.30);background:rgba(34,211,238,.10);color:#0e7490}
+.sum-fl.k-spree{border-color:rgba(180,120,40,.34);background:rgba(224,169,59,.14);color:#8a5a12}
+.sum-fi{font-size:12px;color:var(--muted);line-height:1.5}
+.sum-ai{margin-top:11px;padding:11px 13px;border-radius:13px;font-size:13px;line-height:1.72;
+  background:rgba(124,111,214,.09);border:1px solid rgba(124,111,214,.22);color:var(--ink)}
+.sum-ai.pending{opacity:.6;font-style:italic}
+.sum-ai-tag{display:inline-block;font-size:11px;font-weight:700;color:#5b4ed6;margin-right:6px}
 .day-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:rgba(255,255,255,.55)}
 .day-card .dc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .day-card .dc-mood{font-size:20px}
@@ -637,6 +680,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mem-kind.k-milestone{background:rgba(139,109,255,.18);color:#6a4fd0}
 .mem-kind.k-timer{background:rgba(59,111,176,.16);color:#2f568f}
 .mem-kind.k-feed,.mem-kind.k-pet{background:rgba(214,98,122,.16);color:#a83f57}
+/* 放开一下（娱乐/放纵）：跟今日页那两类的配色保持一致 */
+.mem-kind.k-fun{background:rgba(224,169,59,.20);color:#8a5a12}
 .mem-body{flex:1;min-width:0;font-size:13.5px;line-height:1.5;color:var(--ink);word-break:break-word}
 .mem-time{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 .pet-mini{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--muted)}
@@ -747,8 +792,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="gradient-waves.js?v=1"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
-<script src="pet.js?v=32"></script>
-<script src="app.js?v=37"></script>
+<script src="pet.js?v=33"></script>
+<script src="app.js?v=38"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

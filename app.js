@@ -85,6 +85,8 @@ function blankState(){
     reports: {},        // {weekKey:{generatedAt,summary,moodTrack,dailyCards}}
     digest: {},         // {date:{fetchedAt,categories:{label:[{name,desc,stars,url,lang}]}}}
     dumps: [],          // 倾倒台
+    fun: [],            // 娱乐/放纵记录：[{id,date,kind:'fun'|'spree',text,ts}]
+                        // fun=娱乐（放松心神）/ spree=放纵（明知道有点过）；不发鱼也不扣鱼
     weather: [],        // 情绪气象 [{date,mood,note}]（⚠️ 与下面的 wx 无关，别混）
     wx: null,           // 今日天气快照（IP 定位 + Open-Meteo，由主进程代取）
     schedule: null,     // 本学期课表快照 {at,termCode,items:[{name,weekday,periods,weeks,room,teacher}]}
@@ -165,6 +167,7 @@ function migrate(){
   s.reports = s.reports || {};
   s.digest = s.digest || {};
   s.dumps = s.dumps || [];
+  s.fun = s.fun || [];                     /* 娱乐/放纵记录（2026-09-23 加） */
   s.weather = s.weather || [];
   if(s.wx === undefined) s.wx = null;      /* 今日天气快照，老存档必须补默认值 */
   if(s.schedule === undefined) s.schedule = null;   /* 本学期课表快照 */
@@ -1384,6 +1387,87 @@ function notify(title, body){
   }catch(e){}
 }
 
+/* ================= 娱乐 / 放纵 =================
+   master：「加上娱乐事件和放纵事件的分类，休闲娱乐，放松心神。例如熬夜看番，吃一次肯德基，
+   玩一场游戏的分类」—— 看番、肯德基、打一场游戏这类「我没在进步，但我在活着」的事，单独记一笔。
+   两类的区别**由他自己定**：
+     · fun   娱乐：放松心神（打一场游戏）
+     · spree  放纵：明知道有点过（熬夜看番、一顿肯德基）
+   ⚠️ **不发鱼也不扣鱼**（他选的）：记录是如实记一笔，不是"做事"；这 app 也不惩罚。
+   ⚠️ 它的价值不在当天，而在**周报**里 —— 有它才能看出这周是偏松还是偏紧（见 weekBalance）。 */
+var FUN_KINDS = {
+  fun:   {label:'娱乐', emoji:'🎈', hint:'放松心神'},
+  spree: {label:'放纵', emoji:'🍟', hint:'明知道有点过'}
+};
+/* 头一次用的时候给三个例子（照 master 自己举的），之后就换成他自己记过的 */
+var FUN_SEED = [
+  {text:'熬夜看番',     kind:'spree'},
+  {text:'吃一次肯德基', kind:'spree'},
+  {text:'玩一场游戏',   kind:'fun'}
+];
+function funToday(){
+  var d = today();
+  return (STATE.fun || []).filter(function(r){ return r.date === d; });
+}
+function funInWeek(wk){
+  var end = addDays(wk, 7);
+  return (STATE.fun || []).filter(function(r){ return r.date >= wk && r.date < end; });
+}
+/* 一周的娱乐/放纵统计（喂周报） */
+function funStats(wk){
+  var r = {fun:0, spree:0, total:0, items:[], byKind:{fun:[], spree:[]}};
+  funInWeek(wk).forEach(function(x){
+    var k = (x.kind === 'spree') ? 'spree' : 'fun';
+    r[k]++; r.total++;
+    r.byKind[k].push(x.text);
+    r.items.push({kind:k, text:x.text, date:x.date});
+  });
+  return r;
+}
+/* 最近记过的几件事（去重、按时间倒序）→ 给「放开一下」卡当快捷按钮。
+   这样第二次记「熬夜看番」只要点一下，不用再打字。 */
+function funRecent(n){
+  var seen = {}, out = [];
+  (STATE.fun || []).slice().reverse().forEach(function(r){
+    if(!r || !r.text || seen[r.text]) return;
+    seen[r.text] = 1;
+    out.push({text:r.text, kind: (r.kind === 'spree') ? 'spree' : 'fun'});
+  });
+  return out.slice(0, n || 4);
+}
+
+/* 今日页那张「放开一下」小卡 */
+function renderFunCard(){
+  var todays = funToday();
+  var recent = funRecent(4);
+  var quick = recent.length ? recent : FUN_SEED;
+  var h = '<div class="card fun-card"><div class="row between"><h2>🎈 放开一下</h2>'
+    + '<span class="muted" style="font-size:12px">今天 '+todays.length+' 笔</span></div>'
+    + '<div class="hint">看番、肯德基、打一场游戏都算。<b>记下来不是认罪</b> —— '
+    + '是为了让周报看出你这周偏松还是偏紧。不发小鱼干，也不扣。</div>'
+    + '<div class="fun-quick">';
+  quick.forEach(function(q){
+    var k = FUN_KINDS[q.kind] ? q.kind : 'fun';
+    h += '<button class="fun-q k-'+k+'" data-act="funQuick" data-text="'+esc(q.text)+'" data-kind="'+k+'">'
+      + FUN_KINDS[k].emoji + ' ' + esc(q.text) + '</button>';
+  });
+  h += '</div>'
+    + '<div class="fun-inrow"><input id="funIn" maxlength="24" placeholder="刚干了什么…">'
+    + '<button class="btn ghost sm" data-act="funAdd" data-kind="fun">🎈 娱乐</button>'
+    + '<button class="btn ghost sm" data-act="funAdd" data-kind="spree">🍟 放纵</button>'
+    + '</div>';
+  if(todays.length){
+    h += '<div class="fun-list">';
+    todays.forEach(function(r){
+      var k = (r.kind === 'spree') ? 'spree' : 'fun';
+      h += '<span class="fun-tag k-'+k+'">'+esc(r.text)
+        + '<button class="fun-x" data-act="funDel" data-id="'+r.id+'" title="删掉">×</button></span>';
+    });
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+
 /* ================= 小鱼干 & 记忆库 =================
    🔴 规则（2026-09-20 master 重定，别再按"单次满 60 分钟"写）：
    老规则是「单次完成 ≥60 分钟 → 1~3 条」，结果**短任务永远拿不到鱼** ——
@@ -1490,7 +1574,7 @@ function addMemory(kind, text, tags){
   STATE.memories.push({id:uid('m'), at:Date.now(), kind:kind||'note', text:text, tags:tags||[]});
   if(STATE.memories.length>1000) STATE.memories.splice(0, STATE.memories.length-1000);
 }
-var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日', rest:'休息'};
+var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日', rest:'休息', fun:'放开'};
 
 /* ================= 赛博伙伴：活力全部来自你已经做的事 ================= */
 /* 设计原则：不新增「喂猫」任务。你倾倒、打卡、完成一件，它自然长。
@@ -2308,6 +2392,9 @@ function viewToday(){
     h += '</div></div>';
   }
 
+  /* 放开一下：娱乐 / 放纵。放在「做了什么」之后、「想说什么」之前 */
+  h += renderFunCard();
+
   return h;
 }
 
@@ -2387,9 +2474,83 @@ function viewTasks(){
   return h;
 }
 
-/* ================= 视图：周报/复盘 ================= */
-function generateWeeklyReport(){
-  var wk = weekKey();
+/* ================= 周报/复盘 ================= */
+/* 情绪 → 分数（越差越低），给"偏松/偏紧"用 */
+var MOOD_SCORE = {sun:4, cloud:3, rain:2, storm:1};
+
+/* 「偏松 / 偏紧」的规则判断。master 选了「规则打底 + AI 润色」，所以这里必须**可解释**：
+   每条结论都说清是按什么算出来的 —— 他能自己核对，阈值也好调。
+   ⚠️ 这是**提醒**不是**评判**：只描述事实 + 给一个可选的下一步，绝不指责。
+   ⚠️ 阈值是经验值（日均投入 300/360 分钟、放纵 ≥4 笔…），觉得不合适直接改这里。 */
+function weekBalance(o){
+  var days = Math.max(1, o.days || 1);
+  var avg = Math.round((o.loadMin || 0) / days);
+  var funN = o.fun || 0, spreeN = o.spree || 0, funTotal = funN + spreeN;
+  var moodAvg = (o.moodAvg === null || o.moodAvg === undefined) ? null : o.moodAvg;
+  var reasons = [], verdict = 'ok', headline = '';
+
+  if(funTotal === 0 && avg >= 300){                       /* 偏紧：一次口子都没留 */
+    verdict = 'tight';
+    reasons.push('这周一次娱乐或放纵都没记，日均投入却有 ' + avg + ' 分钟');
+  } else if(moodAvg !== null && moodAvg <= 2.2 && avg >= 300){
+    verdict = 'tight';
+    reasons.push('情绪大多落在阴/雨（均值 ' + moodAvg.toFixed(1) + '/4），日均投入还到 ' + avg + ' 分钟');
+  } else if((o.restDays || 0) === 0 && avg >= 360){
+    verdict = 'tight';
+    reasons.push('日均投入 ' + avg + ' 分钟，但这周一天休息都没记');
+  }
+  else if(funTotal >= 5 && avg <= 180){                   /* 偏松：松的比紧的多 */
+    verdict = 'loose';
+    reasons.push('娱乐+放纵记了 ' + funTotal + ' 笔，日均投入只有 ' + avg + ' 分钟');
+  } else if(spreeN >= 4){
+    verdict = 'loose';
+    reasons.push('单是"放纵"就记了 ' + spreeN + ' 笔');
+  }
+
+  var tips = [];
+  if(verdict === 'tight'){
+    headline = '这周绷得有点紧';
+    tips = ['给下周排一件纯娱乐的事，写进任务里才算数（不然会被"忙"挤掉）',
+            '把每天的最小动作降到 15 分钟 —— 先别停，比做满更重要'];
+  } else if(verdict === 'loose'){
+    headline = '这周放得有点开';
+    tips = ['挑一件最小的事，只定 15 分钟，今天就能做完',
+            '放纵不用戒，给它定个上限（比如一周两次），有边界反而更容易守住'];
+  } else {
+    headline = '这周的松紧挺平衡';
+    tips = ['保持这个节奏就行，不用额外加码'];
+  }
+  return {verdict:verdict, headline:headline, avg:avg, reasons:reasons, tips:tips,
+          funN:funN, spreeN:spreeN, funTotal:funTotal, moodAvg:moodAvg};
+}
+
+/* 规则生成的周报正文（AI 润色失败/没配 Key 时就用它） */
+function buildWeekSummary(o){
+  var L = [];
+  var hm = function(min){ min = Math.round(min||0); return min >= 60 ? (Math.round(min/6)/10)+' 小时' : min+' 分钟'; };
+  var cats = Object.keys(o.dStats || {}).map(function(k){ return {k:k, m:o.dStats[k].minutes||0}; })
+    .filter(function(x){ return x.m > 0; }).sort(function(a,b){ return b.m - a.m; });
+  L.push('本周（'+mdShort(parseYmd(o.wk))+' 起，已过 '+o.days+' 天）总投入 '+hm(o.totalDailyMin)
+    + (o.classMin ? '，其中上课 '+hm(o.classMin) : '')+'。');
+  if(cats.length){
+    L.push('花时间最多的是「'+(catName(cats[0].k)||cats[0].k)+'」（'+hm(cats[0].m)+'）'
+      + (cats[1] ? '，其次是「'+(catName(cats[1].k)||cats[1].k)+'」（'+hm(cats[1].m)+'）' : '')+'。');
+  }
+  L.push('娱乐 '+(o.funS?o.funS.fun:0)+' 笔、放纵 '+(o.funS?o.funS.spree:0)+' 笔'
+    + (o.funS && o.funS.total ? '（'+o.funS.items.slice(0,3).map(function(x){return x.text;}).join('、')+'）' : '')
+    + '。');
+  L.push(o.bal.headline + (o.bal.reasons.length ? ' —— ' + o.bal.reasons.join('；') + '。' : '。'));
+  /* 两条建议合成一行（分成两行"可以试试"读起来很啰嗦） */
+  if(o.bal.tips.length){
+    var marks = ['①', '②', '③'];
+    L.push('可以试试：' + o.bal.tips.map(function(t, i){ return marks[i] + t; }).join('　'));
+  }
+  return L;
+}
+
+/* wkArg 不传 = 本周。宠物要回答「我上周干了什么」，就得能算**任意一周**（2026-09-23 加）。 */
+function generateWeeklyReport(wkArg){
+  var wk = wkArg || weekKey();
   var cached = STATE.reports[wk];
 
   /* 计算本周概况 */
@@ -2482,6 +2643,21 @@ function generateWeeklyReport(){
     ? Math.round(dailyCards.reduce(function(a,c){return a+c.rate;},0)/dailyCards.length)
     : 0;
 
+  /* ---- 娱乐/放纵 + 「偏松/偏紧」的综合性总结（2026-09-23 加）---- */
+  var funS = funStats(wk);
+  var daysSoFar = dailyCards.length || 1;          /* 已过的天数（未来不生成，所以就是它） */
+  var restInWeek = (STATE.restDays || []).filter(function(d){ return d >= monday && d <= sunday; }).length;
+  var moodScores = moodTrack.filter(function(m){ return m.mood; }).map(function(m){ return MOOD_SCORE[m.mood] || 3; });
+  var bal = weekBalance({
+    days: daysSoFar,
+    loadMin: totalDailyMin,
+    fun: funS.fun, spree: funS.spree,
+    moodAvg: moodScores.length ? (moodScores.reduce(function(a,b){return a+b;},0) / moodScores.length) : null,
+    restDays: restInWeek
+  });
+  var summaryLines = buildWeekSummary({wk:wk, days:daysSoFar, totalDailyMin:totalDailyMin,
+    classMin:classMin, dStats:dStats, funS:funS, bal:bal});
+
   var report = {
     generatedAt: Date.now(),
     firstGeneratedAt: (cached && cached.firstGeneratedAt) || Date.now(),
@@ -2497,13 +2673,107 @@ function generateWeeklyReport(){
     /* 本周（周一~今天）上课占的时间 —— 已经并进 dailyStats.edu 和日均投入，
        这里单独留一份给界面标注，免得他以为"我明明在上课，投入怎么这么点" */
     classMin: classMin,
-    classPeriods: classPeriodCnt
+    classPeriods: classPeriodCnt,
+    /* 娱乐/放纵 + 松紧结论 + 规则正文。⚠️ aiText 要**从缓存里带过来**，
+       否则每次实时重算都会把 AI 润色过的那份冲掉，等于白花钱调了一次 */
+    fun: funS,
+    balance: bal,
+    summaryLines: summaryLines,
+    days: daysSoFar,
+    restDays: restInWeek,
+    aiText: (cached && cached.aiText) || '',
+    aiTried: (cached && cached.aiTried) || false
   };
 
   STATE.reports[wk]=report;
   /* 每周首次生成才落盘；之后每次实时重算，保证今天打卡立刻反映在周报里 */
   if(!cached) save();
   return report;
+}
+
+/* ================= 给宠物用的「一周速览」 =================
+   master：「用户问宠物的时候，宠物可以回答，你上周干了什么，过于放松还是过于紧张，
+   有什么需要补充的提出方案，我来进行决策」——
+   所以宠物得先**知道**这些。喂给它的就是周报那套事实 + 规则结论（不额外花他的 AI 额度再算一遍）。 */
+function weekHasData(wk){
+  var end = addDays(wk, 7);
+  var inW = function(d){ return !!d && d >= wk && d < end; };
+  if(STATE.reports[wk]) return true;
+  if((STATE.dumps||[]).some(function(x){ return inW(ymd(new Date(x.createdAt||0))); })) return true;
+  if((STATE.weather||[]).some(function(x){ return inW(x.date); })) return true;
+  if((STATE.fun||[]).some(function(x){ return inW(x.date); })) return true;
+  if((STATE.restDays||[]).some(function(d){ return inW(d); })) return true;
+  var tasks = [].concat(STATE.dailyTasks||[], STATE.weeklyTasks||[], STATE.longTasks||[]);
+  return tasks.some(function(t){ return (t.records||[]).some(function(r){ return inW(r.date); }); });
+}
+/* 一周压缩成一句话。⚠️ 顺带把这一周的周报**落盘** —— 这正是 master 说的「周报要记录下来」：
+   他问宠物"上周干了什么"的时候，那一周的周报就被固定下来了，以后翻得到。 */
+function weekDigestLine(wk, label){
+  var rpt = STATE.reports[wk] || generateWeeklyReport(wk);
+  var f = rpt.fun || {fun:0, spree:0, items:[]};
+  var hm = function(m){ m = Math.round(m||0); return m >= 60 ? (Math.round(m/6)/10)+'小时' : m+'分钟'; };
+  var cats = Object.keys(rpt.dailyStats||{}).map(function(k){ return {k:k, m:(rpt.dailyStats[k].minutes||0)}; })
+    .filter(function(x){ return x.m > 0; }).sort(function(a,b){ return b.m - a.m; });
+  return '【'+label+'】投入 '+hm(rpt.summary.totalDailyMin)
+    + (rpt.classMin ? '（含上课 '+hm(rpt.classMin)+'）' : '')
+    + '，日均 '+rpt.summary.avgLoad+' 分钟'
+    + (cats.length ? '；最花时间的是「'+(catName(cats[0].k)||cats[0].k)+'」'+hm(cats[0].m) : '')
+    + '；娱乐 '+f.fun+' 笔、放纵 '+f.spree+' 笔'
+    + (f.items && f.items.length ? '（'+f.items.slice(0,4).map(function(x){ return x.text; }).join('、')+'）' : '')
+    + '；结论：'+((rpt.balance && rpt.balance.headline) || '—')
+    + ((rpt.balance && rpt.balance.tips && rpt.balance.tips.length) ? '；可以试：'+rpt.balance.tips[0] : '');
+}
+/* 宠物能看到的全部「周」信息：上周 + 本周至今 */
+function petWeekContext(){
+  var cur = weekKey(), last = addDays(cur, -7);
+  var out = [];
+  if(weekHasData(last)){
+    out.push(weekDigestLine(last, '上周（'+mdShort(parseYmd(last))+'–'+mdShort(addDays(last,6))+'）'));
+  } else {
+    out.push('【上周】没有记录 —— 那周基本没打开过这个 app，别硬编内容。');
+  }
+  out.push(weekDigestLine(cur, '本周至今（'+mdShort(parseYmd(cur))+' 起）'));
+  return out.join('\n');
+}
+
+/* ---- 周报的 AI 润色（规则打底 + AI 润色；没配 Key 就只用规则正文）----
+   ⚠️ **一周只自动跑一次**：`_weeklyAiBusy` 挡并发，`aiTried` 挡重复；失败也置 aiTried，
+      否则每次打开周报都白调一遍 —— 他的 Key 是要花钱的。
+   ⚠️ 结果写回 `STATE.reports[wk].aiText`，而 generateWeeklyReport 每次实时重算，
+      所以那里必须把 aiText 从缓存带过来（已处理），不然刚生成就被冲掉。 */
+var _weeklyAiBusy = false;
+function aiWeeklySummary(force){
+  var wk = weekKey();
+  var rpt = STATE.reports[wk] || generateWeeklyReport(wk);
+  if(_weeklyAiBusy) return;
+  if(!STATE.settings.aiKey){ if(force) toast('先配 AI（我在「我的 → 设置」里）'); return; }
+  var f = rpt.fun || {fun:0, spree:0, items:[]};
+  var facts = '本周（已过 ' + (rpt.days||0) + ' 天）\n'
+    + '总投入 ' + rpt.summary.totalDailyMin + ' 分钟，其中上课 ' + (rpt.classMin||0) + ' 分钟\n'
+    + '日均投入 ' + rpt.summary.avgLoad + ' 分钟 · 完成率 ' + rpt.summary.completionRate + '%\n'
+    + '娱乐 ' + f.fun + ' 笔、放纵 ' + f.spree + ' 笔'
+    + (f.items && f.items.length ? '（' + f.items.map(function(x){return x.text;}).join('、') + '）' : '') + '\n'
+    + '规则给出的结论：' + (rpt.balance ? rpt.balance.headline : '') + '\n'
+    + (rpt.summaryLines || []).join('\n');
+  _weeklyAiBusy = true;
+  var prompt = '这是一个大学生这周的自助记录。请写一段「周报点评」：'
+    + '1) 先说事实（投入与娱乐/放纵的松紧）；2) 指出一个他可能没注意到的点；'
+    + '3) 给一条下周可以试的具体建议。语气像朋友，不评判、不喊口号、不列长清单，120 字以内。\n\n' + facts;
+  callAI([{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}]).then(function(r){
+    _weeklyAiBusy = false;
+    var rr = STATE.reports[wk] || generateWeeklyReport(wk);
+    rr.aiTried = true;
+    var txt = (r && !r.error && r.content) ? String(r.content).slice(0, 400) : '';
+    if(!txt) console.warn('[app] 周报 AI 润色失败：', (r && r.error) || '空回复');
+    rr.aiText = txt;
+    save();
+    if(CUR_TAB === 'weekly') render();
+  }).catch(function(e){
+    _weeklyAiBusy = false;
+    var rr = STATE.reports[wk] || generateWeeklyReport(wk);
+    rr.aiTried = true; save();
+    console.warn('[app] 周报 AI 润色异常：', e);
+  });
 }
 
 function viewWeekly(){
@@ -2524,6 +2794,37 @@ function viewWeekly(){
     h += '<div class="hint" style="text-align:center;margin:-4px 0 14px">其中<b>上课 '+rpt.classPeriods+' 节 · '+rpt.classMin+' 分钟</b>'
       + '（周一到今天，按课表占用计 45 分钟/节）—— 已归进「学习成长」。</div>';
   }
+
+  /* ---- 综合总结：这周偏松还是偏紧 + 娱乐放纵明细 + 下一步（2026-09-23 加）----
+     master 的要求：每周做综合性总结、周报要记录下来、给出「有什么需要补充」的方案，他自己决策。
+     所以这里只**提方案**，绝不自动改他的任务。 */
+  var bal = rpt.balance || {verdict:'ok', headline:'', tips:[], reasons:[]};
+  var vClass = bal.verdict === 'tight' ? 'tight' : (bal.verdict === 'loose' ? 'loose' : 'ok');
+  var vLabel = bal.verdict === 'tight' ? '偏紧' : (bal.verdict === 'loose' ? '偏松' : '平衡');
+  h += '<div class="card sum-card"><div class="row between"><h2>🧭 综合总结</h2>'
+    + '<span class="sum-verdict v-'+vClass+'">'+vLabel+'</span></div>';
+  h += '<div class="sum-body">';
+  (rpt.summaryLines || []).forEach(function(line, i){
+    h += '<p'+(i === 0 ? ' class="lead"' : '')+'>'+esc(line)+'</p>';
+  });
+  h += '</div>';
+  /* 娱乐 / 放纵明细 */
+  var fs = rpt.fun || {fun:0, spree:0, total:0, items:[]};
+  h += '<div class="sum-fun"><span class="sum-fl k-fun">🎈 娱乐 '+fs.fun+' 笔</span>'
+    + '<span class="sum-fl k-spree">🍟 放纵 '+fs.spree+' 笔</span>'
+    + (fs.items.length ? '<span class="sum-fi">'+fs.items.slice(0,6).map(function(x){return esc(x.text)+'('+mdShort(parseYmd(x.date))+')';}).join('、')+'</span>'
+       : '<span class="sum-fi">这周没记过 —— 是没发生，还是忘了记？</span>')
+    + '</div>';
+  /* AI 润色：没配 Key 就完全依赖上面的规则正文 */
+  if(rpt.aiText){
+    h += '<div class="sum-ai"><span class="sum-ai-tag">AI 读了一遍</span>'+esc(rpt.aiText)+'</div>';
+  } else if(STATE.settings.aiKey){
+    h += '<div class="sum-ai pending" id="sumAiBox">让 AI 把这段总结说得更像人话…</div>';
+  }
+  h += '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:11px">'
+    + '<button class="btn ghost sm" data-act="aiSummary">'+(rpt.aiText ? '换 AI 重说一遍' : '让 AI 说两句')+'</button>'
+    + '<span class="muted" style="font-size:11.5px;align-self:center">建议只是建议，加不加进任务你定。</span>'
+    + '</div></div>';
 
   /* 每周任务：双目标达成情况 */
   if(STATE.weeklyTasks.length){
@@ -2890,6 +3191,12 @@ function render(){
      而「它正在想…」恰恰是每次发完话最该看见的状态（跟宠物那边同一个道理） */
   if(CUR_TAB==='companion') cmpRestore();
 
+  /* 周报的 AI 润色：配了 Key 就自动跑一次（一周一次，aiTried 挡重复） */
+  if(CUR_TAB==='weekly'){
+    var _rpt = STATE.reports[weekKey()];
+    if(_rpt && !_rpt.aiText && !_rpt.aiTried && STATE.settings.aiKey) aiWeeklySummary();
+  }
+
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===CUR_TAB);
   });
@@ -2987,6 +3294,42 @@ var App = {
       var v=$('o_text').value.trim(); if(!v){toast('写点什么');return;}
       STATE.oneThing={date:today(),text:v,done:false}; save(); closeSheet(); render(); toast('今天就这一件');
     });
+  },
+
+  /* --- 娱乐 / 放纵 --- */
+  funAdd:function(kind){
+    var inp = $('funIn');
+    var v = inp ? (inp.value || '').trim() : '';
+    if(!v){ toast('写一句就行，比如「熬夜看番」'); if(inp) inp.focus(); return; }
+    App._funPush(v, kind);
+  },
+  funQuick:function(text, kind){
+    App._funPush(text, kind);
+  },
+  /* 记一笔。⚠️ 不发鱼也不扣鱼（master 选的口径），只写记忆库 + 重绘 */
+  _funPush:function(text, kind){
+    var k = (kind === 'spree') ? 'spree' : 'fun';
+    text = String(text || '').trim().slice(0, 24);
+    if(!text) return;
+    STATE.fun = STATE.fun || [];
+    STATE.fun.push({id:uid('f'), date:today(), kind:k, text:text, ts:Date.now()});
+    if(STATE.fun.length > 800) STATE.fun.splice(0, STATE.fun.length - 800);
+    addMemory('fun', FUN_KINDS[k].label + '：' + text, ['放开一下']);
+    var inp = $('funIn'); if(inp) inp.value = '';
+    save(); render();
+    var inp2 = $('funIn'); if(inp2) inp2.focus();
+    toast(FUN_KINDS[k].emoji + ' 记下了：' + text);
+  },
+  funDel:function(id){
+    STATE.fun = (STATE.fun || []).filter(function(r){ return r.id !== id; });
+    save(); render();
+  },
+  aiSummary:function(){
+    if(!STATE.settings.aiKey){ toast('先配 AI（我在「我的 → 设置」里）'); return; }
+    var r = STATE.reports[weekKey()];
+    if(r){ r.aiTried = false; }        /* 手动要一次就允许重跑 */
+    toast('让 AI 读一遍…');
+    aiWeeklySummary(true);
   },
 
   /* --- 倾倒台 --- */
@@ -3837,6 +4180,15 @@ var App = {
 /* 关窗/退出时也走一遍：beforeunload 是同步的，能保证暂停状态落盘 */
 window.addEventListener('beforeunload', function(){ try{ App.pauseTimerForQuit(); }catch(e){} });
 
+/* 「放开一下」那个输入框：回车 = 按「娱乐」记一笔（默认最轻的那类，不逼他先选分类） */
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter') return;
+  var t = e.target;
+  if(!t || t.id !== 'funIn') return;
+  e.preventDefault();
+  App.funAdd('fun');
+});
+
 /* ================= 事件委托 ================= */
 document.addEventListener('click',function(e){
   var el=e.target.closest('[data-act]');
@@ -3855,6 +4207,12 @@ document.addEventListener('click',function(e){
 
   /* 倾倒台 / 情绪气象 */
   else if(act==='dumpAdd') App.dumpAdd();
+  /* 娱乐 / 放纵 */
+  else if(act==='funAdd') App.funAdd(el.dataset.kind);
+  else if(act==='funQuick') App.funQuick(el.dataset.text, el.dataset.kind);
+  else if(act==='funDel') App.funDel(el.dataset.id);
+  /* 周报：让 AI 润色一遍（一周自动一次，这里是他手动再要一次） */
+  else if(act==='aiSummary') App.aiSummary();
   else if(act==='dumpKind') App.dumpKind(id, el.dataset.kind);
   else if(act==='dumpDone') App.dumpDone(id);
   else if(act==='dumpDel') App.dumpDel(id);
@@ -3960,6 +4318,9 @@ function init(){
     vitality:catVitality, landingDays:catLandingDays, tierText:catTierText,
     tierOf:function(v){ return window.CyberCat ? CyberCat.tierOf(v) : (v<40?'low':(v>70?'high':'mid')); },
     poolProgress:poolProgress,   /* 今日时间池进度（纯查询，无副作用）—— 旧的 fishForMinutes 已随规则废除 */
+    /* 给宠物用的「一周速览」：上周 + 本周至今（它得能回答「我上周干了什么、偏松还是偏紧」） */
+    weekContext:petWeekContext,
+    funRecent:funRecent,
     renderTimerBar:renderTimerBar,
     today:today, ymd:ymd, addDays:addDays, esc:esc, icon:icon, uid:uid,
     wx:function(force){ ensureWx(!!force); return STATE.wx; },

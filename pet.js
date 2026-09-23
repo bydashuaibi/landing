@@ -753,6 +753,12 @@
       + '你和主人的关系等级是「' + levelName(p.intimacy) + '」（亲密度 ' + Math.round(p.intimacy) + '/100），越熟越亲昵。'
       + '你现在饱食度 ' + Math.round(p.hunger) + '/100，小鱼干 ' + p.fish + ' 条。'
       + '他今天倾倒过 ' + todayCount('dump') + ' 次、完成 ' + todayCount('task') + ' 个任务。'
+      /* 周维度的事实（上周 + 本周至今）—— 他问「我上周干了什么 / 是不是太松了」时照这个答，
+         结论和建议都是周报那套规则算好的。**建议只提，别替他拍板**（master 要自己决策）。
+         ⚠️ 上面没有的就别说有；上周没记录就直接说"那周没怎么用" */
+      + (L.weekContext ? ('\n\n他最近两周的样子：\n' + L.weekContext()) : '')
+      + '\n（他若问「我上周干了什么」「这周是不是太松/太紧」「该补点什么」，就用上面这些真实数据答，别编。'
+      + '给建议只提方案 + 说清理由，让他自己决定。）'
       + '\n你对他说过的话和记忆：\n' + (mems || '（还没什么记忆）');
     var msgs = [{ role: 'system', content: sys }].concat(hist.map(function (m) {
       return { role: m.role === 'user' ? 'user' : 'assistant', content: m.text };
@@ -1488,7 +1494,7 @@
   function tabMem() {
     var all = ST().memories || [];
     /* 没有「对话」这一档了：对话不留记录（master 口径），记忆库只装"你做过的事" */
-    var KINDS = [['', '全部'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['note', '记录'], ['rest', '休息']];
+    var KINDS = [['', '全部'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['fun', '放开'], ['note', '记录'], ['rest', '休息']];
     var h = '<div class="pp-sec">它记得你做的事，也记得你说过的话。共 ' + all.length + ' 条。</div>';
     h += '<div class="pp-tabs">' + KINDS.map(function (k) {
       return '<button class="pp-tab' + (memKind === k[0] ? ' on' : '') + '" data-pact="memkind" data-k="' + k[0] + '">' + k[1] + '</button>';
