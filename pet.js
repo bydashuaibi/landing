@@ -473,11 +473,11 @@
       var wasFocus = !!(old && document.activeElement === old);
       var pos = old ? old.selectionStart : null;
 
-      var aiOn = !!(ST().settings && ST().settings.aiKey);
+      var aiOn = petAI().ready;
       b.classList.add('on', 'input');
       b.innerHTML = '<div class="pw-say-head">'
         + '<span class="pw-dk-dot' + (aiOn ? ' on' : '') + '" title="'
-        + (aiOn ? 'AI 已连接' : '本地台词模式（设置里配 Key 后它会更懂你）') + '"></span>'
+        + petAITip() + '"></span>'
         + '<span class="pw-say-lab">跟他说一句</span>'
         + '<button class="pw-say-x" data-pact="say-close" title="收起">×</button>'
         + '</div>'
@@ -727,7 +727,7 @@
     sayTyping();
     renderPanel(); refresh();
 
-    var hasAI = !!(ST().settings && ST().settings.aiKey);
+    var hasAI = petAI().ready;
     if (hasAI) { aiBusy = true; aiReply(); }
     else setTimeout(function () { pushPet(localReply(text)); }, 420 + Math.random() * 520);
   }
@@ -741,6 +741,25 @@
     /* 伙伴页开着就重绘一次（好让气泡补回原位），否则只刷面板 */
     if ($('petPage')) { L.render(); return; }
     renderPanel(); refresh();
+  }
+
+  /* 伙伴用哪套 AI —— 设置里给它单独留了一组（留空 = 跟主 AI 共用）。
+     2026-09-23：master 要「一边打高负荷游戏一边也能用」，所以它可以是**本地 Ollama**：
+     零显存占用、不花 DeepSeek 额度。app.js 那边用 petAIInfo() 把"就绪/是否本地/模型名"给我。 */
+  function petAI() {
+    if (L && L.petAIInfo) { try { return L.petAIInfo(); } catch (e) { /* 桥还没就绪，往下走兜底 */ } }
+    return { ready: !!(ST().settings && ST().settings.aiKey), local: false, model: '' };
+  }
+  /* 界面上把机制说清楚：本地模型 / 云端 AI / 本地台词 —— 不说他看不出来在跑哪个 */
+  function petAIText() {
+    var a = petAI();
+    if (!a.ready) return '本地台词模式';
+    return a.local ? ('本地模型模式' + (a.model ? ' · ' + a.model : '')) : 'AI 模式';
+  }
+  function petAITip() {
+    var a = petAI();
+    if (!a.ready) return '本地台词模式（设置里配 Key / 本地模型后它会更懂你）';
+    return a.local ? ('本地模型已连接' + (a.model ? '（' + a.model + '）' : '')) : 'AI 已连接';
   }
 
   function aiReply() {
@@ -763,9 +782,12 @@
     var msgs = [{ role: 'system', content: sys }].concat(hist.map(function (m) {
       return { role: m.role === 'user' ? 'user' : 'assistant', content: m.text };
     }));
-    L.callAI(msgs).then(function (r) {
+    L.callPetAI(msgs).then(function (r) {
       aiBusy = false;
-      pushPet(r.error ? '（' + r.error + '）' : (r.content || '').slice(0, 200));
+      if (!r || !r.error) { pushPet((r && r.content || '').slice(0, 200)); return; }
+      /* 本地模型最常见的失败是"Ollama 没开"，原始报错是 Failed to fetch，他看不懂 */
+      var a = petAI();
+      pushPet('（' + (a.local ? '本地的模型没接上 —— 看一眼 Ollama 开着没' : r.error) + '）');
     }).catch(function () {
       aiBusy = false;
       pushPet('（它没接上，等会儿再试试）');
@@ -1417,9 +1439,11 @@
 
   /* 面板的「说话」tab：**没有消息列表** —— 只有它刚说的那句话 + 一行输入 */
   function tabChat(p) {
-    var hasAI = !!(ST().settings && ST().settings.aiKey);
+    var hasAI = petAI().ready;
     var h = '<div class="pp-sec">说一句就走，<b>不留记录</b>。'
-      + (hasAI ? '<span class="pp-badge">AI 模式</span>' : '<span class="pp-badge local">本地台词模式 · 配了 AI Key 会更懂你</span>')
+      + (hasAI
+          ? '<span class="pp-badge">' + petAIText() + '</span>'
+          : '<span class="pp-badge local">本地台词模式 · 配了 AI 会更懂你</span>')
       + '</div>';
     h += '<div class="pp-bub" id="ppBub"></div>';
     h += '<div class="pp-quick">' + QUICK_SAY.map(function (t) {
@@ -1606,7 +1630,7 @@
 
     /* 说说话：同样不留记录 —— 输入即走，回答以气泡回来（冒在输入框正上方） */
     h += '<div class="card"><h2>💬 说一句话</h2><div class="hint">'
-      + (ST().settings.aiKey ? 'AI 模式：它会带着对你的记忆回你。' : '本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。')
+      + (petAI().ready ? petAIText() + '：它会带着对你的记忆回你。' : '本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。')
       + '说了就走，<b>不留记录</b> —— 它会记在心里。</div>';
     h += '<div class="pg-say" id="pgSay"></div>';
     h += '<div class="pp-quick">' + QUICK_SAY.map(function (t) {

@@ -104,7 +104,8 @@ function blankState(){
     fishPool: {date:'', minutes:0},   // 今日小鱼干时间池：攒满 60 分钟发 1 条，零头当天清零
     classFish: {date:'', minutes:0},  // 今日已把多少「上课分钟」结算进池子（幂等用，防重复发鱼）
     seeded: true,       // 标记：已初始化过（避免老库升级时被重新播种）
-    settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick}
+    settings: {}        // {aiBaseUrl,aiKey,aiModel,githubToken,nick,
+                        //  petAiBaseUrl,petAiKey,petAiModel ← 伙伴单独那套，三个都空=回退主 AI}
   };
 }
 
@@ -2926,14 +2927,32 @@ function viewWeekly(){
 /* ================= 视图：陪伴（保持不变） ================= */
 var SYSTEM_PROMPT = '你是「着陆」的陪伴者。用户是一个多线程压身（实习/考研/科研/比赛）的年轻人，常"有想法不干事"。你的风格：温柔、不评判、不催促。先接住情绪，再用一两个问题或一句拆解，帮他把想法变成"今天能迈的最小一步"。不要长篇说教，每次回复控制在 120 字内。';
 
-function callAI(messages){
+/* --- AI 调用：地址/Key/模型支持**两套** ---
+   which='main'（默认）→ 全局那套：陪伴页、周报点评、近三日跟进
+   which='pet'        → 伙伴（宠物）自己那套；**没填就回退全局**，所以旧存档行为不变
+   拆开的原因：让宠物走本地 Ollama（不花额度、不占显存），而周报点评仍走云端大模型。
+   ⚠️ 本地 Ollama 是 http://127.0.0.1:11434/v1 —— Electron 的 CSP 默认只放 https，
+     必须放行环回地址，否则报"瞬间 Failed to fetch"（见 main.js 的 CSP 注释）。 */
+function aiConfig(which){
   var s = STATE.settings;
-  if(!s.aiBaseUrl || !s.aiKey){ return Promise.resolve({error:'未配置 AI：去「我的→设置」填写'}); }
-  var url = s.aiBaseUrl.replace(/\/+$/,'')+'/chat/completions';
+  if(which === 'pet'){
+    var b = (s.petAiBaseUrl||'').trim(), k = (s.petAiKey||'').trim(), m = (s.petAiModel||'').trim();
+    if(b && k) return {baseUrl:b, key:k, model:m || s.aiModel || 'gpt-4o-mini'};
+  }
+  return {baseUrl:(s.aiBaseUrl||'').trim(), key:(s.aiKey||'').trim(), model:s.aiModel||'gpt-4o-mini'};
+}
+function aiReady(which){ var c = aiConfig(which); return !!(c.baseUrl && c.key); }
+
+function callAI(messages, which){
+  var c = aiConfig(which);
+  if(!c.baseUrl || !c.key){ return Promise.resolve({error:'未配置 AI：去「我的→设置」填写'}); }
+  var url = c.baseUrl.replace(/\/+$/,'')+'/chat/completions';
   return fetch(url,{
     method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.aiKey},
-    body:JSON.stringify({model:s.aiModel||'gpt-4o-mini',messages:messages,temperature:0.7})
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},
+    /* stream:false 要显式写：有些 OpenAI 兼容层（如 Ollama 的 /v1）不写就按流式回 SSE，
+       而这里收的是 r.json()，解不了 SSE、只会变成"调用失败" */
+    body:JSON.stringify({model:c.model||'gpt-4o-mini',messages:messages,temperature:0.7,stream:false})
   }).then(function(r){ return r.ok?r.json():r.text().then(function(t){return {_err:r.status+' '+t.slice(0,160)};}); })
     .then(function(j){ if(j._err)return{error:j._err}; return{content:(j.choices&&j.choices[0]&&j.choices[0].message.content)||'(空)'}; })
     .catch(function(e){ return{error:'调用失败：'+e.message}; });
@@ -3995,7 +4014,7 @@ var App = {
       +   '跟开学周对不上就改这里。</div>'
       +   '<input id="s_term" type="date" value="'+esc(ymd(termStart()))+'">'
       + '</div>'
-      + '<div class="field"><label>AI 接口（陪伴、宠物聊天共用）</label>'
+      + '<div class="field"><label>AI 接口（陪伴、周报点评、近三日跟进）</label>'
       +   '<div class="hint" style="margin:0 0 8px">现在接的是 <b>DeepSeek</b>：点一下按钮自动填地址和模型，'
       +   '只粘 Key 就行。填完记得点「测试连接」，能省掉后面一堆莫名其妙的报错。</div>'
       +   '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'
@@ -4011,6 +4030,23 @@ var App = {
       +   '</div>'
       +   '<div class="hint" style="margin-top:6px">Key 存在本机浏览器存储里（明文）。'
       +   '它是你自己的机器、自己的 key，但导出的备份文件别随手发给别人。</div>'
+      + '</div>'
+      /* --- 伙伴单独一套：让它走本地 Ollama，云端那份留给周报点评 --- */
+      + '<div class="field"><label>伙伴单独用哪套 AI（可留空）</label>'
+      +   '<div class="hint" style="margin:0 0 8px">留空 = 跟上面那套共用。填了就<b>只有宠物聊天</b>用它 —— '
+      +   '拆开是为了让宠物跑在<b>本地 Ollama</b> 上（不花额度、断网也能说话、纯 CPU 不占显存），'
+      +   '而需要"读懂一周数据再给建议"的周报点评仍留给云端大模型。</div>'
+      +   '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+      +     '<button class="btn ghost sm" id="s_pet_ollama">用本地 Ollama</button>'
+      +     '<button class="btn ghost sm" id="s_pet_clear">跟上面共用</button>'
+      +   '</div>'
+      +   '<input id="s_pet_base" value="'+esc(s.petAiBaseUrl||'')+'" placeholder="http://127.0.0.1:11434/v1">'
+      +   '<input id="s_pet_key" type="password" value="'+esc(s.petAiKey||'')+'" placeholder="ollama（它不校验，随便填个非空的）" style="margin-top:8px">'
+      +   '<input id="s_pet_model" value="'+esc(s.petAiModel||'')+'" placeholder="qwen3:4b" style="margin-top:8px">'
+      +   '<div class="row" style="gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap">'
+      +     '<button class="btn ghost sm" id="s_pet_test">测试伙伴 AI</button>'
+      +     '<span id="s_pet_tip" class="muted" style="font-size:12px"></span>'
+      +   '</div>'
       + '</div>'
       + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="s_reset">清空全部数据</button><button class="btn primary" id="s_save">保存</button></div>'
       + '<div class="row between" style="margin-top:14px;gap:10px;flex-wrap:wrap">'
@@ -4048,9 +4084,11 @@ var App = {
       }
     }
 
-    /* --- AI 配置：一键填 DeepSeek / OpenAI + 测试连接 --- */
-    function aiTip(t){ var e = $('s_ai_tip'); if(e) e.textContent = t || ''; }
+    /* --- AI 配置：一键填 DeepSeek / OpenAI / 本地 Ollama + 测试连接 --- */
+    function mkTip(id){ return function(t){ var e = $(id); if(e) e.textContent = t || ''; }; }
+    var aiTip = mkTip('s_ai_tip'), petTip = mkTip('s_pet_tip');
     var dsBtn = $('s_ai_ds'), oaiBtn = $('s_ai_oai'), testBtn = $('s_ai_test');
+    var olBtn = $('s_pet_ollama'), petClearBtn = $('s_pet_clear'), petTestBtn = $('s_pet_test');
     if(dsBtn) dsBtn.onclick = function(){
       $('s_base').value = 'https://api.deepseek.com/v1';
       $('s_model').value = 'deepseek-chat';
@@ -4063,36 +4101,56 @@ var App = {
       aiTip('已填 OpenAI —— 粘上 Key 点「测试连接」');
       $('s_key').focus();
     };
-    if(testBtn) testBtn.onclick = function(){
-      var base = $('s_base').value.trim(),
-          key  = $('s_key').value.trim(),
-          model= $('s_model').value.trim() || 'deepseek-chat';
-      if(!base || !key){ aiTip('先把地址和 Key 填上'); return; }
-      testBtn.disabled = true; aiTip('连接中…');
+    /* 本地 Ollama：地址固定走环回，Key 随便填（它不校验，但本 app 要求非空） */
+    if(olBtn) olBtn.onclick = function(){
+      $('s_pet_base').value = 'http://127.0.0.1:11434/v1';
+      $('s_pet_key').value = $('s_pet_key').value.trim() || 'ollama';
+      $('s_pet_model').value = $('s_pet_model').value.trim() || 'qwen3:4b';
+      petTip('已填本地 Ollama —— 点「测试伙伴 AI」（要先装好 Ollama 并 pull 过模型）');
+    };
+    if(petClearBtn) petClearBtn.onclick = function(){
+      ['s_pet_base','s_pet_key','s_pet_model'].forEach(function(id){ var e = $(id); if(e) e.value = ''; });
+      petTip('已清空 —— 伙伴改回跟上面那套共用');
+    };
+    /* 连接测试：两套共用一段逻辑，只是读的输入框和提示位置不同 */
+    function testConn(btn, base, key, model, tip, dfltModel){
+      if(!base || !key){ tip('先把地址和 Key 填上'); return; }
+      btn.disabled = true; tip('连接中…');
       fetch(base.replace(/\/+$/, '') + '/chat/completions', {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body:JSON.stringify({model:model, messages:[{role:'user',content:'只回复一个字：在'}],
-          max_tokens:8, temperature:0})
+        body:JSON.stringify({model:model || dfltModel, messages:[{role:'user',content:'只回复一个字：在'}],
+          max_tokens:8, temperature:0, stream:false})
       }).then(function(r){
         return r.ok ? r.json()
                     : r.text().then(function(t){ return {_err:r.status, _t:String(t).slice(0,200)}; });
       }).then(function(j){
-        testBtn.disabled = false;
+        btn.disabled = false;
         if(j._err){
           var why = j._err === 401 ? 'Key 不对（401）'
-                  : j._err === 404 ? '地址或模型名不对（404）'
+                  : j._err === 404 ? '地址或模型名不对（404）—— 本地模型要看 ollama list 里的名字'
                   : j._err === 402 ? '余额不足（402）'
                   : ('HTTP ' + j._err);
-          aiTip('✗ ' + why + ' —— ' + (j._t || '').slice(0, 80));
+          tip('✗ ' + why + ' —— ' + (j._t || '').slice(0, 80));
         } else {
           var c = j.choices && j.choices[0] && j.choices[0].message.content;
-          aiTip('✓ 通了。模型回：' + String(c || '').slice(0, 24));
+          tip('✓ 通了。模型回：' + String(c || '').slice(0, 24));
         }
       }).catch(function(e){
-        testBtn.disabled = false;
-        aiTip('✗ 连不上：' + e.message + '（断网 / 校外 / 地址写错都这样）');
+        btn.disabled = false;
+        tip('✗ 连不上：' + e.message + '（本地模型没启动 / 断网 / 地址写错都这样）');
       });
+    }
+    if(testBtn) testBtn.onclick = function(){
+      testConn(testBtn, $('s_base').value.trim(), $('s_key').value.trim(),
+               $('s_model').value.trim(), aiTip, 'deepseek-chat');
+    };
+    if(petTestBtn) petTestBtn.onclick = function(){
+      /* 留空 = 共用主 AI，那就测主 AI */
+      var b = $('s_pet_base').value.trim();
+      if(!b){ petTip('留空即共用上面那套，直接测「测试连接」就行'); return; }
+      testConn(petTestBtn, b, $('s_pet_key').value.trim(),
+               $('s_pet_model').value.trim(), petTip, 'qwen3:4b');
     };
 
     $('s_save').onclick=function(){
@@ -4100,6 +4158,10 @@ var App = {
       STATE.settings.aiBaseUrl=$('s_base').value.trim();
       STATE.settings.aiKey=$('s_key').value.trim();
       STATE.settings.aiModel=$('s_model').value.trim()||'deepseek-chat';
+      /* 伙伴那一套：三个都留空 = 回退主 AI（旧存档就是这状态） */
+      if($('s_pet_base')) STATE.settings.petAiBaseUrl=$('s_pet_base').value.trim();
+      if($('s_pet_key'))  STATE.settings.petAiKey=$('s_pet_key').value.trim();
+      if($('s_pet_model'))STATE.settings.petAiModel=$('s_pet_model').value.trim();
       /* 教学周起点：改了要**按周一归位**再存，不然他填个周三会把整周算歪 */
       var tv=($('s_term')||{}).value;
       if(tv){ var td=parseYmd(tv); if(!isNaN(td.getTime())) STATE.termStart=ymd(mondayOf(td)); }
@@ -4314,6 +4376,18 @@ function init(){
     save:save, render:render, toast:toast,
     openSheet:openSheet, closeSheet:closeSheet,
     callAI:callAI,
+    /* 伙伴（宠物）单独那套：没填就是主 AI。pet.js 用它决定走 AI 还是本地台词 */
+    callPetAI:function(messages){ return callAI(messages, 'pet'); },
+    petAIReady:function(){ return aiReady('pet'); },
+    /* 给伙伴页显示模式用：ready=能不能走 AI，local=是不是本地模型（环回地址），model=模型名 */
+    petAIInfo:function(){
+      var c = aiConfig('pet');
+      return {
+        ready: !!(c.baseUrl && c.key),
+        local: /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(c.baseUrl || ''),
+        model: c.model || ''
+      };
+    },
     addMemory:addMemory, grantFish:grantFish, petState:petState,
     vitality:catVitality, landingDays:catLandingDays, tierText:catTierText,
     tierOf:function(v){ return window.CyberCat ? CyberCat.tierOf(v) : (v<40?'low':(v>70?'high':'mid')); },

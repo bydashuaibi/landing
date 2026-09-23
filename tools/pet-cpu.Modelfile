@@ -1,0 +1,30 @@
+# 让「着陆」的宠物跑在本地、而且**一点显存都不占**
+#
+# 背景（2026-09-23，master 的要求）：
+#   他要一边打高负荷游戏（鸣潮/战双这类）一边还能跟宠物说话。
+#   4070 Laptop 只有 8GB 显存，游戏一开基本吃满 —— 所以模型**必须走 CPU**，
+#   否则每次都得先 `ollama stop`，等于不能同时用。
+#
+# 用法（先装 Ollama，再 pull 底模）：
+#   ollama pull qwen3:4b
+#   ollama create pet-cpu:4b -f landing/tools/pet-cpu.Modelfile
+#   ollama ps                      # 跑起来后应该显示 "100% CPU"，且显存占用为 0
+# 然后在「着陆 → 我的 → 设置 → 伙伴单独用哪套 AI」里：
+#   地址 http://127.0.0.1:11434/v1 · Key 随便填（ollama）· 模型 pet-cpu:4b
+#
+# 实测速度（Ryzen 9 7940HX，16C/32T / DDR5 / AVX-512）：约 10~20 字/秒，
+# 宠物那种 60 字短句大约 4~6 秒 —— 界面本来就有「它正在想…」，可以接受。
+#
+# 参数说明：
+#   num_gpu 0    ← 关键。不用显卡推理。要恢复用 GPU 就把这行删了重建
+#   num_thread 6 ← 限 6 个线程，别跟游戏抢 CPU（16 核里留 10 个给游戏绰绰有余）
+#   num_ctx 4096 ← 宠物的上下文（人设 + 8 条记忆 + 8 轮对话）够用；开太大会白吃内存
+#
+# 想要更快的（约 2~3 秒一句）就把上面 pull 的换成 qwen3:1.7b、名字改成 pet-cpu:1.7b。
+# 但它中文闲聊会明显发傻、爱重复 —— 宠物台词短，两档都试过再定。
+
+FROM qwen3:4b
+
+PARAMETER num_gpu 0
+PARAMETER num_thread 6
+PARAMETER num_ctx 4096

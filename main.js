@@ -89,14 +89,17 @@ function saveWindowState(win) {
 
 /* ---------- 内容安全策略 ---------- */
 /* img-src 允许 https 是为了日报里可能出现的远程图；connect-src 必须放开 https，
-   因为 AI 接口地址由用户在设置里自己填，事先无法枚举。 */
+   因为 AI 接口地址由用户在设置里自己填，事先无法枚举。
+   2026-09-23：再放行**环回地址的 http** —— 本地 Ollama 的 OpenAI 兼容端点是
+   http://127.0.0.1:11434/v1，少了这条 CSP 会"瞬间 Failed to fetch"（让人误以为是网络问题）。
+   ⚠️ 只放环回，不放任意 http / 明文外网。 */
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https:",
+  "connect-src 'self' https: http://127.0.0.1:* http://localhost:*",
   "media-src 'self' data: blob:",
   "object-src 'none'",
   "base-uri 'self'",
