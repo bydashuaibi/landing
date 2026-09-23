@@ -4042,7 +4042,7 @@ var App = {
       +   '</div>'
       +   '<input id="s_pet_base" value="'+esc(s.petAiBaseUrl||'')+'" placeholder="http://127.0.0.1:11434/v1">'
       +   '<input id="s_pet_key" type="password" value="'+esc(s.petAiKey||'')+'" placeholder="ollama（它不校验，随便填个非空的）" style="margin-top:8px">'
-      +   '<input id="s_pet_model" value="'+esc(s.petAiModel||'')+'" placeholder="qwen3:4b" style="margin-top:8px">'
+      +   '<input id="s_pet_model" value="'+esc(s.petAiModel||'')+'" placeholder="pet-cpu:1.5b（或 ollama list 里的任意名字）" style="margin-top:8px">'
       +   '<div class="row" style="gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap">'
       +     '<button class="btn ghost sm" id="s_pet_test">测试伙伴 AI</button>'
       +     '<span id="s_pet_tip" class="muted" style="font-size:12px"></span>'
@@ -4105,7 +4105,7 @@ var App = {
     if(olBtn) olBtn.onclick = function(){
       $('s_pet_base').value = 'http://127.0.0.1:11434/v1';
       $('s_pet_key').value = $('s_pet_key').value.trim() || 'ollama';
-      $('s_pet_model').value = $('s_pet_model').value.trim() || 'qwen3:4b';
+      $('s_pet_model').value = $('s_pet_model').value.trim() || 'pet-cpu:1.5b';
       petTip('已填本地 Ollama —— 点「测试伙伴 AI」（要先装好 Ollama 并 pull 过模型）');
     };
     if(petClearBtn) petClearBtn.onclick = function(){
@@ -4150,7 +4150,7 @@ var App = {
       var b = $('s_pet_base').value.trim();
       if(!b){ petTip('留空即共用上面那套，直接测「测试连接」就行'); return; }
       testConn(petTestBtn, b, $('s_pet_key').value.trim(),
-               $('s_pet_model').value.trim(), petTip, 'qwen3:4b');
+               $('s_pet_model').value.trim(), petTip, 'pet-cpu:1.5b');
     };
 
     $('s_save').onclick=function(){
