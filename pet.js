@@ -791,10 +791,12 @@
          原始报错写进 console，别整段塞气泡（气泡只留一句人话）。 */
       console.warn('[pet] 伙伴 AI 调用失败：', r.error, '｜配置：', petAI());
       var a = petAI();
-      /* 气泡里只留一小段人话：去掉括号里的"模型 @ 主机"、去掉 JSON 正文，最多 18 字 */
+      /* 气泡里只留一小段人话：去掉括号里的"模型 @ 主机"、去掉 JSON 正文，最多 18 字。
+         纯 HTTP 状态码换成他看得懂的说法（"500" 这种术语没意义）。 */
       var brief = String(r.error || '')
         .replace(/（[^）]*）/g, '').replace(/\{[\s\S]*$/, '')
         .replace(/\s+/g, ' ').trim().slice(0, 18);
+      if (/^\d{3}$/.test(brief)) brief = '模型服务崩了';
       pushPet('（' + (a.local ? '本地模型没接上：' + brief + ' → 托盘退出 Ollama 再打开一次'
                               : r.error) + '）');
     }).catch(function (e) {
