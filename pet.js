@@ -785,10 +785,20 @@
     L.callPetAI(msgs).then(function (r) {
       aiBusy = false;
       if (!r || !r.error) { pushPet((r && r.content || '').slice(0, 200)); return; }
-      /* 本地模型最常见的失败是"Ollama 没开"，原始报错是 Failed to fetch，他看不懂 */
+      /* 本地模型失败基本都是 Ollama 那边的事（没开 / runner 启动即崩 / 模型没建）。
+         ⚠️ 2026-09-24 实测：Ollama 的 runner 会偶发"启动即崩"（0.25 秒退，报 exit status 1），
+            **托盘右键退出、再打开一次**就好了 —— 这句自救提示必须写进气泡，他才知道怎么办。
+         原始报错写进 console，别整段塞气泡（气泡只留一句人话）。 */
+      console.warn('[pet] 伙伴 AI 调用失败：', r.error, '｜配置：', petAI());
       var a = petAI();
-      pushPet('（' + (a.local ? '本地的模型没接上 —— 看一眼 Ollama 开着没' : r.error) + '）');
-    }).catch(function () {
+      /* 气泡里只留一小段人话：去掉括号里的"模型 @ 主机"、去掉 JSON 正文，最多 18 字 */
+      var brief = String(r.error || '')
+        .replace(/（[^）]*）/g, '').replace(/\{[\s\S]*$/, '')
+        .replace(/\s+/g, ' ').trim().slice(0, 18);
+      pushPet('（' + (a.local ? '本地模型没接上：' + brief + ' → 托盘退出 Ollama 再打开一次'
+                              : r.error) + '）');
+    }).catch(function (e) {
+      console.warn('[pet] 伙伴 AI 异常：', e);
       aiBusy = false;
       pushPet('（它没接上，等会儿再试试）');
     });

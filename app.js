@@ -2942,20 +2942,53 @@ function aiConfig(which){
   return {baseUrl:(s.aiBaseUrl||'').trim(), key:(s.aiKey||'').trim(), model:s.aiModel||'gpt-4o-mini'};
 }
 function aiReady(which){ var c = aiConfig(which); return !!(c.baseUrl && c.key); }
+/* 是不是本地（环回）地址 —— 界面据此显示「本地模型模式」，失败提示也不同 */
+function isLocalUrl(u){
+  return /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(String(u||''));
+}
+/* 出错时把「模型 @ 主机」带上 —— 否则只剩一句 Failed to fetch，根本不知道它在调谁 */
+function aiWhere(c){
+  var host = String(c.baseUrl||'').replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  return (c.model||'?') + ' @ ' + host;
+}
 
 function callAI(messages, which){
   var c = aiConfig(which);
   if(!c.baseUrl || !c.key){ return Promise.resolve({error:'未配置 AI：去「我的→设置」填写'}); }
+  var local = isLocalUrl(c.baseUrl);
   var url = c.baseUrl.replace(/\/+$/,'')+'/chat/completions';
-  return fetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},
+  var payload = {
     /* stream:false 要显式写：有些 OpenAI 兼容层（如 Ollama 的 /v1）不写就按流式回 SSE，
        而这里收的是 r.json()，解不了 SSE、只会变成"调用失败" */
-    body:JSON.stringify({model:c.model||'gpt-4o-mini',messages:messages,temperature:0.7,stream:false})
-  }).then(function(r){ return r.ok?r.json():r.text().then(function(t){return {_err:r.status+' '+t.slice(0,160)};}); })
-    .then(function(j){ if(j._err)return{error:j._err}; return{content:(j.choices&&j.choices[0]&&j.choices[0].message.content)||'(空)'}; })
-    .catch(function(e){ return{error:'调用失败：'+e.message}; });
+    model:c.model||'gpt-4o-mini', messages:messages, temperature:0.7, stream:false
+  };
+  /* 本地小模型经常"自言自语停不下来"（1.5B 尤其），给输出封顶，
+     顺便把最坏耗时钉住。云端不封顶（周报点评要写几百字）。 */
+  if(local) payload.max_tokens = 220;
+  /* 🔴 超时必须自己设：fetch 默认无限等。对方接了连接却不回话（Ollama 的 runner 崩了、
+     云端卡住）时，没超时就会**永远停在「它正在想…」** —— 2026-09-24 他遇到的就是这个。 */
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var ms = local ? 120000 : 60000;
+  var timer = ctrl ? setTimeout(function(){ try{ ctrl.abort(); }catch(e){} }, ms) : 0;
+  var opt = {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},
+    body:JSON.stringify(payload)
+  };
+  if(ctrl) opt.signal = ctrl.signal;
+  return fetch(url, opt).then(function(r){
+    if(timer) clearTimeout(timer);
+    return r.ok ? r.json() : r.text().then(function(t){ return {_err:r.status+' '+String(t).slice(0,140)}; });
+  }).then(function(j){
+    if(j._err) return {error:j._err + '（' + aiWhere(c) + '）'};
+    return {content:(j.choices&&j.choices[0]&&j.choices[0].message.content)||'(空)'};
+  }).catch(function(e){
+    if(timer) clearTimeout(timer);
+    var to = e && (e.name === 'AbortError' || /abort/i.test(String(e.message||'')));
+    return {error:(to ? '等太久了（超过 ' + Math.round(ms/1000) + ' 秒没回话）'
+                      : '调用失败：' + (e && e.message))
+                   + '（' + aiWhere(c) + '）'};
+  });
 }
 
 /* ================= 陪伴页的气泡 =================
@@ -4112,16 +4145,22 @@ var App = {
       ['s_pet_base','s_pet_key','s_pet_model'].forEach(function(id){ var e = $(id); if(e) e.value = ''; });
       petTip('已清空 —— 伙伴改回跟上面那套共用');
     };
-    /* 连接测试：两套共用一段逻辑，只是读的输入框和提示位置不同 */
+    /* 连接测试：两套共用一段逻辑，只是读的输入框和提示位置不同。
+       ⚠️ 也要设超时，否则对方"接了不回"会让按钮永远停在「连接中…」（2026-09-24 加）。 */
     function testConn(btn, base, key, model, tip, dfltModel){
       if(!base || !key){ tip('先把地址和 Key 填上'); return; }
       btn.disabled = true; tip('连接中…');
-      fetch(base.replace(/\/+$/, '') + '/chat/completions', {
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function(){ try{ ctrl.abort(); }catch(e){} }, 60000) : 0;
+      var opt = {
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
         body:JSON.stringify({model:model || dfltModel, messages:[{role:'user',content:'只回复一个字：在'}],
           max_tokens:8, temperature:0, stream:false})
-      }).then(function(r){
+      };
+      if(ctrl) opt.signal = ctrl.signal;
+      fetch(base.replace(/\/+$/, '') + '/chat/completions', opt).then(function(r){
+        if(timer) clearTimeout(timer);
         return r.ok ? r.json()
                     : r.text().then(function(t){ return {_err:r.status, _t:String(t).slice(0,200)}; });
       }).then(function(j){
@@ -4137,8 +4176,11 @@ var App = {
           tip('✓ 通了。模型回：' + String(c || '').slice(0, 24));
         }
       }).catch(function(e){
+        if(timer) clearTimeout(timer);
         btn.disabled = false;
-        tip('✗ 连不上：' + e.message + '（本地模型没启动 / 断网 / 地址写错都这样）');
+        var to = e && (e.name === 'AbortError' || /abort/i.test(String(e.message||'')));
+        tip(to ? '✗ 60 秒没回话：本地模型可能在加载或已崩，退出 Ollama 再打开一次试试'
+               : '✗ 连不上：' + (e && e.message) + '（本地模型没启动 / 断网 / 地址写错都这样）');
       });
     }
     if(testBtn) testBtn.onclick = function(){
@@ -4384,7 +4426,7 @@ function init(){
       var c = aiConfig('pet');
       return {
         ready: !!(c.baseUrl && c.key),
-        local: /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(c.baseUrl || ''),
+        local: isLocalUrl(c.baseUrl),
         model: c.model || ''
       };
     },
