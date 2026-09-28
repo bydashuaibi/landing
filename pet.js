@@ -728,7 +728,13 @@
     renderPanel(); refresh();
 
     var hasAI = petAI().ready;
-    if (hasAI) { aiBusy = true; aiReply(); }
+    if (hasAI) {
+      aiBusy = true;
+      /* 同步异常也要兜住：aiReply 里任何一处抛错，aiBusy 会永远卡住、
+         气泡停在「它正在想…」然后消失 —— 看起来就是「它一句话都不回」（2026-09-28 踩到） */
+      try { aiReply(); }
+      catch (e) { aiBusy = false; console.warn('[pet] aiReply 抛错：', e); pushPet('（它卡了一下，再说一句试试）'); }
+    }
     else setTimeout(function () { pushPet(localReply(text)); }, 420 + Math.random() * 520);
   }
 
@@ -766,6 +772,11 @@
     var p = ensure();
     var mems = ST().memories.slice(-8).map(function (m) { return '· ' + m.text; }).join('\n');
     var hist = p.chat.slice(-8);
+    /* 周上下文单独取、单独兜错：它在下面被**同步**拼进 prompt，一抛错整个 aiReply 就中断，
+       气泡会永远停在「它正在想…」然后消失（2026-09-28 真踩到）。
+       宁可这次少两句上下文，也不能让宠物哑掉。 */
+    var wkCtx = '';
+    if (L.weekContext) { try { wkCtx = L.weekContext() || ''; } catch (e) { console.warn('[pet] 周上下文失败：', e); } }
     var sys = '你是「着陆」App 里用户养的赛博小猫，名字叫「' + p.name + '」。'
       + '你不是助手，是一只真的在陪着他的猫：说话短、口语化、偶尔喵一声，会撒娇也会犯懒。'
       + '绝对不要说教、不要列清单、不要长篇大论（每句 60 字以内，可以分两句）。'
@@ -775,7 +786,7 @@
       /* 周维度的事实（上周 + 本周至今）—— 他问「我上周干了什么 / 是不是太松了」时照这个答，
          结论和建议都是周报那套规则算好的。**建议只提，别替他拍板**（master 要自己决策）。
          ⚠️ 上面没有的就别说有；上周没记录就直接说"那周没怎么用" */
-      + (L.weekContext ? ('\n\n他最近两周的样子：\n' + L.weekContext()) : '')
+      + (wkCtx ? ('\n\n他最近两周的样子：\n' + wkCtx) : '')
       + '\n（他若问「我上周干了什么」「这周是不是太松/太紧」「该补点什么」，就用上面这些真实数据答，别编。'
       + '给建议只提方案 + 说清理由，让他自己决定。）'
       + '\n你对他说过的话和记忆：\n' + (mems || '（还没什么记忆）');

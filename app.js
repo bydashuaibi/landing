@@ -2724,17 +2724,27 @@ function weekDigestLine(wk, label){
     + '；结论：'+((rpt.balance && rpt.balance.headline) || '—')
     + ((rpt.balance && rpt.balance.tips && rpt.balance.tips.length) ? '；可以试：'+rpt.balance.tips[0] : '');
 }
-/* 宠物能看到的全部「周」信息：上周 + 本周至今 */
+/* 宠物能看到的全部「周」信息：上周 + 本周至今
+   ⚠️ 这里**必须自己兜住异常**：它在 pet.js 的 aiReply() 里被同步调用，
+      一抛错整个 aiReply 就中断 —— 表现是气泡永远停在「它正在想…」然后消失，
+      也就是「伙伴一句话都不回」。2026-09-28 真踩到（mdShort 收了字符串）。
+      宁可少两句上下文，也不能让宠物变哑巴。 */
 function petWeekContext(){
-  var cur = weekKey(), last = addDays(cur, -7);
-  var out = [];
-  if(weekHasData(last)){
-    out.push(weekDigestLine(last, '上周（'+mdShort(parseYmd(last))+'–'+mdShort(addDays(last,6))+'）'));
-  } else {
-    out.push('【上周】没有记录 —— 那周基本没打开过这个 app，别硬编内容。');
+  try{
+    var cur = weekKey(), last = addDays(cur, -7);
+    var out = [];
+    if(weekHasData(last)){
+      /* ⚠️ mdShort 要的是 Date，而 addDays 返回的是 'YYYY-MM-DD' 字符串 —— 必须 parseYmd 一下 */
+      out.push(weekDigestLine(last, '上周（'+mdShort(parseYmd(last))+'–'+mdShort(parseYmd(addDays(last,6)))+'）'));
+    } else {
+      out.push('【上周】没有记录 —— 那周基本没打开过这个 app，别硬编内容。');
+    }
+    out.push(weekDigestLine(cur, '本周至今（'+mdShort(parseYmd(cur))+' 起）'));
+    return out.join('\n');
+  }catch(e){
+    console.warn('[pet] 周上下文生成失败，这次不带它：', e);
+    return '';
   }
-  out.push(weekDigestLine(cur, '本周至今（'+mdShort(parseYmd(cur))+' 起）'));
-  return out.join('\n');
 }
 
 /* ---- 周报的 AI 润色（规则打底 + AI 润色；没配 Key 就只用规则正文）----
