@@ -300,6 +300,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .cat.life{background:rgba(191,138,22,.18);color:#8a6512}
 .cat.nature{background:rgba(31,158,142,.16);color:#157a6e}
 .cat.recharge{background:rgba(191,138,22,.20);color:#8a6512}
+/* 2026-09-28 新四类：休闲娱乐 / 工作学习 / 生活品质(.cat.life 复用上面那个琥珀) / 素养提高 */
+.cat.fun{background:rgba(214,98,122,.16);color:#a83f57}
+.cat.work{background:rgba(59,111,176,.16);color:#2f568f}
+.cat.growth{background:rgba(139,109,255,.16);color:#6a4fd0}
 
 /* 今天一件 */
 .one-thing{border:2px dashed rgba(168,138,91,.65);text-align:center;padding:26px 18px;border-radius:18px}
@@ -477,6 +481,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .dg-pill:hover{border-color:var(--terracotta);color:var(--terracotta-d);background:rgba(194,168,120,.18)}
 .dg-pill.on{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(192,112,60,.3)}
 .digest-section{margin-bottom:22px}
+/* 任务页按分类分组时的小标题（只在有多组/正在筛选时出现） */
+.task-grp{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;margin:16px 0 9px}
+.task-grp b{font-weight:700;font-size:11px;color:var(--terracotta-d);background:rgba(194,168,120,.22);padding:1px 7px;border-radius:999px}
 .digest-section-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .dsh-title{font-weight:800;font-size:15px;color:var(--khaki-deep)}
 .dsh-trend{font-size:11px;font-weight:700;color:#1f7a4f;background:rgba(47,158,107,.14);padding:2px 10px;border-radius:10px;border:1px solid rgba(47,158,107,.24)}
@@ -793,7 +800,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=37"></script>
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

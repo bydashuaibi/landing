@@ -20,12 +20,34 @@ var APP_CONFIG = {
  * 充能恢复型任务的类别从 health/life 的子类中取
  */
 var CATEGORIES = [
-  {key:'health', label:'身心健康', cls:'health', subs:['运动','睡眠','冥想','泡澡']},
-  {key:'edu',    label:'学习成长', cls:'edu',    subs:['学习','阅读','自我提升','探索']},
-  {key:'create', label:'创意表达', cls:'create', subs:['音乐','创作','摄影','手工','烹饪','园艺']},
-  {key:'life',   label:'生活品质', cls:'life',   subs:['美食','社交','娱乐','整理收纳']},
-  {key:'nature', label:'自然户外', cls:'nature', subs:['自然','出行']}
+  {key:'fun',    label:'休闲娱乐', cls:'fun',    subs:['游戏','看番','追剧','音乐','社交','出门玩']},
+  {key:'work',   label:'工作学习', cls:'work',   subs:['课程','项目','刷题','英语','论文','实习']},
+  {key:'life',   label:'生活品质', cls:'life',   subs:['作息','运动','整理','饮食','健康','出行']},
+  {key:'growth', label:'素养提高', cls:'growth', subs:['阅读','冥想','写作','技能','艺术','视野']}
 ];
+
+/* 旧分类 key → 新四类。
+   用途①：**历史周报里存的还是旧 key**（dailyStats 按 key 汇总），翻旧周报要靠它显示成中文；
+   用途②：没被一次性迁移覆盖到的老数据（例如导回来的旧备份）。 */
+var CAT_ALIAS_KEY = {health:'life', edu:'work', create:'growth', life:'life', nature:'life'};
+
+/* 任务名 → 新分类。**只给一次性迁移用**（见 migrate 里的 catMigrated）。
+   ⚠️ 为什么按名字判、而不是按旧 key 映射：老数据里的分类是随手选的 ——
+   master 的「ML学习」「c++学习」「卡拉比丘」全被放在 health 里，纯 key 映射会全错。 */
+var CAT_NAME_RULES = [
+  [/游戏|卡拉比丘|杀戮尖塔|鸣潮|战双|原神|星穹|看番|追剧|番剧|电影|听歌|唱歌|K歌|麻将|打牌|出去玩|刷视频|短视频/, 'fun'],
+  [/学习|刷题|开发|项目|论文|课程|上课|考试|实习|面试|编程|代码|作业|实验|python|c\+\+|\bml\b|ue|unity/i, 'work'],
+  [/跑步|锻炼|健身|早睡|早起|作息|整理|打扫|收纳|做饭|饮食|刷牙|喝水|健康|体检|散步|出门/, 'life'],
+  [/冥想|阅读|读书|背单词|红宝书|英语|写作|练字|乐器|画画|书法|摄影|素养|视野/, 'growth']
+];
+function guessCategory(name, oldKey){
+  var n = String(name || '');
+  for(var i = 0; i < CAT_NAME_RULES.length; i++){
+    if(CAT_NAME_RULES[i][0].test(n)) return CAT_NAME_RULES[i][1];
+  }
+  if(CAT_ALIAS_KEY[oldKey]) return CAT_ALIAS_KEY[oldKey];
+  return CATEGORIES.some(function(c){ return c.key === oldKey; }) ? oldKey : 'work';
+}
 
 /* GitHub 日报领域（按主题拉取热门开源项目） */
 var DIGEST_TOPICS = [
@@ -66,10 +88,15 @@ function toast(msg){
 }
 
 function catLabel(key){
-  var c=CATEGORIES.find(function(x){return x.key===key;});
+  var c=CATEGORIES.find(function(x){return x.key===(CAT_ALIAS_KEY[key]||key);});
   return c ? '<span class="cat '+c.cls+'">'+c.label+'</span>' : '';
 }
-function catName(key){ var c=CATEGORIES.find(function(x){return x.key===key;}); return c ? c.label : key; }
+/* ⚠️ 一定要走 CAT_ALIAS_KEY：历史周报/老数据里存的是旧 key（health/edu/…），
+   不兜底就会在界面上显示成英文 key */
+function catName(key){
+  var c=CATEGORIES.find(function(x){return x.key===(CAT_ALIAS_KEY[key]||key);});
+  return c ? c.label : key;
+}
 
 /* ================= 数据模型 ================= */
 var STATE = null;
@@ -186,6 +213,14 @@ function migrate(){
     s.chatMemPurged = true;
     s.memories = s.memories.filter(function(m){ return m && m.kind !== 'chat'; });
   }
+  /* 一次性：任务分类体系换代（旧五类 → 新四类 休闲娱乐/工作学习/生活品质/素养提高）。
+     ⚠️ 按**名字**重判而不是按旧 key 映射（老数据分类是随手选的，见 CAT_NAME_RULES 注释）；
+     ⚠️ 必须用 flag 挡住 —— 否则每次启动都会把他手动改过的分类冲回去。 */
+  if(!s.catMigrated){
+    s.catMigrated = true;
+    [].concat(s.dailyTasks||[], s.weeklyTasks||[], s.longTasks||[], s.mustDos||[])
+      .forEach(function(t){ t.category = guessCategory(t.name, t.category); });
+  }
   s.timer = s.timer || null;
   if(s.timer){
     if(!s.timer.scope) s.timer.scope = 'weekly';   /* 兼容旧版：原来只有每周任务能计时 */
@@ -225,7 +260,7 @@ function migrate(){
     if(w.enabled===undefined) w.enabled = true;
     if(!w.dailyGoalMin) w.dailyGoalMin = 30;
     if(!w.weeklyGoalDays) w.weeklyGoalDays = 5;
-    if(!w.category) w.category = w.type==='exercise' ? 'health' : 'edu';
+    if(!w.category) w.category = w.type==='exercise' ? 'life' : 'work';
   });
 
   stripLegacySeed();
@@ -237,7 +272,7 @@ function seedDemo(){
 
   STATE.longTasks = [
     {id:uid('lt'), name:'背完考研红宝书单词', unit:'词', total:5500, current:1200,
-     deadline:addDays(t,90), category:'edu', status:'active',
+     deadline:addDays(t,90), category:'work', status:'active',
      records:[
        {date:addDays(t,-5),amount:80,minutes:25},
        {date:addDays(t,-4),amount:60,minutes:20},
@@ -245,7 +280,7 @@ function seedDemo(){
        {date:addDays(t,-1),amount:50,minutes:15}
      ], createdAt:addDays(t,-10)},
     {id:uid('lt'), name:'读完《深度工作》', unit:'页', total:320, current:85,
-     deadline:addDays(t,21), category:'edu', status:'active',
+     deadline:addDays(t,21), category:'work', status:'active',
      records:[
        {date:addDays(t,-3),amount:15,minutes:40},
        {date:addDays(t,-2),amount:20,minutes:45},
@@ -254,16 +289,16 @@ function seedDemo(){
   ];
 
   STATE.dailyTasks = [
-    {id:uid('dt'), name:'英语背词 30 个', category:'edu', subCategory:'学习', type:'habit', enabled:true,
+    {id:uid('dt'), name:'英语背词 30 个', category:'growth', subCategory:'学习', type:'habit', enabled:true,
      records:[
        {date:addDays(t,-5),amount:30,minutes:10},{date:addDays(t,-4),amount:30,minutes:12},
        {date:addDays(t,-3),amount:30,minutes:11},{date:addDays(t,-1),amount:30,minutes:10}
      ], createdAt:addDays(t,-14)},
-    {id:uid('dt'), name:'跑步 30 分钟', category:'health', subCategory:'运动', type:'habit', enabled:true,
+    {id:uid('dt'), name:'跑步 30 分钟', category:'life', subCategory:'运动', type:'habit', enabled:true,
      records:[
        {date:addDays(t,-4),amount:30,minutes:30},{date:addDays(t,-2),amount:30,minutes:28}
      ], createdAt:addDays(t,-14)},
-    {id:uid('dt'), name:'冥想 10 分钟', category:'health', subCategory:'冥想', type:'recharge', enabled:true,
+    {id:uid('dt'), name:'冥想 10 分钟', category:'growth', subCategory:'冥想', type:'recharge', enabled:true,
      records:[
        {date:addDays(t,-5),amount:10,minutes:10},{date:addDays(t,-3),amount:10,minutes:10},
        {date:addDays(t,-2),amount:10,minutes:10},{date:addDays(t,-1),amount:10,minutes:10}
@@ -271,7 +306,7 @@ function seedDemo(){
   ];
 
   STATE.weeklyTasks = [
-    {id:uid('wk'), name:'跑步 / 健身房', type:'exercise', category:'health',
+    {id:uid('wk'), name:'跑步 / 健身房', type:'exercise', category:'life',
      dailyGoalMin:30, weeklyGoalDays:5, enabled:true,
      records:[
        {date:addDays(t,-4), minutes:30, mode:'timer', plannedMin:30, ts:Date.now()},
@@ -699,9 +734,9 @@ function renderMustItemCard(m){
    时间到再问「已完成 / 完成部分」，完成部分由你自己填实际做了多久。
    原则延续：不催不罚，记录本身就算数。 */
 var WEEKLY_TYPES = [
-  {key:'exercise', label:'运动型', cat:'health', timed:true,
+  {key:'exercise', label:'运动型', cat:'life', timed:true,
    hint:'设每日运动时长，打卡可立即完成，也可起倒计时跟着做'},
-  {key:'custom',   label:'自定义型', cat:'edu',    timed:false,
+  {key:'custom',   label:'自定义型', cat:'work',    timed:false,
    hint:'设每日目标与每周天数，打卡即完成，不记时长'}
 ];
 function weeklyTypeOf(key){
@@ -749,7 +784,7 @@ function weeklyTasksSummary(wk){
     r.totalMin += st.total;
     r.goalDays += (w.weeklyGoalDays||7);
     r.okDays += st.okDays;
-    var c = w.category||'health';
+    var c = w.category||'life';
     r.byCat[c] = (r.byCat[c]||0) + st.total;
   });
   return r;
@@ -821,7 +856,7 @@ function renderWeeklyTaskCard(w){
   var tp = weeklyTypeOf(w.type);
   var dayPct = goal>0 ? Math.min(100, Math.round(tmin/goal*100)) : (tmin>0?100:0);
   var checked = tmin>0;
-  var catCls = (CATEGORIES.find(function(c){return c.key===w.category;})||{}).cls || 'health';
+  var catCls = (CATEGORIES.find(function(c){return c.key===w.category;})||{}).cls || 'life';
 
   return '<div class="task wtask'+(w.enabled?'':' paused')+'" data-id="'+w.id+'">'
     +'<div class="tinfo">'
@@ -2400,8 +2435,70 @@ function viewToday(){
 }
 
 /* ================= 视图：任务 ================= */
+/* ---- 任务页的分类筛选（2026-09-28 master 要求）----
+   分类：休闲娱乐 / 工作学习 / 生活品质 / 素养提高。
+   筛选是**瞬态**（不持久化），跟日报那个同一套路，刷新回到「全部」。 */
+var _taskFilter = '';
+function taskList(){
+  return [].concat(STATE.longTasks||[], STATE.dailyTasks||[], STATE.mustDos||[], STATE.weeklyTasks||[]);
+}
+/* 任务 → 它属于哪个新分类（老 key 自动折算；归不上的返回空串） */
+function taskCatOf(t){
+  var k = CAT_ALIAS_KEY[t.category] || t.category || '';
+  return CATEGORIES.some(function(c){ return c.key === k; }) ? k : '';
+}
+function filterTasks(list){
+  if(!_taskFilter) return list;
+  return list.filter(function(t){ return taskCatOf(t) === _taskFilter; });
+}
+/* 按分类分组（顺序固定 = CATEGORIES 的顺序，没归类的排最后） */
+function taskCatGroups(list){
+  var order = CATEGORIES.map(function(c){ return c.key; });
+  var by = {};
+  list.forEach(function(t){
+    var k = taskCatOf(t) || '_none';
+    (by[k] = by[k] || []).push(t);
+  });
+  return order.concat(by._none ? ['_none'] : [])
+    .filter(function(k){ return by[k] && by[k].length; })
+    .map(function(k){ return { key:k, label:(k === '_none' ? '未分类' : catName(k)), items:by[k] }; });
+}
+/* 「筛选 + 按分类分组」渲染一个任务列表。
+   ⚠️ 分组小标题只在「有多组」或「正在筛选」时出现 —— 只有一组时加标题就是噪音。
+   ⚠️ quiet=true 时空结果不吭声（免得太筛完之后四个块各喊一次「这一类里还没有任务」）。 */
+function renderGroupedTasks(list, renderFn, quiet){
+  var items = filterTasks(list);
+  if(!items.length) return quiet ? '' : '<div class="empty">这一类里还没有任务。</div>';
+  var groups = taskCatGroups(items);
+  /* 标题只在「一组以上」时出现：筛选后每组只剩一类，再加标题就是重复
+     （曾经出现过「工作学习 1」+「工作学习 5」两个一样的标题） */
+  var head = groups.length > 1;
+  var h = '';
+  groups.forEach(function(g){
+    if(head) h += '<div class="task-grp">' + esc(g.label) + ' <b>' + g.items.length + '</b></div>';
+    g.items.forEach(function(t){ h += renderFn(t); });
+  });
+  return h;
+}
+/* 顶部的分类筛选条（带每类条数） */
+function taskFilterBar(){
+  var all = taskList();
+  var cnt = function(k){
+    return k ? all.filter(function(t){ return taskCatOf(t) === k; }).length : all.length;
+  };
+  var h = '<div class="digest-filters">'
+    + '<button class="dg-pill' + (_taskFilter === '' ? ' on' : '') + '" data-act="filterTask" data-cat="">全部 ' + cnt('') + '</button>';
+  CATEGORIES.forEach(function(c){
+    var n = cnt(c.key);
+    h += '<button class="dg-pill' + (_taskFilter === c.key ? ' on' : '') + '" data-act="filterTask" data-cat="' + c.key + '">'
+      + c.label + (n ? ' ' + n : '') + '</button>';
+  });
+  return h + '</div>';
+}
+
 function viewTasks(){
   var h = '';
+  var f = _taskFilter;   /* '' = 全部 */
 
   /* 模块头（结构化蓝图） */
   h += '<div class="mod-head">'
@@ -2410,66 +2507,90 @@ function viewTasks(){
     + '<p>两套并行：<b>长周期（导入型）</b>有终点有总量，到 50%/100% 自动鼓励，连续两天没打卡先暂停等你回来；<b>日常循环（提升型）</b>按类别每天做、不中断，可自由开关。</p>'
     + '</div>';
 
-  /* 长周期 */
-  h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 长周期任务</h2>'
-    + '<button class="btn primary sm" data-act="newLong">'+icon('plus')+' 导入长周期</button></div>'
-    + '<div class="hint">有终点有总量的目标（如背完红宝书）。必填截止日，超期温和提醒；连续两天未打卡自动暂停。</div></div>';
+  /* 分类筛选：全部 / 休闲娱乐 / 工作学习 / 生活品质 / 素养提高 */
+  h += taskFilterBar();
+  if(f) h += '<div class="hint" style="margin:-6px 0 16px">正在只看「'+esc(catName(f))+'」—— 再点一次「全部」看所有任务。</div>';
 
   var activeLts = STATE.longTasks.filter(function(g){return g.status!=='done';});
   var doneLts = STATE.longTasks.filter(function(g){return g.status==='done';});
+  /* ⚠️ 筛选时，这一类里没有内容的块**整块收掉**（连头卡一起）——
+     否则四个块头全晾在那儿、每个都写一遍「这一类里还没有任务」。 */
+  var showLt = filterTasks(activeLts.concat(doneLts)).length;
+  var showDt = filterTasks(STATE.dailyTasks).length;
+  var showMd = filterTasks(STATE.mustDos).length;
+  var showWk = filterTasks(STATE.weeklyTasks).length;
 
-  if(!activeLts.length && !doneLts.length){
-    h += '<div class="empty">还没有长周期任务。点「导入长周期」添加一个。</div>';
-  } else {
-    activeLts.forEach(function(g){ h += renderLongTaskCard(g); });
-    if(doneLts.length){
-      h += '<div class="hint" style="margin-top:12px">✓ 已完成</div>';
-      doneLts.forEach(function(g){ h += renderLongTaskCard(g); });
+  /* 长周期 */
+  if(!f || showLt){
+    h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 长周期任务</h2>'
+      + '<button class="btn primary sm" data-act="newLong">'+icon('plus')+' 导入长周期</button></div>'
+      + '<div class="hint">有终点有总量的目标（如背完红宝书）。必填截止日，超期温和提醒；连续两天未打卡自动暂停。</div></div>';
+
+    if(!activeLts.length && !doneLts.length){
+      h += '<div class="empty">还没有长周期任务。点「导入长周期」添加一个。</div>';
+    } else {
+      h += renderGroupedTasks(activeLts, renderLongTaskCard);
+      var doneShow = filterTasks(doneLts);
+      if(doneShow.length){
+        h += '<div class="hint" style="margin-top:12px">✓ 已完成</div>';
+        doneShow.forEach(function(g){ h += renderLongTaskCard(g); });
+      }
     }
   }
 
   /* 日常循环 */
-  h += '<div class="card"><div class="row between"><h2>'+icon('list')+' 日常循环</h2>'
-    + '<button class="btn primary sm" data-act="newDaily">'+icon('plus')+' 新建日常</button></div>'
-    + '<div class="hint">每天提升自己的短周期任务（如跑步、背词、冥想）。不生成清单，做了就打卡。可自由开关。</div></div>';
+  if(!f || showDt){
+    h += '<div class="card"><div class="row between"><h2>'+icon('list')+' 日常循环</h2>'
+      + '<button class="btn primary sm" data-act="newDaily">'+icon('plus')+' 新建日常</button></div>'
+      + '<div class="hint">每天提升自己的短周期任务（如跑步、背词、冥想）。不生成清单，做了就打卡。可自由开关。</div></div>';
 
-  if(!STATE.dailyTasks.length){
-    h += '<div class="empty">还没有日常任务。点「新建日常」添加。</div>';
-  } else {
-    STATE.dailyTasks.forEach(function(dt){ h += renderDailyTaskCard(dt); });
+    if(!STATE.dailyTasks.length){
+      h += '<div class="empty">还没有日常任务。点「新建日常」添加。</div>';
+    } else {
+      h += renderGroupedTasks(STATE.dailyTasks, renderDailyTaskCard);
+    }
   }
 
   /* 每日必做 */
-  var mStats = mustTodayStats();
-  h += '<div class="card" id="mustSec"><div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
-    + '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 新建必做</button></div>'
-    + '<div class="hint">每天都要交代一下的那几件（吃药、记账、背词…）。点一下打勾，'
-    + '软件记下<b>打卡时刻</b>；一天只记一次，再点一下是撤销。'
-    + (mStats.total ? '今天 <b>'+mStats.done+'/'+mStats.total+'</b>。' : '')+'</div></div>';
+  if(!f || showMd){
+    var mStats = mustTodayStats();
+    h += '<div class="card" id="mustSec"><div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
+      + '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 新建必做</button></div>'
+      + '<div class="hint">每天都要交代一下的那几件（吃药、记账、背词…）。点一下打勾，'
+      + '软件记下<b>打卡时刻</b>；一天只记一次，再点一下是撤销。'
+      + (mStats.total ? '今天 <b>'+mStats.done+'/'+mStats.total+'</b>。' : '')+'</div></div>';
 
-  if(!STATE.mustDos.length){
-    h += '<div class="empty">还没有必做项。点「新建必做」加一条 —— 建议不超过 3 条，多了就成了清单。</div>';
-  } else {
-    STATE.mustDos.forEach(function(m){ h += renderMustItemCard(m); });
+    if(!STATE.mustDos.length){
+      h += '<div class="empty">还没有必做项。点「新建必做」加一条 —— 建议不超过 3 条，多了就成了清单。</div>';
+    } else {
+      h += renderGroupedTasks(STATE.mustDos, renderMustItemCard);
+    }
   }
 
   /* 每周任务 */
-  var wSum = weeklyTasksSummary();
-  h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 每周任务</h2>'
-    + '<button class="btn primary sm" data-act="newWeekly">'+icon('plus')+' 新建每周任务</button></div>'
-    + '<div class="hint">按「每日时长 + 每周达标天数」双目标推进，适合运动这类需要节奏的事。'
-    + '打卡可选<b>已完成</b>（按设定时长直接计入周报）或<b>现在开始</b>（起倒计时，结束后再问完成多少）。</div>';
-  if(wSum.goalDays){
-    h += '<div class="wk-sum"><span>本周达标 <b>'+wSum.okDays+'/'+wSum.goalDays+'</b> 天</span>'
-      + '<span>累计 <b>'+wSum.doneMin+'</b> 分钟</span>'
-      + '<span>目标 <b style="color:var(--khaki-deep)">'+wSum.goalMin+'</b> 分钟</span></div>';
-  }
-  h += '</div>';
+  if(!f || showWk){
+    var wSum = weeklyTasksSummary();
+    h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 每周任务</h2>'
+      + '<button class="btn primary sm" data-act="newWeekly">'+icon('plus')+' 新建每周任务</button></div>'
+      + '<div class="hint">按「每日时长 + 每周达标天数」双目标推进，适合运动这类需要节奏的事。'
+      + '打卡可选<b>已完成</b>（按设定时长直接计入周报）或<b>现在开始</b>（起倒计时，结束后再问完成多少）。</div>';
+    if(wSum.goalDays){
+      h += '<div class="wk-sum"><span>本周达标 <b>'+wSum.okDays+'/'+wSum.goalDays+'</b> 天</span>'
+        + '<span>累计 <b>'+wSum.doneMin+'</b> 分钟</span>'
+        + '<span>目标 <b style="color:var(--khaki-deep)">'+wSum.goalMin+'</b> 分钟</span></div>';
+    }
+    h += '</div>';
 
-  if(!STATE.weeklyTasks.length){
-    h += '<div class="empty">还没有每周任务。点「新建每周任务」加一个，比如「每天运动 30 分钟、每周至少 5 天」。</div>';
-  } else {
-    STATE.weeklyTasks.forEach(function(w){ h += renderWeeklyTaskCard(w); });
+    if(!STATE.weeklyTasks.length){
+      h += '<div class="empty">还没有每周任务。点「新建每周任务」加一个，比如「每天运动 30 分钟、每周至少 5 天」。</div>';
+    } else {
+      h += renderGroupedTasks(STATE.weeklyTasks, renderWeeklyTaskCard, true);
+    }
+  }
+
+  /* 这一类一个任务都没有 —— 给个说法 + 指路，别留白 */
+  if(f && !showLt && !showDt && !showMd && !showWk){
+    h += '<div class="empty">「'+esc(catName(f))+'」这一类里还没有任务 —— 新建的时候选上它，就会出现在这里。</div>';
   }
 
   return h;
@@ -3476,10 +3597,12 @@ var App = {
     /* 渲染类别选择 */
     var catHtml='';
     CATEGORIES.forEach(function(c){
-      catHtml+='<div class="cat-chip '+(g&&g.category===c.key?'on':'')+'" data-ck="'+c.key+'">'+c.label+'</div>';
+      /* ⚠️ 新建时也得有默认高亮（跟下面 selCat 的默认值一致），否则四个 chip 全灰，
+         看不出会建到哪一类 */
+      catHtml+='<div class="cat-chip '+(((g?g.category:'work')===c.key)?'on':'')+'" data-ck="'+c.key+'">'+c.label+'</div>';
     });
     $('lt_cat').innerHTML=catHtml;
-    var selCat=g?g.category:CATEGORIES[0].key;
+    var selCat=g?g.category:'work';
     $('lt_cat').querySelectorAll('[data-ck]').forEach(function(el){
       el.addEventListener('click',function(){
         $('lt_cat').querySelectorAll('[data-ck]').forEach(function(x){x.classList.remove('on');});
@@ -3566,10 +3689,10 @@ var App = {
 
     var catHtml='';
     CATEGORIES.forEach(function(c){
-      catHtml+='<div class="cat-chip '+(dt&&dt.category===c.key?'on':'')+'" data-dk="'+c.key+'">'+c.label+'</div>';
+      catHtml+='<div class="cat-chip '+(((dt?dt.category:'work')===c.key)?'on':'')+'" data-dk="'+c.key+'">'+c.label+'</div>';
     });
     $('dn_cat').innerHTML=catHtml;
-    var selCat=dt?dt.category:CATEGORIES[0].key;
+    var selCat=dt?dt.category:'work';
     $('dn_cat').querySelectorAll('[data-dk]').forEach(function(el){
       el.addEventListener('click',function(){
         $('dn_cat').querySelectorAll('[data-dk]').forEach(function(x){x.classList.remove('on');});
@@ -4383,6 +4506,7 @@ document.addEventListener('click',function(e){
   else if(act==='goDigest') App.goDigest();
   else if(act==='refreshDigest') App.refreshDigest();
   else if(act==='filterDigest'){ var cat=el.dataset.cat||'全部'; _digestFilter=cat; render(); }
+  else if(act==='filterTask'){ _taskFilter = el.dataset.cat || ''; render(); }
 
   /* AI */
   else if(act==='sendAI') App.sendAI();
