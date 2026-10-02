@@ -304,6 +304,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .cat.fun{background:rgba(214,98,122,.16);color:#a83f57}
 .cat.work{background:rgba(59,111,176,.16);color:#2f568f}
 .cat.growth{background:rgba(139,109,255,.16);color:#6a4fd0}
+/* 活动感知卡（2026-10-02）—— 「今天在干什么」 */
+.cat.study{background:rgba(139,109,255,.16);color:#6a4fd0}
+.cat.social{background:rgba(191,138,22,.18);color:#8a6512}
+.cat.other{background:rgba(150,140,128,.18);color:#6b6157}
+.act-bars{display:flex;gap:8px;flex-wrap:wrap;margin:11px 0 4px}
+.act-bar{flex:1;min-width:92px;background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.act-bar::before{content:'';display:block;width:22px;height:3px;border-radius:2px;background:var(--c);margin-bottom:8px}
+.act-bar b{display:block;font-size:15px;color:var(--ink);line-height:1.2}
+.act-bar span{font-size:11px;color:var(--muted)}
+.act-shot{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);
+  border-top:1px dashed var(--line);margin-top:12px;padding-top:10px}
+.act-card code{background:rgba(46,36,25,.06);padding:1px 5px;border-radius:5px;font-size:11.5px}
 
 /* 今天一件 */
 .one-thing{border:2px dashed rgba(168,138,91,.65);text-align:center;padding:26px 18px;border-radius:18px}
@@ -800,7 +812,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=37"></script>
-<script src="app.js?v=45"></script>
+<script src="app.js?v=46"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

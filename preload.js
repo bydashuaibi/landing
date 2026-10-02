@@ -83,6 +83,14 @@ contextBridge.exposeInMainWorld('landing', {
   nudge: () => ipcRenderer.send('window:nudge'),
   /* 叫回来之后没人理 → 让它自己缩回托盘 */
   retract: () => ipcRenderer.send('window:retract'),
+  /* 活动感知 / 定时截屏：采集在主进程（规则表也在 main.js），这里只取快照、订阅、改设置 */
+  activity: {
+    get: () => ipcRenderer.invoke('activity:get'),
+    setPref: (patch) => ipcRenderer.invoke('activity:setPref', patch),
+    openFolder: () => ipcRenderer.invoke('activity:openFolder'),
+    clearShots: () => ipcRenderer.invoke('activity:clearShots'),
+    onUpdate: (cb) => { ipcRenderer.on('activity:update', (_e, snap) => { try { cb(snap); } catch (e) { } }); }
+  },
   /* 窗口可见性：以主进程为准（原因见 main.js）。
      winVisGet() 启动时同步查一次当前值；onWinVis(cb) 订阅 hide/show/minimize/restore 的变化 */
   winVisGet: () => ipcRenderer.sendSync('window:vis:get'),

@@ -761,6 +761,8 @@ ipcMain.on('timer:active', (e, active) => {
 ipcMain.on('window:nudge', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   if (mainWindow.isVisible() && !mainWindow.isMinimized()) return;
+  /* 他在打游戏 —— 把窗口顶出来只会被反作弊/全屏挡住，还平白扫兴（2026-10-02 加） */
+  if (_act.last && GAME_RE.test(_act.last.proc)) return;
   showMainWindow();
   /* Windows 会拦掉后台程序抢前台焦点（只闪一下任务栏），所以别指望 focus()，
      把窗口顶到 Z 序上层就够了：他切回来第一眼就能看见计时条。 */
@@ -792,6 +794,225 @@ function notifyWinVisibility() {
 }
 /* 渲染进程启动时同步问一次（比如 --hidden 静默启动、或启动即最小化） */
 ipcMain.on('window:vis:get', (e) => { e.returnValue = winVisibleNow(); });
+
+/* ================= 活动感知 + 定时截屏（2026-10-02）=================
+   master 要「着陆」知道他此刻在干什么：好在打游戏时不打扰他、能提示记一笔娱乐、
+   也让伙伴知道他在忙什么。他选的：默认开、但界面上全程显化；入口在今日页 + 我的。
+
+   两条通路都实测过（同一台机器）：
+     · 拿前台窗口（PowerShell P/Invoke）≈ 350ms/次 —— **不用管理员**
+     · desktopCapturer 出缩略图：1600×900 → JPEG(70) ≈ 59KB、≈ 460ms —— 也不用管理员
+       每 5 分钟一张 ≈ 17MB/天（旧案里想存的 PNG 原图是 1GB+/天，所以这里直接抓缩略图）
+
+   隐私（照他自己旧案里写的第一条来）：全程本地、绝不上云、一键可关、
+   界面上永久显示「正在每 N 分钟截屏 · 已 X 张」，30 天自动清。 */
+const ACTIVITY_DIR = path.join(app.getPath('userData'), 'activity');
+const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 30 };
+
+function actPrefs() {
+  return Object.assign({}, ACT_DEFAULTS, readPrefs().activity || {});
+}
+function setActPrefs(patch) {
+  writePrefs({ activity: Object.assign({}, actPrefs(), patch) });
+  applyActivityTimers();
+  return actPrefs();
+}
+
+/* ---- 分类规则：进程名 + 窗口标题 → 一类。
+   ⚠️ 顺序有讲究（先游戏、再"标题里的学习词"、再生产力软件、再视频站、最后聊天）——
+      否则「在 B 站看 C++ 教程」会被当成娱乐（标题的信息量比想象中大，实测抓到过
+      「…C++教程从0到1入门编程」这种）。改分类只动这张表。 */
+const ACT_RULES = [
+  ['fun',    /wuthering|client-win64-shipping|launcher_main|punishing|pgr|slaythespire|calabiyau|genshin|starrail|hkrpg|steam\.exe|epicgames|gog galaxy|minecraft/i],
+  ['study',  /教程|入门|公开课|课程|第\s*\d+\s*讲|习题|题解|讲解|速成|零基础|c\+\+|python|算法|数据结构|文档|手册|论文|arxiv|stack ?overflow|csdn|菜鸟教程|学习/i],
+  ['work',   /devenv|visual studio|code\.exe|jetbrains|idea64|pycharm|clion|goland|webstorm|cursor|ue4editor|unrealeditor|unity|blender|photoshop|premiere|after effects|matlab|origin|keil|stm32cube|cad|solidworks|autocad|word|excel|powerpoint|wps|notion|typora|obsidian|xmind|navicat|pgadmin|dbeaver|terminal|cmd\.exe|windowsterminal|git bash|powershell/i],
+  ['fun',    /哔哩哔哩|bilibili|抖音|douyin|快手|kuaishou|优酷|youku|爱奇艺|iqiyi|腾讯视频|网易云音乐|cloudmusic|qq音乐|spotify|喜马拉雅|steam|游戏|game/i],
+  ['social', /微信|wechat|weixin|^qq|dingtalk|钉钉|feishu|飞书|telegram|discord|slack|thunderbird|outlook|邮件/i],
+];
+/* 只用来判"是不是在打游戏"（决定要不要把窗口叫回来打扰他） */
+const GAME_RE = ACT_RULES[0][1];
+
+function classifyActivity(proc, title) {
+  const s2 = String(proc || '') + ' \u241F ' + String(title || '');
+  for (const pair of ACT_RULES) { if (pair[1].test(s2)) return pair[0]; }
+  return 'other';
+}
+
+/* ---- 拿前台窗口。⚠️ 三个坑：① -WindowStyle Hidden + windowsHide 才不闪黑框；
+   ② 分隔符用 [char]9（PS 5.1 不认 `u{...}）；③ PS here-string 的 " @ 结束符必须顶格。 ---- */
+const { execFile } = require('child_process');
+const PS_FG = [
+  'Add-Type @"',
+  'using System;',
+  'using System.Runtime.InteropServices;',
+  'using System.Text;',
+  'public class FgWin {',
+  '  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();',
+  '  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);',
+  '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);',
+  '}',
+  '"@',
+  '$h = [FgWin]::GetForegroundWindow()',
+  '$sb = New-Object System.Text.StringBuilder 512',
+  '[void][FgWin]::GetWindowText($h, $sb, 512)',
+  '$procId = 0',
+  '[void][FgWin]::GetWindowThreadProcessId($h, [ref]$procId)',
+  '$name = ""',
+  'try { $name = (Get-Process -Id $procId -ErrorAction Stop).ProcessName } catch { }',
+  '[Console]::Out.Write($name + [char]9 + $sb.ToString())',
+].join('\n');
+
+function sampleForeground() {
+  return new Promise((resolve) => {
+    execFile('powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', PS_FG],
+      { windowsHide: true, timeout: 8000, maxBuffer: 1 << 18 },
+      (err, stdout) => {
+        if (err) return resolve(null);
+        const parts = String(stdout).split('\t');
+        const proc = (parts[0] || '').trim();
+        const title = (parts.slice(1).join('\t') || '').trim();
+        if (!proc) return resolve(null);
+        /* 万一抓到探测进程自己，丢掉这次（隐藏窗口一般抢不到焦点，这是保险） */
+        if (/^(powershell|pwsh|conhost|cmd|node)$/i.test(proc)) return resolve(null);
+        resolve({ proc: proc, title: title });
+      });
+  });
+}
+
+/* ---- 当天的活动日志 ---- */
+let _act = { date: '', samples: [], shots: 0, bytes: 0, last: null };
+function actLogPath(d) { return path.join(ACTIVITY_DIR, 'log-' + d + '.json'); }
+function saveActLog() {
+  try { fs.mkdirSync(ACTIVITY_DIR, { recursive: true }); } catch (e) { }
+  try { fs.writeFileSync(actLogPath(_act.date), JSON.stringify(_act), 'utf8'); } catch (e) { }
+}
+function actSnapshot() {
+  const p = actPrefs();
+  const byCat = {};
+  _act.samples.forEach((x) => { byCat[x.cat] = (byCat[x.cat] || 0) + 1; });
+  return {
+    date: _act.date, enabled: p.enabled, sampleSec: p.sampleSec, shotMin: p.shotMin, keepDays: p.keepDays,
+    count: _act.samples.length, byCat: byCat, minutes: {},
+    last: _act.last, isGame: !!(_act.last && GAME_RE.test(_act.last.proc)),
+    shots: _act.shots, bytes: _act.bytes, dir: ACTIVITY_DIR,
+  };
+}
+function actPush() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.webContents.send('activity:update', actSnapshot()); } catch (e) { }
+  }
+}
+
+/* ---- 采样一次 ---- */
+async function actTick() {
+  if (!actPrefs().enabled) return;
+  const today0 = ymdLocal();
+  if (_act.date !== today0) { _act = { date: today0, samples: [], shots: 0, bytes: 0, last: null }; }
+  const fg = await sampleForeground();
+  if (fg) {
+    const cat = classifyActivity(fg.proc, fg.title);
+    _act.last = { proc: fg.proc, title: fg.title, cat: cat, at: Date.now() };
+    /* 同一分钟只记一条（采样偶尔会抖动/重入） */
+    const lastS = _act.samples[_act.samples.length - 1];
+    if (!lastS || (Date.now() - lastS.at) >= 30000) {
+      _act.samples.push({ at: Date.now(), proc: fg.proc, title: fg.title.slice(0, 120), cat: cat });
+      if (_act.samples.length > 3000) _act.samples.splice(0, _act.samples.length - 3000);
+    }
+    saveActLog();
+  }
+  actPush();
+}
+
+/* ---- 截一张 ---- */
+async function actShot() {
+  if (!actPrefs().enabled) return;
+  try {
+    const { desktopCapturer } = require('electron');
+    const srcs = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1600, height: 900 } });
+    if (!srcs.length) return;
+    const jpg = srcs[0].thumbnail.toJPEG(70);
+    const d = new Date();
+    const dayDir = path.join(ACTIVITY_DIR, ymdLocal(d));
+    fs.mkdirSync(dayDir, { recursive: true });
+    const name = pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds()) + '.jpg';
+    fs.writeFileSync(path.join(dayDir, name), jpg);
+    _act.shots++; _act.bytes += jpg.length;
+    saveActLog(); actPush();
+  } catch (e) { console.error('[activity] 截屏失败：', e.message); }
+}
+
+/* ---- 清掉过期截图（默认 30 天）---- */
+function cleanOldShots() {
+  try {
+    const keep = actPrefs().keepDays;
+    const cutoff = Date.now() - keep * 86400000;
+    for (const name of fs.readdirSync(ACTIVITY_DIR)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
+      const full = path.join(ACTIVITY_DIR, name);
+      const t = new Date(name + 'T00:00:00').getTime();
+      if (t < cutoff) {
+        fs.rmSync(full, { recursive: true, force: true });
+        try { fs.rmSync(actLogPath(name), { force: true }); } catch (e) { }
+      }
+    }
+  } catch (e) { }
+}
+
+let _actTimers = [];
+function applyActivityTimers() {
+  _actTimers.forEach((t) => clearTimeout(t));
+  _actTimers = [];
+  if (!actPrefs().enabled) return;
+  const p = actPrefs();
+  const loop = (fn, ms) => {
+    const tick = async () => { try { await fn(); } catch (e) { } _actTimers.push(setTimeout(tick, ms)); };
+    _actTimers.push(setTimeout(tick, ms));
+  };
+  actTick();                       /* 立刻来一次 */
+  loop(actTick, Math.max(10, p.sampleSec) * 1000);
+  loop(actShot, Math.max(1, p.shotMin) * 60000);
+}
+function ymdLocal(d) {
+  d = d || new Date();
+  const z = (n) => ('0' + n).slice(-2);
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+}
+function pad2(n) { return ('0' + n).slice(-2); }
+
+function startActivity() {
+  fs.mkdirSync(ACTIVITY_DIR, { recursive: true });
+  const today0 = ymdLocal();
+  try { _act = JSON.parse(fs.readFileSync(actLogPath(today0), 'utf8')); } catch (e) { _act = { date: today0, samples: [], shots: 0, bytes: 0, last: null }; }
+  _act.date = today0;
+  cleanOldShots();
+  applyActivityTimers();
+  actPush();
+}
+
+/* ---- IPC ---- */
+ipcMain.handle('activity:get', () => actSnapshot());
+ipcMain.handle('activity:setPref', (e, patch) => { setActPrefs(patch || {}); actPush(); return actSnapshot(); });
+ipcMain.handle('activity:openFolder', async () => {
+  try { fs.mkdirSync(ACTIVITY_DIR, { recursive: true }); } catch (e) { }
+  return await shell.openPath(ACTIVITY_DIR);
+});
+ipcMain.handle('activity:clearShots', () => {
+  let freed = 0, n = 0;
+  try {
+    for (const name of fs.readdirSync(ACTIVITY_DIR)) {
+      const full = path.join(ACTIVITY_DIR, name);
+      if (fs.statSync(full).isDirectory()) {
+        for (const f of fs.readdirSync(full)) { try { freed += fs.statSync(path.join(full, f)).size; n++; } catch (e) { } }
+        fs.rmSync(full, { recursive: true, force: true });
+      }
+    }
+    _act.shots = 0; _act.bytes = 0; saveActLog();
+  } catch (e) { }
+  actPush();
+  return { ok: true, files: n, freed: freed };
+});
+
 
 function createWindow() {
   const state = loadWindowState();
@@ -903,6 +1124,7 @@ app.whenReady().then(() => {
   buildMenu();
   createWindow();
   createTray();          /* 有托盘 = 关窗口只是藏起来，程序继续在后台跑 */
+  try { startActivity(); } catch (err) { console.error('[activity] 启动失败：', err.message); }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

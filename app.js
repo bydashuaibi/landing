@@ -1487,6 +1487,109 @@ function funRecent(n){
 }
 
 /* 今日页那张「放开一下」小卡 */
+/* ================= 活动感知（主进程采集，这里只负责显示）=================
+   「今天在干什么」：主进程每 sampleSec 秒采一次前台窗口，按 main.js 里的规则表归类，
+   推快照过来。这里不采、不判类，只画 —— 规则要改去 main.js 的 ACT_RULES。 */
+var ACT = null;
+var ACT_LABEL = { fun:'休闲娱乐', work:'工作学习', study:'学习充电', social:'社交沟通', other:'其他' };
+var ACT_COLOR = { fun:'#d6627a', work:'#3b6fb0', study:'#8b6dff', social:'#bf8a16', other:'#9a8f80' };
+var ACT_ORDER = ['fun', 'work', 'study', 'social', 'other'];
+
+function initActivity(){
+  if(!window.landing || !window.landing.activity) return;   /* 网页版没有这套 */
+  window.landing.activity.get().then(function(s){ ACT = s; render(); }).catch(function(){});
+  if(window.landing.activity.onUpdate){
+    window.landing.activity.onUpdate(function(s){ ACT = s; render(); });
+  }
+}
+/* 采样条数 → 分钟（每条代表 sampleSec 秒） */
+function actMinutes(){
+  var m = {};
+  if(!ACT) return m;
+  Object.keys(ACT.byCat || {}).forEach(function(k){
+    m[k] = Math.round((ACT.byCat[k] || 0) * (ACT.sampleSec || 60) / 60);
+  });
+  return m;
+}
+function fmtMin(m){
+  m = Math.round(m || 0);
+  if(m < 60) return m + ' 分钟';
+  return Math.floor(m / 60) + ' 小时' + (m % 60 ? (m % 60) + ' 分' : '');
+}
+/* 没有活动窗口时进程名是 Idle —— 直接写出来他看不懂 */
+function actProcLabel(p){
+  return /^idle$/i.test(p || '') ? '（没有活动窗口）' : (p || '');
+}
+function fmtBytes(b){
+  b = b || 0;
+  if(b < 1024) return b + ' B';
+  if(b < 1048576) return Math.round(b / 1024) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+
+/* 今日页那张卡 */
+function renderActivityCard(){
+  if(!ACT) return '';
+  var h = '<div class="card act-card"><div class="row between"><h2>👀 今天在干什么</h2>'
+    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? '正在记录' : '已暂停') + '</span></div>';
+  if(!ACT.enabled){
+    h += '<div class="hint">已暂停。要开回来去「我的 → 活动记录」。</div></div>';
+    return h;
+  }
+  if(!ACT.count){
+    h += '<div class="hint">刚开起来，还没采到数据 —— 一分钟内就会出现。</div></div>';
+    return h;
+  }
+  var mins = actMinutes();
+  h += '<div class="act-bars">';
+  var shown = 0;
+  ACT_ORDER.forEach(function(k){
+    if(!mins[k] || mins[k] < 1) return;
+    shown++;
+    h += '<div class="act-bar" style="--c:' + ACT_COLOR[k] + '"><b>' + fmtMin(mins[k]) + '</b><span>' + ACT_LABEL[k] + '</span></div>';
+  });
+  if(!shown) h += '<div class="hint">今天还没采到有效活动。</div>';
+  h += '</div>';
+  if(ACT.last){
+    h += '<div class="hint" style="margin-top:11px">刚才在：<b>' + esc(actProcLabel(ACT.last.proc)) + '</b>'
+      + (ACT.last.title ? ' · ' + esc(String(ACT.last.title).slice(0, 44)) : '')
+      + ' <span class="cat ' + (ACT.last.cat || 'other') + '">' + (ACT_LABEL[ACT.last.cat] || '其他') + '</span></div>';
+  }
+  /* 截图状态：**必须一路显化** —— 这是会碰到隐私的功能，藏起来就是错的 */
+  h += '<div class="act-shot">'
+    + '<span>📷 每 ' + ACT.shotMin + ' 分钟截一张：已 <b>' + (ACT.shots || 0) + '</b> 张 · ' + fmtBytes(ACT.bytes) + '</span>'
+    + '<span>保留 ' + ACT.keepDays + ' 天 · 只存本机</span>'
+    + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
+    + '<button class="btn ghost sm" data-act="actToggle">暂停记录</button>'
+    + '</div></div>';
+  return h;
+}
+
+/* 「我的」里的详细设置 */
+function renderActivitySettings(){
+  if(!ACT) return '';
+  var h = '<div class="card"><div class="row between"><h2>👀 活动记录</h2>'
+    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? '正在记录' : '已暂停') + '</span></div>'
+    + '<div class="hint">看我此刻在用哪个程序（抓前台窗口的进程名和标题），并按规则归类。'
+    + '全部在<b>本机</b>算、不上云；规则表在 <code>main.js</code> 的 <code>ACT_RULES</code>，想改分类改那里。</div>'
+    + '<div class="field" style="margin-top:10px"><label>采样间隔（秒）</label>'
+    + '<input id="act_sample" type="number" min="10" max="600" value="' + ACT.sampleSec + '"></div>'
+    + '<div class="field"><label>截屏间隔（分钟，0 = 不截屏）</label>'
+    + '<input id="act_shot" type="number" min="0" max="120" value="' + ACT.shotMin + '"></div>'
+    + '<div class="field"><label>截图保留（天）</label>'
+    + '<input id="act_keep" type="number" min="1" max="365" value="' + ACT.keepDays + '"></div>'
+    + '<div class="act-shot" style="margin-top:4px">'
+    + '<span>已 <b>' + (ACT.shots || 0) + '</b> 张 · ' + fmtBytes(ACT.bytes) + ' · 目录 ' + esc(ACT.dir || '') + '</span>'
+    + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
+    + '<button class="btn ghost sm" data-act="actClearShots">清空截图</button>'
+    + '</div>'
+    + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
+    + '<button class="btn primary sm" data-act="actSave">保存设置</button>'
+    + '<button class="btn ghost sm" data-act="actToggle">' + (ACT.enabled ? '暂停记录' : '开始记录') + '</button>'
+    + '</div></div>';
+  return h;
+}
+
 function renderFunCard(){
   var todays = funToday();
   var recent = funRecent(4);
@@ -2444,6 +2547,7 @@ function viewToday(){
 
   /* 放开一下：娱乐 / 放纵。放在「做了什么」之后、「想说什么」之前 */
   h += renderFunCard();
+  h += renderActivityCard();
 
   return h;
 }
@@ -3237,6 +3341,7 @@ function viewMe(){
     }).join(''):'<text x="'+svgW2/2+'" y="'+svgH2/2+'" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="Inter,sans-serif">暂无记录，去「今日」选心情</text>')
     + '</svg>';
   var _ppNow = poolProgress();
+  h += renderActivitySettings();
   h += '<div class="card"><h2>数据概览</h2>'
     + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
     + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
@@ -3907,6 +4012,37 @@ var App = {
 
   /* --- 日报 --- */
   goDigest:function(){ CUR_TAB='digest'; render(); },
+
+  /* --- 活动记录（实现在主进程）--- */
+  actToggle:function(){
+    if(!ACT || !window.landing || !window.landing.activity) return;
+    window.landing.activity.setPref({ enabled: !ACT.enabled }).then(function(s){
+      ACT = s; render(); toast(s.enabled ? '开始记录活动' : '已暂停活动记录');
+    });
+  },
+  actFolder:function(){
+    if(window.landing && window.landing.activity) window.landing.activity.openFolder();
+  },
+  actClearShots:function(){
+    if(!window.landing || !window.landing.activity) return;
+    window.landing.activity.clearShots().then(function(r){
+      toast('清空了 ' + (r.files || 0) + ' 张截图，收回 ' + fmtBytes(r.freed || 0));
+      return window.landing.activity.get();
+    }).then(function(s){ ACT = s; render(); });
+  },
+  actSave:function(){
+    if(!window.landing || !window.landing.activity) return;
+    var num = function(id, dflt, min, max){
+      var v = parseInt(($(id) || {}).value, 10);
+      if(isNaN(v)) return dflt;
+      return Math.max(min, Math.min(max, v));
+    };
+    window.landing.activity.setPref({
+      sampleSec: num('act_sample', 60, 10, 600),
+      shotMin:   num('act_shot',   5,  0, 120),
+      keepDays:  num('act_keep',  30,  1, 365)
+    }).then(function(s){ ACT = s; render(); toast('活动记录设置已保存'); });
+  },
   /* 休息日：没有取消入口 —— 这是刻意的，有代价的行为才有信息量 */
   restToday:function(){
     if(takeRestDay(today())) toast('今天记成休息日了。连续天数冻结，宠物也回点血。');
@@ -4522,6 +4658,12 @@ document.addEventListener('click',function(e){
   else if(act==='filterDigest'){ var cat=el.dataset.cat||'全部'; _digestFilter=cat; render(); }
   else if(act==='filterTask'){ _taskFilter = el.dataset.cat || ''; render(); }
 
+  /* 活动记录 */
+  else if(act==='actToggle'){ App.actToggle(); }
+  else if(act==='actFolder'){ App.actFolder(); }
+  else if(act==='actClearShots'){ App.actClearShots(); }
+  else if(act==='actSave'){ App.actSave(); }
+
   /* AI */
   else if(act==='sendAI') App.sendAI();
   else if(act==='followup3') App.followup3();
@@ -4557,6 +4699,7 @@ document.addEventListener('click',function(e){
 function init(){
   load();
   initWinVisibility();   /* 窗口可见性以主进程为准（原因见 _winVisible 那段的说明） */
+  initActivity();        /* 活动感知：订阅主进程推来的快照 */
 
   /* 🔴 桥要**最早**挂上（2026-09-20 血案）：原来在 init() 最末尾，
      中间任何一步抛错都会让 window.App / window.Landing 双双 undefined，
