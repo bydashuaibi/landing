@@ -1041,10 +1041,24 @@ function pushBackgroundState(){
      · 暂停中不弹（暂停了就不该打扰）
    网页版没有这个桥，直接跳过，不报错。 */
 var _hiddenSince = 0;
+/* 窗口可见性 —— **以主进程为准，不要用 document.hidden**。
+   🔴 计时期间主进程会对窗口 setBackgroundThrottling(false)，副作用是：
+      窗口藏进托盘后渲染进程的 document.hidden **仍然报 false**（rAF 也照跑）。
+      2026-10-02 实测：不设节流时 hide 后 hidden=true / rAF 停；设了之后 hidden=false / rAF 仍有帧。
+      所以下面那个 30 分钟判断要是读 document.hidden，就**永远不成立** ——
+      表现就是 master 说的「每半个小时的弹窗好像没实现」。 */
+var _winVisible = true;
+function initWinVisibility(){
+  if(!window.landing) return;                       /* 网页版没有这个桥，直接跳过 */
+  if(window.landing.winVisGet){ try{ _winVisible = !!window.landing.winVisGet(); }catch(e){} }
+  if(window.landing.onWinVis){
+    window.landing.onWinVis(function(v){ _winVisible = !!v; if(v) _hiddenSince = 0; });
+  }
+}
 function timerWantsNudge(t){
   if(!t || t.finished || t.paused) return false;
   if(!window.landing || !window.landing.nudge) return false;
-  if(!document.hidden){ _hiddenSince = 0; return false; }
+  if(_winVisible){ _hiddenSince = 0; return false; }   /* 他正看着界面，绝不抢焦点 */
   if(!_hiddenSince){ _hiddenSince = Date.now(); return false; }   /* 刚藏起来，先记基准 */
   if(Date.now() - _hiddenSince < SW_NUDGE_MS) return false;
   _hiddenSince = Date.now();
@@ -4542,6 +4556,7 @@ document.addEventListener('click',function(e){
 /* ================= 启动 ================= */
 function init(){
   load();
+  initWinVisibility();   /* 窗口可见性以主进程为准（原因见 _winVisible 那段的说明） */
 
   /* 🔴 桥要**最早**挂上（2026-09-20 血案）：原来在 init() 最末尾，
      中间任何一步抛错都会让 window.App / window.Landing 双双 undefined，

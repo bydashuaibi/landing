@@ -82,5 +82,9 @@ contextBridge.exposeInMainWorld('landing', {
   /* 后台计时时把窗口叫回来（主进程会先确认窗口确实不可见，不会抢焦点） */
   nudge: () => ipcRenderer.send('window:nudge'),
   /* 叫回来之后没人理 → 让它自己缩回托盘 */
-  retract: () => ipcRenderer.send('window:retract')
+  retract: () => ipcRenderer.send('window:retract'),
+  /* 窗口可见性：以主进程为准（原因见 main.js）。
+     winVisGet() 启动时同步查一次当前值；onWinVis(cb) 订阅 hide/show/minimize/restore 的变化 */
+  winVisGet: () => ipcRenderer.sendSync('window:vis:get'),
+  onWinVis: (cb) => { ipcRenderer.on('window:vis', (_e, v) => { try { cb(!!v); } catch (e) { } }); }
 });

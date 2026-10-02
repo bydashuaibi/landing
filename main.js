@@ -780,6 +780,19 @@ ipcMain.on('window:retract', () => {
 /* ---------- 建窗 ---------- */
 let mainWindow = null;
 
+/* 当前窗口可见吗（最小化也算不可见）。
+   **这是渲染进程判断可见性的唯一权威来源** —— 原因见 createWindow 里那段说明。 */
+function winVisibleNow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  try { return mainWindow.isVisible() && !mainWindow.isMinimized(); } catch (e) { return false; }
+}
+function notifyWinVisibility() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try { mainWindow.webContents.send('window:vis', winVisibleNow()); } catch (e) {}
+}
+/* 渲染进程启动时同步问一次（比如 --hidden 静默启动、或启动即最小化） */
+ipcMain.on('window:vis:get', (e) => { e.returnValue = winVisibleNow(); });
+
 function createWindow() {
   const state = loadWindowState();
 
@@ -821,6 +834,19 @@ function createWindow() {
 
   ['resize', 'move', 'maximize', 'unmaximize'].forEach(ev => {
     mainWindow.on(ev, () => saveWindowState(mainWindow));
+  });
+
+  /* 把「窗口到底看不看得见」广播给渲染进程。
+     🔴 为什么必须由主进程说了算：计时期间会给这个窗口 setBackgroundThrottling(false)，
+        而它的副作用是 —— 窗口藏起来之后，渲染进程的 document.hidden **仍然报 false**
+        （rAF 也照跑）。2026-10-02 实测确认：
+          不设节流 → hide 后 hidden=true、rAF 停；
+          设了节流 → hide 后 hidden=false、rAF 仍 117 帧/0.7 秒。
+        渲染进程要是拿 document.hidden 判断可见性，「后台每 30 分钟把窗口叫回来」
+        就**永远不触发**（这功能从 09-17 做出来起就没生效过）。
+        isVisible()/isMinimized() 在主进程侧不受节流影响，以它为准。 */
+  ['hide', 'show', 'minimize', 'restore'].forEach(ev => {
+    mainWindow.on(ev, () => notifyWinVisibility());
   });
   mainWindow.on('close', (e) => {
     saveWindowState(mainWindow);
