@@ -805,9 +805,11 @@ ipcMain.on('window:vis:get', (e) => { e.returnValue = winVisibleNow(); });
        每 5 分钟一张 ≈ 17MB/天（旧案里想存的 PNG 原图是 1GB+/天，所以这里直接抓缩略图）
 
    隐私（照他自己旧案里写的第一条来）：全程本地、绝不上云、一键可关、
-   界面上永久显示「正在每 N 分钟截屏 · 已 X 张」，30 天自动清。 */
+   界面上永久显示「正在每 N 分钟截屏 · 已 X 张」，过期目录自动清（默认两周，每 6 小时扫一次）。 */
 const ACTIVITY_DIR = path.join(app.getPath('userData'), 'activity');
-const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 30 };
+/* keepDays 默认两周 —— master 2026-10-02 定的（「保留两周自动清一次」）。
+   他还没保存过 prefs.json，所以改这里立刻生效。 */
+const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 14 };
 
 function actPrefs() {
   return Object.assign({}, ACT_DEFAULTS, readPrefs().activity || {});
@@ -942,7 +944,10 @@ async function actShot() {
   } catch (e) { console.error('[activity] 截屏失败：', e.message); }
 }
 
-/* ---- 清掉过期截图（默认 30 天）---- */
+/* ---- 清掉过期截图（默认两周）----
+   ⚠️ 原来只在 startActivity 里跑一次 —— 他要的是"自动清"，所以再挂一个
+   每 6 小时的定时扫描（独立的 setInterval，不放进 _actTimers，
+   免得改设置时被 applyActivityTimers 清掉、或者暂停记录后就不再清理）。 */
 function cleanOldShots() {
   try {
     const keep = actPrefs().keepDays;
@@ -960,6 +965,7 @@ function cleanOldShots() {
 }
 
 let _actTimers = [];
+let _actCleanTimer = null;      /* 过期截图的周期清理（每 6 小时） */
 function applyActivityTimers() {
   _actTimers.forEach((t) => clearTimeout(t));
   _actTimers = [];
@@ -986,6 +992,10 @@ function startActivity() {
   try { _act = JSON.parse(fs.readFileSync(actLogPath(today0), 'utf8')); } catch (e) { _act = { date: today0, samples: [], shots: 0, bytes: 0, last: null }; }
   _act.date = today0;
   cleanOldShots();
+  if (!_actCleanTimer) {
+    _actCleanTimer = setInterval(cleanOldShots, 6 * 3600 * 1000);
+    if (_actCleanTimer.unref) _actCleanTimer.unref();
+  }
   applyActivityTimers();
   actPush();
 }

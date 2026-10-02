@@ -1577,7 +1577,8 @@ function renderActivitySettings(){
     + '<div class="field"><label>截屏间隔（分钟，0 = 不截屏）</label>'
     + '<input id="act_shot" type="number" min="0" max="120" value="' + ACT.shotMin + '"></div>'
     + '<div class="field"><label>截图保留（天）</label>'
-    + '<input id="act_keep" type="number" min="1" max="365" value="' + ACT.keepDays + '"></div>'
+    + '<input id="act_keep" type="number" min="1" max="365" value="' + ACT.keepDays + '">'
+    + '<div class="hint" style="margin-top:6px">过期的整天目录会自动删掉（每 6 小时扫一次，不用你管）。</div></div>'
     + '<div class="act-shot" style="margin-top:4px">'
     + '<span>已 <b>' + (ACT.shots || 0) + '</b> 张 · ' + fmtBytes(ACT.bytes) + ' · 目录 ' + esc(ACT.dir || '') + '</span>'
     + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
@@ -4040,7 +4041,7 @@ var App = {
     window.landing.activity.setPref({
       sampleSec: num('act_sample', 60, 10, 600),
       shotMin:   num('act_shot',   5,  0, 120),
-      keepDays:  num('act_keep',  30,  1, 365)
+      keepDays:  num('act_keep',  14,  1, 365)
     }).then(function(s){ ACT = s; render(); toast('活动记录设置已保存'); });
   },
   /* 休息日：没有取消入口 —— 这是刻意的，有代价的行为才有信息量 */
