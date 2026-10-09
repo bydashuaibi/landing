@@ -898,15 +898,17 @@ function saveActLog() {
    算法：相邻两条采样的时间差，归给**前一条**的应用（那段时间里他在用的就是它）。
    ⚠️ 单段必须封顶 2×采样间隔：睡眠/关机/应用没开那种大空洞（开机后一算能差几小时）
       不能记到某个应用头上。最后一条按"一个采样间隔"算，且不超过此刻。 */
-function actDurations() {
-  const step = Math.max(10, actPrefs().sampleSec) * 1000;
-  const cap = step * 2;
+/* 时长算法本体：给一组采样算出 每应用/每分类 的毫秒数。
+   ⚠️ 单段封顶 2×采样间隔（睡眠/关机那种大空洞不能算到某个 app 头上）；
+      最后一条按"一个采样间隔"算、且不超过此刻；乱序/重复时间戳产生的负段直接丢掉。 */
+function durOf(samples, stepMs) {
+  const cap = stepMs * 2;
   const byAppMs = {}, byCatMs = {}, appCat = {};
-  const arr = _act.samples;
+  const arr = samples || [];
   const now = Date.now();
   for (let i = 0; i < arr.length; i++) {
     const cur = arr[i];
-    const nxt = (i + 1 < arr.length) ? arr[i + 1].at : Math.min(cur.at + step, now);
+    const nxt = (i + 1 < arr.length) ? arr[i + 1].at : Math.min(cur.at + stepMs, now);
     const seg = Math.min(Math.max(0, nxt - cur.at), cap);
     if (!seg) continue;
     const p = cur.proc || '(未知)';
@@ -915,6 +917,13 @@ function actDurations() {
     const c = cur.cat || 'other';
     byCatMs[c] = (byCatMs[c] || 0) + seg;
   }
+  return { byAppMs: byAppMs, byCatMs: byCatMs, appCat: appCat };
+}
+
+function actDurations() {
+  const step = Math.max(10, actPrefs().sampleSec) * 1000;
+  const r = durOf(_act.samples, step);
+  const byAppMs = r.byAppMs, byCatMs = r.byCatMs, appCat = r.appCat;
   const byApp = Object.keys(byAppMs)
     .map((k) => ({ proc: k, ms: byAppMs[k], cat: appCat[k] }))
     .sort((a, b) => b.ms - a.ms)
@@ -923,6 +932,44 @@ function actDurations() {
   const byCatMin = {};
   Object.keys(byCatMs).forEach((k) => { byCatMin[k] = Math.round(byCatMs[k] / 60000); });
   return { byApp: byApp, byCatMin: byCatMin, totalMin: Math.round(totalMs / 60000), totalMs: totalMs };
+}
+
+/* 某一周（from ~ to）的**自动采集**汇总 —— 周报的松紧判断要用
+   （master 2026-10-09 定：自动采到的娱乐时长**直接参与**判断，不用他手动记）。
+   逐天读 log-YYYY-MM-DD.json（保留期内的都在），用同一套时长算法。 */
+function addDaysYmd(ymd, n) {
+  const p = String(ymd).split('-');
+  const d = new Date(+p[0], +p[1] - 1, +p[2]);
+  d.setDate(d.getDate() + n);
+  return ymdLocal(d);
+}
+function actWeekStats(from, to) {
+  const step = Math.max(10, actPrefs().sampleSec) * 1000;
+  const byCatMs = {}, funAppMs = {};
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDaysYmd(from, i);
+    if (to && d > to) break;
+    let samples = [];
+    try { samples = (JSON.parse(fs.readFileSync(actLogPath(d), 'utf8')).samples) || []; } catch (e) { samples = []; }
+    if (!samples.length) { days.push({ date: d, totalMin: 0 }); continue; }
+    const r = durOf(samples, step);
+    let dm = 0;
+    Object.keys(r.byCatMs).forEach((k) => { byCatMs[k] = (byCatMs[k] || 0) + r.byCatMs[k]; dm += r.byCatMs[k]; });
+    Object.keys(r.byAppMs).forEach((p) => {
+      if ((r.appCat[p] || '') === 'fun') funAppMs[p] = (funAppMs[p] || 0) + r.byAppMs[p];
+    });
+    days.push({ date: d, totalMin: Math.round(dm / 60000) });
+  }
+  const byCatMin = {};
+  Object.keys(byCatMs).forEach((k) => { byCatMin[k] = Math.round(byCatMs[k] / 60000); });
+  const totalMin = Object.keys(byCatMin).reduce((a, k) => a + byCatMin[k], 0);
+  return {
+    from: from, to: to || null, days: days, byCatMin: byCatMin, totalMin: totalMin,
+    funMin: byCatMin.fun || 0,
+    funTop: Object.keys(funAppMs).map((p) => ({ proc: p, ms: funAppMs[p] }))
+      .sort((a, b) => b.ms - a.ms).slice(0, 3)
+  };
 }
 
 function actSnapshot() {
@@ -1042,6 +1089,8 @@ function startActivity() {
 
 /* ---- IPC ---- */
 ipcMain.handle('activity:get', () => actSnapshot());
+/* 某一周的自动采集汇总（周报松紧判断用，2026-10-09 加） */
+ipcMain.handle('activity:week', (e, from, to) => actWeekStats(from, to));
 ipcMain.handle('activity:setPref', (e, patch) => { setActPrefs(patch || {}); actPush(); return actSnapshot(); });
 ipcMain.handle('activity:openFolder', async () => {
   try { fs.mkdirSync(ACTIVITY_DIR, { recursive: true }); } catch (e) { }

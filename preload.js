@@ -86,6 +86,7 @@ contextBridge.exposeInMainWorld('landing', {
   /* 活动感知 / 定时截屏：采集在主进程（规则表也在 main.js），这里只取快照、订阅、改设置 */
   activity: {
     get: () => ipcRenderer.invoke('activity:get'),
+    week: (from, to) => ipcRenderer.invoke('activity:week', from, to),
     setPref: (patch) => ipcRenderer.invoke('activity:setPref', patch),
     openFolder: () => ipcRenderer.invoke('activity:openFolder'),
     clearShots: () => ipcRenderer.invoke('activity:clearShots'),

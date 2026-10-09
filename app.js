@@ -1547,6 +1547,11 @@ function funRecent(n){
    「今天在干什么」：主进程每 sampleSec 秒采一次前台窗口，按 main.js 里的规则表归类，
    推快照过来。这里不采、不判类，只画 —— 规则要改去 main.js 的 ACT_RULES。 */
 var ACT = null;
+/* 各周的自动采集汇总：{ 'YYYY-MM-DD'(周一) : {byCatMin, funMin, funTop, totalMin, days, at} }
+   —— 周报的松紧判断要读它（2026-10-09 master 决定：自动采到的娱乐时长**直接参与**判断） */
+var ACT_WEEKS = {};
+var ACT_WEEK_TTL = 10 * 60000;
+
 var ACT_LABEL = { fun:'休闲娱乐', work:'工作学习', study:'学习充电', social:'社交沟通', other:'其他' };
 var ACT_COLOR = { fun:'#d6627a', work:'#3b6fb0', study:'#8b6dff', social:'#bf8a16', other:'#9a8f80' };
 var ACT_ORDER = ['fun', 'work', 'study', 'social', 'other'];
@@ -1595,12 +1600,35 @@ function appRanking(){
   }).filter(function(x){ return x.minutes >= 1; });
 }
 
+/* 拉某一周的自动采集汇总（周报要用）。
+   ⚠️ 有 `_loading` 在就不会重复发；TTL 10 分钟。拿到数据后再 render 一次即止 —— 
+      调用点里有一处在 render 里（viewWeekly），所以必须保证"有了就不再拉"，否则会转圈。 */
+function ensureActWeek(wk){
+  if(!window.landing || !window.landing.activity || !window.landing.activity.week) return;
+  var cur = ACT_WEEKS[wk];
+  if(cur && (cur._loading || (cur.at && Date.now() - cur.at < ACT_WEEK_TTL))) return;
+  ACT_WEEKS[wk] = { _loading: true };
+  window.landing.activity.week(wk, today()).then(function(s){
+    s = s || {};
+    s.at = Date.now();
+    ACT_WEEKS[wk] = s;
+    if(CUR_TAB === 'weekly') render();
+  }).catch(function(){ ACT_WEEKS[wk] = { at: Date.now() }; });
+}
+function actWeekOf(wk){
+  var w = ACT_WEEKS[wk];
+  return (w && !w._loading) ? w : null;
+}
+
 function initActivity(){
   if(!window.landing || !window.landing.activity) return;   /* 网页版没有这套 */
   window.landing.activity.get().then(function(s){ ACT = s; render(); }).catch(function(){});
   if(window.landing.activity.onUpdate){
     window.landing.activity.onUpdate(function(s){ ACT = s; render(); });
   }
+  /* 本周 + 上周都要：宠物回答「我上周干了什么」时也算上周的松紧 */
+  ensureActWeek(weekKey());
+  ensureActWeek(addDays(weekKey(), -7));
 }
 /* 采样条数 → 分钟（每条代表 sampleSec 秒） */
 function actMinutes(){
@@ -2905,6 +2933,14 @@ function weekBalance(o){
     verdict = 'loose';
     reasons.push('单是"放纵"就记了 ' + spreeN + ' 笔');
   }
+  /* 自动采集也能判"偏松"（2026-10-09 master 选的"直接接进判断"）：
+     不用他手动记 —— 采到一周娱乐 ≥5 小时、且**娱乐时长是投入的 2 倍以上**才算。
+     用"倍数"而不是绝对阈值：5 小时游戏 + 3 小时学习不算松，5 小时游戏 + 0 投入才算。 */
+  else if(o.autoFunMin >= 300 && o.autoFunMin >= 2 * (o.loadMin || 0)){
+    var _hm = function(m){ m = Math.round(m || 0); return m >= 60 ? (Math.round(m / 6) / 10) + ' 小时' : m + ' 分钟'; };
+    verdict = 'loose';
+    reasons.push('自动记录到的休闲娱乐就有 ' + _hm(o.autoFunMin) + '，而本周投入只有 ' + _hm(o.loadMin || 0));
+  }
 
   var tips = [];
   if(verdict === 'tight'){
@@ -2938,6 +2974,13 @@ function buildWeekSummary(o){
   L.push('娱乐 '+(o.funS?o.funS.fun:0)+' 笔、放纵 '+(o.funS?o.funS.spree:0)+' 笔'
     + (o.funS && o.funS.total ? '（'+o.funS.items.slice(0,3).map(function(x){return x.text;}).join('、')+'）' : '')
     + '。');
+  if(o.autoFunMin > 0){
+    L.push('屏幕时间上，自动记录到休闲娱乐 ' + hm(o.autoFunMin)
+      + (o.autoTop && o.autoTop.length
+          ? '（' + o.autoTop.map(function(x){ return appLabel(x.proc) + ' ' + hm(x.ms / 60000); }).join('、') + '）'
+          : '')
+      + '。');
+  }
   L.push(o.bal.headline + (o.bal.reasons.length ? ' —— ' + o.bal.reasons.join('；') + '。' : '。'));
   /* 两条建议合成一行（分成两行"可以试试"读起来很啰嗦） */
   if(o.bal.tips.length){
@@ -3047,15 +3090,19 @@ function generateWeeklyReport(wkArg){
   var daysSoFar = dailyCards.length || 1;          /* 已过的天数（未来不生成，所以就是它） */
   var restInWeek = (STATE.restDays || []).filter(function(d){ return d >= monday && d <= sunday; }).length;
   var moodScores = moodTrack.filter(function(m){ return m.mood; }).map(function(m){ return MOOD_SCORE[m.mood] || 3; });
+  /* 自动采集（主进程按天读日志算出来）—— 没拉到就是 {}，规则自然不会触发 */
+  var aw = actWeekOf(wk) || {};
   var bal = weekBalance({
     days: daysSoFar,
     loadMin: totalDailyMin,
+    autoFunMin: aw.funMin || 0,
     fun: funS.fun, spree: funS.spree,
     moodAvg: moodScores.length ? (moodScores.reduce(function(a,b){return a+b;},0) / moodScores.length) : null,
     restDays: restInWeek
   });
   var summaryLines = buildWeekSummary({wk:wk, days:daysSoFar, totalDailyMin:totalDailyMin,
-    classMin:classMin, dStats:dStats, funS:funS, bal:bal});
+    classMin:classMin, dStats:dStats, funS:funS, bal:bal,
+    autoFunMin:aw.funMin || 0, autoTop:aw.funTop || [], autoDays:(aw.days || [])});
 
   var report = {
     generatedAt: Date.now(),
@@ -3076,6 +3123,8 @@ function generateWeeklyReport(wkArg){
     /* 娱乐/放纵 + 松紧结论 + 规则正文。⚠️ aiText 要**从缓存里带过来**，
        否则每次实时重算都会把 AI 润色过的那份冲掉，等于白花钱调了一次 */
     fun: funS,
+    /* 自动采集那一份（周报正文与卡片要显化它，不然"凭啥说偏松"说不清） */
+    autoFun: { min: aw.funMin || 0, top: aw.funTop || [] },
     balance: bal,
     summaryLines: summaryLines,
     days: daysSoFar,
@@ -3118,6 +3167,7 @@ function weekDigestLine(wk, label){
     + '，日均 '+rpt.summary.avgLoad+' 分钟'
     + (cats.length ? '；最花时间的是「'+(catName(cats[0].k)||cats[0].k)+'」'+hm(cats[0].m) : '')
     + '；娱乐 '+f.fun+' 笔、放纵 '+f.spree+' 笔'
+    + ((rpt.autoFun && rpt.autoFun.min > 0) ? '（自动测得娱乐 '+hm(rpt.autoFun.min)+'）' : '')
     + (f.items && f.items.length ? '（'+f.items.slice(0,4).map(function(x){ return x.text; }).join('、')+'）' : '')
     + '；结论：'+((rpt.balance && rpt.balance.headline) || '—')
     + ((rpt.balance && rpt.balance.tips && rpt.balance.tips.length) ? '；可以试：'+rpt.balance.tips[0] : '');
@@ -3186,8 +3236,11 @@ function aiWeeklySummary(force){
 }
 
 function viewWeekly(){
-  var rpt = generateWeeklyReport();
   var wk = weekKey();
+  /* ⚠️ 必须在 generateWeeklyReport() **之前**拉一次：它要读 ACT_WEEKS[wk] 算松紧。
+     有了就不重复拉（ensureActWeek 内部判 TTL / _loading），所以不会转圈。 */
+  ensureActWeek(wk);
+  var rpt = generateWeeklyReport();
   var h = '<div class="mod-head"><div class="kicker">Module 03 · Weekly</div><div class="warp-head" data-warp><h2>周报</h2></div>'
     + '<p>每周首次打开自动生成。看板按<b>投入时间占比</b>展示各类日常；长周期进度告知；最后用温柔复盘接住你，而不是评判。</p></div>';
   h += '<div class="card"><h2>'+icon('chart')+' 复盘 · 本周</h2>'
@@ -3219,8 +3272,11 @@ function viewWeekly(){
   h += '</div>';
   /* 娱乐 / 放纵明细 */
   var fs = rpt.fun || {fun:0, spree:0, total:0, items:[]};
+  var af = rpt.autoFun || {min:0, top:[]};
   h += '<div class="sum-fun"><span class="sum-fl k-fun">🎈 娱乐 '+fs.fun+' 笔</span>'
     + '<span class="sum-fl k-spree">🍟 放纵 '+fs.spree+' 笔</span>'
+    + (af.min > 0 ? '<span class="sum-fl k-auto" title="按前台窗口采样自动算的，不用你记">🖥 自动测得娱乐 '
+        + (af.min >= 60 ? (Math.round(af.min/6)/10)+' 小时' : af.min+' 分钟') + '</span>' : '')
     + (fs.items.length ? '<span class="sum-fi">'+fs.items.slice(0,6).map(function(x){return esc(x.text)+'('+mdShort(parseYmd(x.date))+')';}).join('、')+'</span>'
        : '<span class="sum-fi">这周没记过 —— 是没发生，还是忘了记？</span>')
     + '</div>';
