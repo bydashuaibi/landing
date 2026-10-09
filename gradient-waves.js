@@ -184,10 +184,11 @@
       U[n] = gl.getUniformLocation(prog, n);
     });
 
-    /* ---- 卡其暖色配色 ---- */
-    gl.uniform3fv(U.uHorizonColor, hexToRgb('#e9d6b4'));   /* 远处暖雾 */
-    gl.uniform3fv(U.uWaveColor, hexToRgb('#c2a878'));      /* 卡其波体 */
-    gl.uniform3fv(U.uCrestColor, hexToRgb('#f7eddc'));     /* 波峰高光 */
+    /* ---- 深色电影感配色（2026-10-09 随整站明→暗翻转；原来那组是给暖米色底用的，
+       放在近黑底上会整片发白）---- */
+    gl.uniform3fv(U.uHorizonColor, hexToRgb('#2a1e16'));   /* 远处暖雾（暗） */
+    gl.uniform3fv(U.uWaveColor, hexToRgb('#4d3a27'));      /* 波体（暗卡其） */
+    gl.uniform3fv(U.uCrestColor, hexToRgb('#9a7b52'));     /* 波峰高光（暗赭） */
 
     /* ---- 背景参数：慢、柔、省电 ---- */
     gl.uniform1f(U.uSpeed, 0.25);
@@ -202,7 +203,7 @@
     gl.uniform1f(U.uFogDepth, 12.0);
     gl.uniform1f(U.uSteps, 60.0);        /* low=40 / medium=70 之间折中 */
     gl.uniform1f(U.uBrightness, 1.02);
-    gl.uniform1f(U.uOpacity, 0.88);
+    gl.uniform1f(U.uOpacity, 0.72);      /* 深色主题下调低一档，让底层那几团暖光透出来 */
     gl.uniform1f(U.uGrain, 1.0);
     gl.uniform1f(U.uGrainIntensity, 0.045);
     gl.uniform1f(U.uParallax, 0.35);

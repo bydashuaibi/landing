@@ -1120,7 +1120,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 620,
     show: false,
-    backgroundColor: '#f3ece0',
+    backgroundColor: '#0d0b0a',  /* 深色主题：原来是奶白 #f3ece0，深色下启动会闪白 */
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     title: '着陆 · 把焦虑变成下一步',
     webPreferences: {

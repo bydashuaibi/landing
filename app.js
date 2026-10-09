@@ -3811,7 +3811,7 @@ function renderErrorView(tab, err){
     + '<p>其它模块还能用。你的数据都在本地，没有丢。可以先切到别的栏目，或者把下面的报错贴给我。</p></div>'
     + '<div class="card"><h2>'+icon('warn')+' 「'+esc(TAB_TITLE[tab]||tab)+'」渲染失败</h2>'
     + '<div class="hint">错误信息：</div>'
-    + '<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55;background:rgba(46,36,25,.05);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;max-height:280px">'+esc(detail)+'</pre>'
+    + '<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;max-height:280px">'+esc(detail)+'</pre>'
     + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
     + '<button class="btn primary sm" data-act="retryRender">重试这一页</button>'
     + '<button class="btn ghost sm" data-act="goToday">回今日</button>'
