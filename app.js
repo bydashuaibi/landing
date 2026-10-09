@@ -1586,9 +1586,12 @@ function appLabel(proc){
 function appRanking(){
   if(!ACT || !ACT.byApp) return [];
   return ACT.byApp.map(function(x){
-    return { name: appLabel(x.proc), proc: x.proc, cat: x.cat || 'other',
+    var pr = String(x.proc || '');
+    return { name: appLabel(pr), proc: pr, cat: x.cat || 'other',
              minutes: Math.round((x.ms || 0) / 60000),
-             shell: APP_SHELL.test(String(x.proc || '')) };
+             /* shell = 系统壳进程；idle = 压根没有前台窗口（人不在 / 只有桌面）。
+                这两种都**不是他在用的应用**，不进 Top5，去"另有"那一行 */
+             shell: APP_SHELL.test(pr), idle: /^idle$/i.test(pr) };
   }).filter(function(x){ return x.minutes >= 1; });
 }
 
@@ -1654,7 +1657,7 @@ function renderActivityCard(){
   h += '</div>';
 
   /* 按应用排行（手机那种"应用使用时间"）—— 只列真在前台用过的，壳进程不算 */
-  var rk = appRanking().filter(function(x){ return !x.shell; });
+  var rk = appRanking().filter(function(x){ return !x.shell && !x.idle; });
   var totalMin = ACT.totalMin || 0;
   if(rk.length){
     var top = rk.slice(0, 5), maxMin = top[0].minutes || 1;
@@ -4346,8 +4349,9 @@ var App = {
   actRank:function(){
     if(!ACT){ return; }
     var all = appRanking();
-    var real = all.filter(function(x){ return !x.shell; });
+    var real = all.filter(function(x){ return !x.shell && !x.idle; });
     var shell = all.filter(function(x){ return x.shell; });
+    var idle = all.filter(function(x){ return x.idle; });
     var total = ACT.totalMin || 0;
     var top = real.length ? real[0].minutes : 1;
     var h = '<h2>今天各用了多久</h2>'
@@ -4355,7 +4359,7 @@ var App = {
       + '只算"你正在用的那个"，后台挂着的不算，跟手机的口径一致。'
       + '共记录 <b>' + fmtMin(total) + '</b>。</div>';
     if(!real.length){
-      h += '<div class="hint">今天还没有可统计的应用。</div>';
+      h += '<div class="hint">今天还没有可统计的应用（' + (total > 0 ? '只有桌面/系统窗口' : '还没采到数据') + '）。</div>';
     } else {
       h += '<div class="app-rank">';
       real.forEach(function(x){
@@ -4367,9 +4371,13 @@ var App = {
       });
       h += '</div>';
     }
-    if(shell.length){
-      h += '<div class="hint" style="margin-top:10px">另有系统窗口/桌面：'
-        + shell.map(function(x){ return esc(x.name) + ' ' + x.minutes + ' 分'; }).join('、') + '</div>';
+    if(shell.length || idle.length){
+      var other = [];
+      if(shell.length) other.push('系统窗口/桌面 ' + shell.reduce(function(a, x){ return a + x.minutes; }, 0) + ' 分');
+      if(idle.length) other.push('没在用程序 ' + idle.reduce(function(a, x){ return a + x.minutes; }, 0) + ' 分');
+      h += '<div class="hint" style="margin-top:10px">另有 <b>'
+        + (shell.concat(idle).reduce(function(a, x){ return a + x.minutes; }, 0))
+        + ' 分钟</b>不是"在用某个软件"：' + other.join(' · ') + '（开着机但没在操作）</div>';
     }
     h += '<div class="hint" style="margin-top:8px">⚠️ 采样是每 ' + (ACT.sampleSec || 60)
       + ' 秒一次，来回切窗口切得快时会少算一点（想要更准可以在「我的 → 活动记录」把采样间隔调小）。</div>'
