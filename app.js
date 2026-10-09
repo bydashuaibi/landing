@@ -86,6 +86,21 @@ function toast(msg){
   clearTimeout(toastTimer);
   toastTimer=setTimeout(function(){ t.classList.add('hidden'); },2200);
 }
+/* 带「撤销」的 toast（休息日这种不可逆动作用）。
+   ⚠️ `.toast` 本身是 pointer-events:none（不然会吞掉底部按钮的点击，踩过），
+   所以按钮必须自己把它打开 —— 见 index.html 的 .toast-act。 */
+function toastAction(msg, label, fn, ms){
+  var t = $('toast');
+  t.innerHTML = esc(msg) + ' <button class="toast-act" type="button">'+esc(label)+'</button>';
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  var btn = t.querySelector('.toast-act');
+  if(btn) btn.onclick = function(){
+    try{ fn(); }catch(e){}
+    t.classList.add('hidden'); t.textContent = '';
+  };
+  toastTimer = setTimeout(function(){ t.classList.add('hidden'); t.textContent = ''; }, ms || 6000);
+}
 
 function catLabel(key){
   var c=CATEGORIES.find(function(x){return x.key===(CAT_ALIAS_KEY[key]||key);});
@@ -112,6 +127,8 @@ function blankState(){
     reports: {},        // {weekKey:{generatedAt,summary,moodTrack,dailyCards}}
     digest: {},         // {date:{fetchedAt,categories:{label:[{name,desc,stars,url,lang}]}}}
     dumps: [],          // 倾倒台
+    loose: [],          // 松散时长：不属于任何任务的一笔（「玩一会杀戮尖塔 45 分钟」）
+                        // —— 宠物「直接记一笔」用，进今天的池子 + 周报投入
     fun: [],            // 娱乐/放纵记录：[{id,date,kind:'fun'|'spree',text,ts}]
                         // fun=娱乐（放松心神）/ spree=放纵（明知道有点过）；不发鱼也不扣鱼
     weather: [],        // 情绪气象 [{date,mood,note}]（⚠️ 与下面的 wx 无关，别混）
@@ -195,6 +212,7 @@ function migrate(){
   s.reports = s.reports || {};
   s.digest = s.digest || {};
   s.dumps = s.dumps || [];
+  s.loose = s.loose || [];   /* 松散时长（宠物「直接记一笔」用的） */
   s.fun = s.fun || [];                     /* 娱乐/放纵记录（2026-09-23 加） */
   s.weather = s.weather || [];
   if(s.wx === undefined) s.wx = null;      /* 今日天气快照，老存档必须补默认值 */
@@ -532,6 +550,17 @@ function weeklyDailyStats(wk){
         stats[dt.category].days++;
       }
     });
+  });
+  /* 松散时长（不挂任何任务的那些，如「玩一会杀戮尖塔」）也算投入 ——
+     master 2026-10-09：「直接记入时间积累池和周报总结中」。放这里而不是放调用方，
+     是为了让所有读投入的地方（周报、宠物上下文）自动都算上。 */
+  (STATE.loose||[]).forEach(function(r){
+    if(r.date>=wk && r.date<addDays(wk,7)){
+      var k = r.category || 'life';
+      if(!stats[k]) stats[k] = {minutes:0, days:0, targetDays:7};
+      stats[k].minutes += (r.minutes||0);
+      stats[k].days++;
+    }
   });
   return stats;
 }
@@ -1259,9 +1288,17 @@ function scopeName(scope){
   return '每周任务';
 }
 
-function startStopwatch(scope, id){
-  var task = (scopeList(scope)||[]).find(function(x){ return x.id===id; });
-  if(!task){ toast('找不到这个任务'); return; }
+/* scope === 'loose' = 不计入任何任务的临时计时（宠物替你起的「玩一会XX」）。
+   opts: {name, category} */
+function startStopwatch(scope, id, opts){
+  opts = opts || {};
+  var task = null;
+  if(scope === 'loose'){
+    if(!opts.name){ toast('没说要做什么'); return; }
+  } else {
+    task = (scopeList(scope)||[]).find(function(x){ return x.id===id; });
+    if(!task){ toast('找不到这个任务'); return; }
+  }
 
   /* 同一时刻只跑一个计时：先问一声，不粗暴丢掉 */
   if(STATE.timer && !STATE.timer.finished){
@@ -1276,19 +1313,21 @@ function startStopwatch(scope, id){
       if(used>=SW_MIN_MS) commitStopwatchRecord(Math.round(used/60000));
       else { STATE.timer=null; if(_timerTick){clearInterval(_timerTick);_timerTick=null;} save(); renderTimerBar(); }
       closeSheet();
-      startStopwatch(scope, id);
+      startStopwatch(scope, id, opts);
     };
     return;
   }
 
-  STATE.timer = { scope:scope, mode:'stopwatch', name:task.name, taskId:id,
+  var tname = task ? task.name : opts.name;
+  STATE.timer = { scope:scope, mode:'stopwatch', name:tname, taskId: task ? id : null,
+    category: task ? (task.category||'life') : (opts.category||'life'),
     plannedMin:0, startedAt:Date.now(), accMs:0, paused:false, remainMs:0,
     finished:false, nagMs:0 };
   save(); renderTimerBar(); ensureTimerTick();
   render();   /* 让卡片/芯片立刻反映「计时中」 */
-  toast('开始计时：'+task.name+'。做多久算多久，不用看表。关掉窗口也没事，会在右下角托盘继续走。');
+  toast('开始计时：'+tname+'。做多久算多久，不用看表。关掉窗口也没事，会在右下角托盘继续走。');
   if(window.Pet && Pet.say) Pet.say('我帮你记着时间，你专心做就行。');
-  addMemory('timer', '开始计时：「'+task.name+'」（'+scopeName(scope)+'）', ['计时']);
+  addMemory('timer', '开始计时：「'+tname+'」（'+(task ? scopeName(scope) : '临时记一笔')+'）', ['计时']);
 }
 
 /* 把当前正计时落账：写进对应任务的记录里 */
@@ -1298,6 +1337,23 @@ function commitStopwatchRecord(minutes, meta){
   var task = timerTask();
   minutes = Math.max(0, Math.round(minutes||0));
   meta = meta||{};
+
+  /* 松散计时（没挂任务，如「玩一会杀戮尖塔」）：记进 STATE.loose + 今天的池子 */
+  if(!task && scope === 'loose'){
+    var ln = t.name || '一段专注';
+    var lmin = Math.max(0, Math.round(minutes||0));
+    STATE.timer = null;
+    if(_timerTick){ clearInterval(_timerTick); _timerTick = null; }
+    if(lmin > 0){
+      looseRecord(ln, lmin, t.category || 'life');
+      toast('记下了：'+ln+' '+lmin+' 分钟，已进今天的池子');
+    } else {
+      save();
+      toast('这段是 0 分钟，没记');
+    }
+    closeSheet(); render(); renderTimerBar();
+    return lmin;
+  }
 
   /* 任务被删掉了 → 只收走计时，不落账 */
   if(!task){
@@ -1653,6 +1709,32 @@ function poolProgress(){
   return {minutes:Math.round(p.minutes), need:POOL_MIN,
           classMin:classMinutesOn(new Date()), classPeriods:classPeriodsOn(new Date())};
 }
+/* ================= 松散时长（不挂任务的一笔）=================
+   master 2026-10-09：「从 0 到有直接记入一个任务但不创建，直接记入时间积累池和周报总结中」。
+   所以「我想玩一会杀戮尖塔」= 记时间，**不是**建任务；只有他明确说「建个任务」才真建。 */
+function looseToday(){
+  return (STATE.loose||[]).filter(function(r){ return r.date === today(); });
+}
+function looseRecord(name, minutes, category){
+  name = String(name||'').trim().slice(0, 30);
+  var m = Math.max(0, Math.round(Number(minutes)||0));
+  if(!name || m <= 0) return null;
+  var rec = {id:uid('ls'), date:today(), name:name, minutes:m,
+             category:(PET_CATS.indexOf(category)>=0 ? category : 'life'), ts:Date.now()};
+  STATE.loose = STATE.loose || [];
+  STATE.loose.push(rec);
+  awardFish(m, rec.name);        /* 进今天的池子，满了发鱼（跟正常打卡同一条路） */
+  addMemory('loose', '记了 '+m+' 分钟：'+rec.name, [catName(rec.category)]);
+  save();
+  return rec;
+}
+function looseDel(id){
+  var r = (STATE.loose||[]).find(function(x){ return x.id===id; });
+  STATE.loose = (STATE.loose||[]).filter(function(x){ return x.id!==id; });
+  save(); render();
+  if(r) toast('删掉了「'+r.name+'」那 '+r.minutes+' 分钟（池子里的鱼不回收）');
+}
+
 /* 把这次花的时间倒进池子；满了就发鱼。返回发了多少条 */
 function feedFishPool(minutes, reason){
   var m = Math.round(Number(minutes)||0);
@@ -1728,7 +1810,9 @@ function addMemory(kind, text, tags){
   STATE.memories.push({id:uid('m'), at:Date.now(), kind:kind||'note', text:text, tags:tags||[]});
   if(STATE.memories.length>1000) STATE.memories.splice(0, STATE.memories.length-1000);
 }
-var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日', rest:'休息', fun:'放开'};
+var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日', rest:'休息', fun:'放开', loose:'临时'};
+/* 宠物用工具能碰的东西（白名单）。'loose' 是「直接记一笔时长」—— 不建任务 */
+var PET_CATS = ['fun', 'work', 'life', 'growth'];
 
 /* ================= 赛博伙伴：活力全部来自你已经做的事 ================= */
 /* 设计原则：不新增「喂猫」任务。你倾倒、打卡、完成一件，它自然长。
@@ -2455,6 +2539,7 @@ function viewToday(){
      回归日先把它收起来 —— 它是最直接的待办压力源，而他刚休息完。 */
   var weeklyTodo = STATE.weeklyTasks.filter(function(w){ return w.enabled && !isWeeklyCheckedToday(w); });
   var pp = poolProgress();    /* 今日时间池进度，给下面的文案用 */
+  var lt = looseToday();      /* 今天「直接记一笔」的那些（没挂任务的临时时长） */
   if(weeklyTodo.length && !isSoftLanding()){
     h += '<div class="card"><div class="row between"><h2>🏃 今天还没动</h2>'
       + '<span class="muted" style="font-size:12px">每日目标 · 本周达标</span></div>'
@@ -2528,6 +2613,10 @@ function viewToday(){
       + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟'
       + (pp.classMin ? '，另外<b>今天上课 '+pp.classPeriods+' 节（'+pp.classMin+' 分钟）</b>也已经算进去了' : '')
       + '。'
+      + (lt.length ? '<br>⏱ <b>临时记的</b>：' + lt.map(function(r){
+            return esc(r.name)+' '+r.minutes+' 分钟'
+              + '<button class="act-mini" data-act="looseDel" data-id="'+r.id+'" title="删掉这一笔">✕</button>';
+          }).join('　') : '')
       + '<br>▶ 是正计时：点一下就开始，做多久算多久，不用切到任务页。</div><div class="quick-checkin">';
     activeDailies.forEach(function(dt){
       var checked = isDailyCheckedToday(dt);
@@ -3202,7 +3291,11 @@ function aiWhere(c){
   return (c.model||'?') + ' @ ' + host;
 }
 
-function callAI(messages, which){
+/* opts.tools = OpenAI 兼容的工具表（function calling）。
+   返回体多两个字段：toolCalls（模型想调什么）和 finish。
+   ⚠️ 有 tool_calls 时 content 可能是空的 —— 别再把空串兜成 '(空)'，那是给纯聊天用的。 */
+function callAI(messages, which, opts){
+  opts = opts || {};
   var c = aiConfig(which);
   if(!c.baseUrl || !c.key){ return Promise.resolve({error:'未配置 AI：去「我的→设置」填写'}); }
   var local = isLocalUrl(c.baseUrl);
@@ -3210,8 +3303,16 @@ function callAI(messages, which){
   var payload = {
     /* stream:false 要显式写：有些 OpenAI 兼容层（如 Ollama 的 /v1）不写就按流式回 SSE，
        而这里收的是 r.json()，解不了 SSE、只会变成"调用失败" */
-    model:c.model||'gpt-4o-mini', messages:messages, temperature:0.7, stream:false
+    model:c.model||'gpt-4o-mini', messages:messages,
+    /* 选工具那一轮用低温（0.4）：实测温度越低，模型「该动手就动手」越稳；
+       说人话那一轮仍是 0.7，别把它的性子也烤干了 */
+    temperature:(typeof opts.temperature === 'number') ? opts.temperature : 0.7,
+    stream:false
   };
+  if(opts.tools && opts.tools.length){
+    payload.tools = opts.tools;
+    payload.tool_choice = opts.tool_choice || 'auto';
+  }
   /* 本地小模型经常"自言自语停不下来"（1.5B 尤其），给输出封顶，
      顺便把最坏耗时钉住。云端不封顶（周报点评要写几百字）。 */
   if(local) payload.max_tokens = 220;
@@ -3231,7 +3332,12 @@ function callAI(messages, which){
     return r.ok ? r.json() : r.text().then(function(t){ return {_err:r.status+' '+String(t).slice(0,140)}; });
   }).then(function(j){
     if(j._err) return {error:j._err + '（' + aiWhere(c) + '）'};
-    return {content:(j.choices&&j.choices[0]&&j.choices[0].message.content)||'(空)'};
+    var ch = (j.choices&&j.choices[0])||{};
+    var msg = ch.message||{};
+    var txt = msg.content||'';
+    return { content: txt || (msg.tool_calls && msg.tool_calls.length ? '' : '(空)'),
+             toolCalls: msg.tool_calls || null,
+             finish: ch.finish_reason || '' };
   }).catch(function(e){
     if(timer) clearTimeout(timer);
     var to = e && (e.name === 'AbortError' || /abort/i.test(String(e.message||'')));
@@ -3239,6 +3345,160 @@ function callAI(messages, which){
                       : '调用失败：' + (e && e.message))
                    + '（' + aiWhere(c) + '）'};
   });
+}
+
+/* ================= 宠物的「手」：function calling =================
+   master 2026-10-09 定的边界：
+   - 「我想玩一会XX」这类 → **只记时间，不建任务**（进今天的池子 + 周报投入）
+   - 只有他明确说「建个任务」时才真的建（`create_task`）
+   - 删除类、清空数据、教务登录、改设置 —— **一律不给**
+   - 休息日不可逆 → 执行后给 5 秒撤销（他选的「直接做 + 5 秒可撤销」）
+   ⚠️ 只有**名字在这张表里**的动作会被执行（runPetTool 白名单），模型编出来的名字当没听见。 */
+var PET_TOOLS = [
+  { type:'function', function:{
+    name:'start_timer',
+    description:'开始给某事计时（**不创建任务**）。只有他表达「现在就要开始做某事 / 想玩一会X」时才用；只是聊到某个游戏、问建议、陈述过去，都不要用。',
+    parameters:{ type:'object', properties:{
+      name:{type:'string', description:'要计时的事，用他原话，如「玩一会杀戮尖塔」'},
+      category:{type:'string', enum:PET_CATS, description:'归到哪一类：休闲娱乐 fun / 工作学习 work / 生活品质 life / 素养提高 growth'}
+    }, required:['name'] } } },
+  { type:'function', function:{
+    name:'record_time',
+    description:'记一笔**已经花掉**的时间（他没在计时，事后跟你说）。只有他说了自己花了多久时才用；他没说时长就别猜、用 no_action 问他一句。',
+    parameters:{ type:'object', properties:{
+      name:{type:'string', description:'做什么花掉的时间，如「打了两小时游戏」'},
+      minutes:{type:'number', description:'分钟数，必须换算成分钟'},
+      category:{type:'string', enum:PET_CATS, description:'归类'}
+    }, required:['name','minutes'] } } },
+  { type:'function', function:{
+    name:'stop_timer',
+    description:'结束当前正在跑的计时。只有他明确说「玩完了 / 停了吧 / 不做了 / 结束」时才用。',
+    parameters:{ type:'object', properties:{} } } },
+  { type:'function', function:{
+    name:'create_task',
+    description:'创建一个正式任务（会一直留在任务页）。**只有他明确说「帮我建个任务/加个日常/加个每周任务」时才用**；只是说想做什么事时不要用，那用 start_timer。',
+    parameters:{ type:'object', properties:{
+      name:{type:'string', description:'任务名'},
+      scope:{type:'string', enum:['daily','weekly'], description:'daily=日常任务（每天要做）；weekly=每周任务（有每日目标时长）'},
+      category:{type:'string', enum:PET_CATS, description:'归类'},
+      minutes:{type:'number', description:'weekly 时的每日目标分钟数，默认 30'}
+    }, required:['name','scope'] } } },
+  { type:'function', function:{
+    name:'rest_today',
+    description:'把今天记成休息日（连续天数冻结）。**只有他明确要求记休息日时才用**（如「今天想休息一天」「帮我记成休息日」「今天不干了」）。只是感叹累、心情不好、想吐槽时**不要**用，那种情况用 no_action。',
+    parameters:{ type:'object', properties:{
+      reason:{type:'string', description:'他的理由，直接引用原话，可空'}
+    }, required:[] } } },
+  { type:'function', function:{
+    name:'query_today',
+    description:'查今天的情况：有什么课、今天攒了多少时间、刚才在用什么程序。他问今天怎么样、今天有课吗时用。',
+    parameters:{ type:'object', properties:{} } } },
+  { type:'function', function:{
+    name:'query_week',
+    description:'查这一周和上周的投入、娱乐放纵笔数、松紧结论。他问最近怎么样、上周干了什么、是不是太松了时用。',
+    parameters:{ type:'object', properties:{} } } },
+  { type:'function', function:{
+    name:'no_action',
+    description:'这次不需要动手时用它：闲聊、提问、感叹、安慰、聊到某件事但没让他做事。拿不准但没有任何明确的「现在开始 / 记一笔 / 结束 / 记休息日」意图时，用这个。',
+    parameters:{ type:'object', properties:{} } } }
+];
+
+function runPetTool(name, args){
+  args = args || {};
+  /* no_action 是「这次不用动手」的显式选项 —— 因为 tool_choice 用了 required，
+     模型必须二选一，这样它就没法「嘴上说做了、其实没调」。 */
+  if(name === 'no_action') return {ok:true, noop:true, say:'（这次不用动手，正常回话就好）'};
+  var cat = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'life';
+  try{
+    switch(name){
+      case 'start_timer': {
+        var n1 = String(args.name||'').trim().slice(0,30);
+        if(!n1) return {ok:false, say:'他没说清要计时做什么，问他一句。'};
+        var c1 = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'life';
+        if(STATE.timer && !STATE.timer.finished){
+          return {ok:false, say:'现在已经有一条计时在跑（'+(STATE.timer.name||'另一件事')+'）。先问他要不要结束那条，别自己停。'};
+        }
+        startStopwatch('loose', null, {name:n1, category:c1});
+        return {ok:true, say:'已经开始计时：'+n1+'（'+catName(c1)+'）。结束的时候按「结束」就按实际时长记下，进今天的池子和周报。'};
+      }
+      case 'record_time': {
+        var n2 = String(args.name||'').trim().slice(0,30);
+        var m2 = Math.max(1, Math.min(1440, Math.round(Number(args.minutes)||0)));
+        if(!n2 || !m2) return {ok:false, say:'缺名字或时长，没记。问他一句到底做了多久。'};
+        var c2 = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'life';
+        looseRecord(n2, m2, c2);
+        toast('记下了：'+n2+' '+m2+' 分钟');
+        return {ok:true, say:'记下了：'+n2+' '+m2+' 分钟（'+catName(c2)+'），已经进今天的池子和周报。'};
+      }
+      case 'stop_timer': {
+        if(!STATE.timer || STATE.timer.finished) return {ok:false, say:'现在没有在跑的计时，跟他说一声就行。'};
+        if(!timerIsStopwatch()) return {ok:false, say:'在跑的是倒计时，他没让停就别动。'};
+        var ms0 = timerElapsedMs();
+        var tn = STATE.timer.name || '一段专注';
+        if(ms0 < SW_MIN_MS){ dropStopwatch(); return {ok:true, say:'才不到 1 分钟，这段没记。'}; }
+        var used = Math.round(ms0/60000);
+        commitStopwatchRecord(used);
+        return {ok:true, say:'结束了「'+tn+'」，记下 '+used+' 分钟。'};
+      }
+      case 'create_task': {
+        var n3 = String(args.name||'').trim().slice(0,30);
+        if(!n3) return {ok:false, say:'任务是空的，问他叫什么名字。'};
+        var sc = (args.scope === 'weekly') ? 'weekly' : 'daily';
+        var c3 = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'work';
+        if((scopeList(sc)||[]).some(function(x){ return x.name === n3; })){
+          return {ok:false, say:'已经有一个叫「'+n3+'」的任务了，没重复建。'};
+        }
+        if(sc === 'daily'){
+          STATE.dailyTasks.push({id:uid('dt'), name:n3, category:c3, subCategory:'',
+            type:'habit', enabled:true, records:[], createdAt:today()});
+        } else {
+          var gm = Math.max(1, Math.min(600, Math.round(Number(args.minutes)||30)));
+          STATE.weeklyTasks.push({id:uid('wk'), name:n3,
+            type:(c3 === 'life' ? 'exercise' : 'custom'), category:c3,
+            dailyGoalMin:gm, weeklyGoalDays:7, enabled:true, records:[], createdAt:today()});
+        }
+        addMemory('task', '新建'+(sc==='daily'?'日常':'每周')+'任务：「'+n3+'」（'+catName(c3)+'）', ['任务']);
+        save(); render();
+        toast('建好了：'+(sc==='daily'?'日常':'每周')+'任务「'+n3+'」');
+        return {ok:true, say:'建好了：'+(sc==='daily'?'日常':'每周')+'任务「'+n3+'」（'+catName(c3)+'）'
+               + (sc==='weekly' ? ('，每天目标 '+gm+' 分钟') : '') + '。它已经出现在任务页了。'};
+      }
+      case 'rest_today': {
+        if((STATE.restDays||[]).indexOf(today()) >= 0){
+          return {ok:true, say:'今天已经是休息日了，不用再记。跟他说「今天不算断链」。'};
+        }
+        var okr = takeRestDay(today());
+        if(okr){
+          toastAction('已把今天记成休息日', '撤销', function(){
+            STATE.restDays = (STATE.restDays||[]).filter(function(x){ return x !== today(); });
+            save(); render(); toast('撤掉了，今天不算休息日');
+          }, 6000);
+        }
+        return okr ? {ok:true, say:'已经把今天记成休息日了（连续天数冻结、不用补）。回一句让他好好歇着的话，别提任务。'}
+                   : {ok:false, say:'没记上休息日。'};
+      }
+      case 'query_today': {
+        var out = [];
+        var wk = currentWeek();
+        var cs = todayCourses();
+        out.push(cs.length
+          ? ('今天第 '+wk+' 周有 '+cs.length+' 节课：' + cs.map(function(c){
+              return c.name+'（第'+c.periods+'节'+(c.room?(' '+c.room):'')+'）'; }).join('；'))
+          : ('今天第 '+wk+' 周没课'));
+        out.push('今天的时间池子攒了 '+poolProgress().minutes+' 分钟');
+        if(typeof ACT !== 'undefined' && ACT && ACT.last && ACT.last.proc){
+          out.push('刚才在用的程序：'+ACT.last.proc+(ACT.last.title?('（'+String(ACT.last.title).slice(0,40)+'）'):''));
+        }
+        return {ok:true, say: out.join('。')+'。'};
+      }
+      case 'query_week': {
+        return {ok:true, say: petWeekContext()};
+      }
+    }
+    return {ok:false, say:'这个动作不在允许清单里，什么都别做，就当没听懂。'};
+  }catch(e){
+    return {ok:false, say:'执行出错了：'+(e && e.message)+'。什么都别改，如实跟他说。'};
+  }
 }
 
 /* ================= 陪伴页的气泡 =================
@@ -4046,10 +4306,18 @@ var App = {
   },
   /* 休息日：没有取消入口 —— 这是刻意的，有代价的行为才有信息量 */
   restToday:function(){
-    if(takeRestDay(today())) toast('今天记成休息日了。连续天数冻结，宠物也回点血。');
+    if(takeRestDay(today())){
+      /* 2026-10-09 起给 5 秒撤销（原本刻意没入口，但宠物也能记这一条之后，
+         一次误判就会白冻一天连击 —— 有撤销才敢让它动手） */
+      toastAction('今天记成休息日了。连续天数冻结，宠物也回点血。', '撤销', function(){
+        STATE.restDays = (STATE.restDays||[]).filter(function(x){ return x !== today(); });
+        save(); render(); toast('撤掉了，今天不算休息日');
+      }, 6000);
+    }
     else toast('今天已经记过了');
     render();
   },
+  looseDel:function(id){ looseDel(id); },
   restPast:function(d){ if(takeRestDay(d)){ toast('已把 '+d+' 记成休息日'); render(); } },
   /* 软着陆：只把他往「最小的一步」上引，不铺开待办 */
   softLandOne:function(){
@@ -4593,6 +4861,7 @@ document.addEventListener('click',function(e){
   else if(act==='quickCheckin') App.quickCheckin(id);
   else if(act==='restToday') App.restToday();
   else if(act==='restPast') App.restPast(el.dataset.date);
+  else if(act==='looseDel') App.looseDel(el.dataset.id);
   else if(act==='softLandOne') App.softLandOne();
   else if(act==='softLandShowAll') App.softLandShowAll();
 
@@ -4715,7 +4984,9 @@ function init(){
     openSheet:openSheet, closeSheet:closeSheet,
     callAI:callAI,
     /* 伙伴（宠物）单独那套：没填就是主 AI。pet.js 用它决定走 AI 还是本地台词 */
-    callPetAI:function(messages){ return callAI(messages, 'pet'); },
+    callPetAI:function(messages, opts){ return callAI(messages, 'pet', opts); },
+    petTools:PET_TOOLS,              /* 宠物能用的动作表（function calling） */
+    runPetTool:runPetTool,           /* 执行一个动作；只认表里有的名字 */
     petAIReady:function(){ return aiReady('pet'); },
     /* 给伙伴页显示模式用：ready=能不能走 AI，local=是不是本地模型（环回地址），model=模型名 */
     petAIInfo:function(){

@@ -589,6 +589,16 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:rgba(46,36,25,.92);color:#fff;
   padding:11px 20px;border-radius:12px;font-size:14px;z-index:80;box-shadow:var(--shadow);animation:fade .2s;border:1px solid rgba(255,255,255,.12);
   pointer-events:none}
+/* toast 里的「撤销」按钮：父元素是 pointer-events:none（不然会吞掉底部按钮的点击，踩过），
+   所以按钮必须自己把它打开，否则点不到 */
+.toast-act{margin-left:9px;padding:3px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.38);
+  background:rgba(255,255,255,.16);color:#fff;font-size:13px;font-family:inherit;cursor:pointer;
+  pointer-events:auto}
+.toast-act:hover{background:rgba(255,255,255,.28)}
+/* 今日页「临时记的」后面那个删除小叉 */
+.act-mini{margin-left:5px;padding:0 4px;border:none;background:transparent;color:var(--muted);
+  font-size:12px;line-height:1.2;cursor:pointer;font-family:inherit}
+.act-mini:hover{color:var(--terracotta)}
 @keyframes fade{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 .ver{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
 .ver a{color:var(--terracotta-d);text-decoration:none}
@@ -811,8 +821,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="gradient-waves.js?v=1"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
-<script src="pet.js?v=37"></script>
-<script src="app.js?v=47"></script>
+<script src="pet.js?v=42"></script>
+<script src="app.js?v=50"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

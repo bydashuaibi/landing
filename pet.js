@@ -777,7 +777,26 @@
        宁可这次少两句上下文，也不能让宠物哑掉。 */
     var wkCtx = '';
     if (L.weekContext) { try { wkCtx = L.weekContext() || ''; } catch (e) { console.warn('[pet] 周上下文失败：', e); } }
-    var sys = '你是「着陆」App 里用户养的赛博小猫，名字叫「' + p.name + '」。'
+    /* 🔴 工具规则放**最前面**：长提示词里越靠前的指令权重越高。
+       放后面时实测「该动手却只回一句」的概率明显偏高（2026-10-09 试出来的）。 */
+    var toolRules = '【怎么用工具】'
+      /* ---- 工具（2026-10-09）：他能让你直接动手 ---- */
+      + '\n你可以直接帮他动手（工具）：想玩一会/现在开始做什么 → start_timer（**不要建任务**）；'
+      + '说已经花掉多少时间 → record_time；说玩完了/停了吧 → stop_timer；'
+      + '**只有他明确说「建个任务/加个日常」才用 create_task**；说今天想休息一天 → rest_today。'
+      + '⚠️ **说话不等于做了**：该动手时必须**真的调用工具**再开口 —— '
+      + '只回一句「记好啦」却没调工具，等于骗他，这是最糟的情况。'
+      + '\n这几句话**必须**触发工具，不许只回话：'
+      + '「今天想休息 / 今天不干了 / 歇一天 / 记成休息日」→ rest_today；'
+      + '「想玩一会X / 想现在开始做X」→ start_timer；「玩完了 / 停了吧 / 不做了」→ stop_timer；'
+      + '「我刚花了X小时做Y」→ record_time。'
+      + '⚠️ **就算你记得这件事已经做过了，也必须调用工具去核实** —— '
+      + '工具会回你「已经记过了」，那才是准的；凭记忆跳过调用，他就白说了一句。'
+      + '**拿不准要不要动手时，宁可调用工具** —— 工具自己会判断能不能做、会拒绝，'
+      + '但你不调用，他就白白说了一句。'
+      + '动完手再用一句话告诉他你做了什么（别偷偷做，他会不知道）。'
+      + '上面没有的事（删东西、改设置、登陆教务）就直接说做不到，别硬凑。';
+    var sys = toolRules + '\n\n' + '你是「着陆」App 里用户养的赛博小猫，名字叫「' + p.name + '」。'
       + '你不是助手，是一只真的在陪着他的猫：说话短、口语化、偶尔喵一声，会撒娇也会犯懒。'
       + '绝对不要说教、不要列清单、不要长篇大论（每句 60 字以内，可以分两句）。'
       + '你和主人的关系等级是「' + levelName(p.intimacy) + '」（亲密度 ' + Math.round(p.intimacy) + '/100），越熟越亲昵。'
@@ -793,28 +812,61 @@
     var msgs = [{ role: 'system', content: sys }].concat(hist.map(function (m) {
       return { role: m.role === 'user' ? 'user' : 'assistant', content: m.text };
     }));
-    L.callPetAI(msgs).then(function (r) {
+    /* 出错时的统一收尾（气泡只留一句人话，原始报错进 console）。
+       ⚠️ 本地模型失败基本都是 Ollama 那边的事（没开 / runner 启动即崩 / 模型没建）——
+          2026-09-24 实测它偶发"启动即崩"（0.25 秒退、exit status 1），托盘退出再打开就好，
+          所以这句自救提示必须进气泡。 */
+    function fail(r) {
       aiBusy = false;
-      if (!r || !r.error) { pushPet((r && r.content || '').slice(0, 200)); return; }
-      /* 本地模型失败基本都是 Ollama 那边的事（没开 / runner 启动即崩 / 模型没建）。
-         ⚠️ 2026-09-24 实测：Ollama 的 runner 会偶发"启动即崩"（0.25 秒退，报 exit status 1），
-            **托盘右键退出、再打开一次**就好了 —— 这句自救提示必须写进气泡，他才知道怎么办。
-         原始报错写进 console，别整段塞气泡（气泡只留一句人话）。 */
+      if (!r || !r.error) { pushPet(((r && r.content) || '').slice(0, 200)); return; }
       console.warn('[pet] 伙伴 AI 调用失败：', r.error, '｜配置：', petAI());
       var a = petAI();
-      /* 气泡里只留一小段人话：去掉括号里的"模型 @ 主机"、去掉 JSON 正文，最多 18 字。
-         纯 HTTP 状态码换成他看得懂的说法（"500" 这种术语没意义）。 */
       var brief = String(r.error || '')
         .replace(/（[^）]*）/g, '').replace(/\{[\s\S]*$/, '')
         .replace(/\s+/g, ' ').trim().slice(0, 18);
       if (/^\d{3}$/.test(brief)) brief = '模型服务崩了';
       pushPet('（' + (a.local ? '本地模型没接上：' + brief + ' → 托盘退出 Ollama 再打开一次'
                               : r.error) + '）');
-    }).catch(function (e) {
-      console.warn('[pet] 伙伴 AI 异常：', e);
-      aiBusy = false;
-      pushPet('（它没接上，等会儿再试试）');
-    });
+    }
+
+    /* ---- 工具循环（2026-10-09）：它先决定要不要动手，动手就真动，再用人话回一句 ----
+       实测 DeepSeek 选工具很准（0.7~1.2 秒/轮，两轮共约 2 秒，界面上一直显示「它正在想…」）。
+       ⚠️ 只执行白名单里的名字 —— runPetTool 内部还会再判一次；
+          最多 3 个工具、**只追加一轮**（不递归），免得模型自己套娃烧 token。 */
+    var tools = L.petTools;
+    /* 🔴 tool_choice 必须是 'required'，配合表里的 no_action 一起用。
+       实测（2026-10-09）：'auto' 时「今天想休息一天」这类话**只回一句"记好啦"却不调工具**，
+       9 条用例里 3 条漏；换成 required + no_action 后 9/9 全对。
+       代价：闲聊也要多跑一轮（+约 0.7 秒），换来「说了就一定做了」。 */
+    (tools ? L.callPetAI(msgs, { tools: tools, tool_choice: 'required', temperature: 0.4 }) : L.callPetAI(msgs))
+      .then(function (r) {
+        if (!r || r.error) { fail(r); return; }
+        var calls = r.toolCalls;
+        if (!calls || !calls.length) { aiBusy = false; pushPet((r.content || '').slice(0, 200)); return; }
+
+        var follow = msgs.slice(), says = [];
+        follow.push({ role: 'assistant', content: r.content || '', tool_calls: calls });
+        calls.slice(0, 3).forEach(function (c) {
+          var nm = (c.function && c.function.name) || '';
+          var args = {};
+          try { args = JSON.parse((c.function && c.function.arguments) || '{}'); } catch (e) { args = {}; }
+          var out = L.runPetTool ? L.runPetTool(nm, args) : { ok: false, say: '没有可执行的动作' };
+          out = out || {};
+          if (out.ok && !out.noop) says.push(out.say);
+          follow.push({ role: 'tool', tool_call_id: c.id, content: String(out.say || '') });
+        });
+
+        return L.callPetAI(follow).then(function (r2) {
+          aiBusy = false;
+          var fin = (r2 && !r2.error && r2.content) ? String(r2.content).trim() : '';
+          pushPet((fin || r.content || says[0] || '……喵？').slice(0, 200));
+        });
+      })
+      .catch(function (e) {
+        console.warn('[pet] 伙伴 AI 异常：', e);
+        aiBusy = false;
+        pushPet('（它没接上，等会儿再试试）');
+      });
   }
   function todayCount(kind) {
     var t0 = new Date(); t0.setHours(0, 0, 0, 0);
