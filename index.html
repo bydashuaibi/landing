@@ -316,6 +316,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .act-shot{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);
   border-top:1px dashed var(--line);margin-top:12px;padding-top:10px}
 .act-card code{background:rgba(46,36,25,.06);padding:1px 5px;border-radius:5px;font-size:11.5px}
+/* 手机式的「按应用」排行 */
+.app-head{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  margin:13px 0 7px;font-size:12.5px;color:var(--muted)}
+.app-head b{color:var(--ink);font-size:14px}
+.app-rank{display:flex;flex-direction:column;gap:7px}
+.app-row{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center}
+.app-nm{font-size:13px;color:var(--ink);display:flex;align-items:center;gap:7px;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-nm i{flex:0 0 auto;width:7px;height:7px;border-radius:2px;display:inline-block}
+.app-tm{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.app-track{grid-column:1 / -1;height:5px;border-radius:3px;background:rgba(46,36,25,.07);overflow:hidden}
+.app-track b{display:block;height:100%;border-radius:3px;min-width:3px}
 
 /* 今天一件 */
 .one-thing{border:2px dashed rgba(168,138,91,.65);text-align:center;padding:26px 18px;border-radius:18px}
@@ -822,7 +834,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=42"></script>
-<script src="app.js?v=50"></script>
+<script src="app.js?v=51"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

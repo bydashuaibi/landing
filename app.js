@@ -1551,6 +1551,47 @@ var ACT_LABEL = { fun:'休闲娱乐', work:'工作学习', study:'学习充电',
 var ACT_COLOR = { fun:'#d6627a', work:'#3b6fb0', study:'#8b6dff', social:'#bf8a16', other:'#9a8f80' };
 var ACT_ORDER = ['fun', 'work', 'study', 'social', 'other'];
 
+/* 进程名 → 他看得懂的名字。手机上是"微信/抖音"，这边原来直接甩 `Code.exe`。
+   认不出来的就去掉 .exe 原样显示（不硬编） */
+var APP_NAMES = {
+  chrome:'Chrome', msedge:'Edge', firefox:'Firefox', brave:'Brave', opera:'Opera',
+  code:'VS Code', devenv:'Visual Studio', idea64:'IntelliJ IDEA', pycharm64:'PyCharm',
+  clion64:'CLion', goland64:'GoLand', webstorm64:'WebStorm', rider64:'Rider',
+  cursor:'Cursor', ue4editor:'UE 编辑器', unrealeditor:'UE 编辑器', unity:'Unity',
+  blender:'Blender', photoshop:'Photoshop', illustrator:'Illustrator',
+  matlab:'MATLAB', keil:'Keil', stm32cubemx:'STM32CubeMX', origin:'Origin',
+  winword:'Word', excel:'Excel', powerpnt:'PowerPoint', wps:'WPS',
+  notepad:'记事本', notepadpp:'Notepad++', typora:'Typora', obsidian:'Obsidian',
+  explorer:'文件管理器', applicationframehost:'（系统窗口）', systemsettings:'Windows 设置',
+  windowsterminal:'Windows 终端', cmd:'命令提示符', conhost:'控制台',
+  douyin:'抖音', bilibili:'哔哩哔哩', cloudmusic:'网易云音乐', qqmusic:'QQ 音乐',
+  wechat:'微信', weixin:'微信', qq:'QQ', dingtalk:'钉钉', feishu:'飞书', lark:'飞书',
+  telegram:'Telegram', discord:'Discord', steam:'Steam', steamwebhelper:'Steam',
+  epicgameslauncher:'Epic', 'plain craft launcher 2':'PCL 启动器', java:'Java 程序',
+  landing:'着陆', electron:'Electron 应用', wutheringwaves:'鸣潮', 'client-win64-shipping':'游戏',
+  potplayermini64:'PotPlayer', potplayer:'PotPlayer', vlc:'VLC',
+  acrobat:'Acrobat', 'acrord32':'Acrobat', sumatrapdf:'SumatraPDF',
+  teamviewer:'TeamViewer', everything:'Everything', snipaste:'Snipaste'
+};
+/* 这些是"壳"进程，不是他在用的应用（跟手机的"主屏幕"一个性质） */
+var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|windowsterminal)$/i;
+
+function appLabel(proc){
+  var p = String(proc || '').trim();
+  if(!p || /^idle$/i.test(p)) return '（没在用程序）';
+  var k = p.replace(/\.exe$/i, '');
+  return APP_NAMES[k.toLowerCase()] || APP_NAMES[k] || k;
+}
+/* 今天的应用排行：[{name, minutes, cat, shell}]，已按分钟降序 */
+function appRanking(){
+  if(!ACT || !ACT.byApp) return [];
+  return ACT.byApp.map(function(x){
+    return { name: appLabel(x.proc), proc: x.proc, cat: x.cat || 'other',
+             minutes: Math.round((x.ms || 0) / 60000),
+             shell: APP_SHELL.test(String(x.proc || '')) };
+  }).filter(function(x){ return x.minutes >= 1; });
+}
+
 function initActivity(){
   if(!window.landing || !window.landing.activity) return;   /* 网页版没有这套 */
   window.landing.activity.get().then(function(s){ ACT = s; render(); }).catch(function(){});
@@ -1562,6 +1603,11 @@ function initActivity(){
 function actMinutes(){
   var m = {};
   if(!ACT) return m;
+  /* 优先用主进程算好的**真实时长**（2026-10-09 加）；老快照没有这个字段时
+     退回"条数 × 采样间隔"那套估算，免得版本不匹配时白屏 */
+  if(ACT.byCatMin){
+    return ACT.byCatMin;
+  }
   Object.keys(ACT.byCat || {}).forEach(function(k){
     m[k] = Math.round((ACT.byCat[k] || 0) * (ACT.sampleSec || 60) / 60);
   });
@@ -1606,6 +1652,26 @@ function renderActivityCard(){
   });
   if(!shown) h += '<div class="hint">今天还没采到有效活动。</div>';
   h += '</div>';
+
+  /* 按应用排行（手机那种"应用使用时间"）—— 只列真在前台用过的，壳进程不算 */
+  var rk = appRanking().filter(function(x){ return !x.shell; });
+  var totalMin = ACT.totalMin || 0;
+  if(rk.length){
+    var top = rk.slice(0, 5), maxMin = top[0].minutes || 1;
+    h += '<div class="app-head"><span>今天记录 <b>' + fmtMin(totalMin) + '</b></span>'
+      + (rk.length > 5 ? '<button class="btn ghost sm" data-act="actRank">看完整排行（' + rk.length + '）</button>' : '')
+      + '</div><div class="app-rank">';
+    top.forEach(function(x){
+      h += '<div class="app-row"><span class="app-nm" title="' + esc(x.proc) + '">'
+        + '<i style="background:' + (ACT_COLOR[x.cat] || ACT_COLOR.other) + '"></i>' + esc(x.name) + '</span>'
+        + '<span class="app-tm">' + fmtMin(x.minutes) + '</span>'
+        + '<span class="app-track"><b style="width:' + Math.max(3, Math.round(x.minutes / maxMin * 100)) + '%;background:'
+        + (ACT_COLOR[x.cat] || ACT_COLOR.other) + '"></b></span></div>';
+    });
+    h += '</div>';
+  } else if(totalMin >= 1){
+    h += '<div class="hint">今天记录 ' + fmtMin(totalMin) + '，但都在系统窗口/桌面里。</div>';
+  }
   if(ACT.last){
     h += '<div class="hint" style="margin-top:11px">刚才在：<b>' + esc(actProcLabel(ACT.last.proc)) + '</b>'
       + (ACT.last.title ? ' · ' + esc(String(ACT.last.title).slice(0, 44)) : '')
@@ -4275,6 +4341,42 @@ var App = {
   goDigest:function(){ CUR_TAB='digest'; render(); },
 
   /* --- 活动记录（实现在主进程）--- */
+  /* 完整排行 —— 手机上的"应用使用时间"那一页。按应用列今天所有用过的，
+     系统壳进程单独折叠在最后（写出来但不计入"真在用"） */
+  actRank:function(){
+    if(!ACT){ return; }
+    var all = appRanking();
+    var real = all.filter(function(x){ return !x.shell; });
+    var shell = all.filter(function(x){ return x.shell; });
+    var total = ACT.totalMin || 0;
+    var top = real.length ? real[0].minutes : 1;
+    var h = '<h2>今天各用了多久</h2>'
+      + '<div class="hint">按 <b>前台窗口</b>采样算的（每 ' + (ACT.sampleSec || 60) + ' 秒一次）——'
+      + '只算"你正在用的那个"，后台挂着的不算，跟手机的口径一致。'
+      + '共记录 <b>' + fmtMin(total) + '</b>。</div>';
+    if(!real.length){
+      h += '<div class="hint">今天还没有可统计的应用。</div>';
+    } else {
+      h += '<div class="app-rank">';
+      real.forEach(function(x){
+        h += '<div class="app-row"><span class="app-nm" title="' + esc(x.proc) + '">'
+          + '<i style="background:' + (ACT_COLOR[x.cat] || ACT_COLOR.other) + '"></i>' + esc(x.name) + '</span>'
+          + '<span class="app-tm">' + fmtMin(x.minutes) + '</span>'
+          + '<span class="app-track"><b style="width:' + Math.max(2, Math.round(x.minutes / top * 100))
+          + '%;background:' + (ACT_COLOR[x.cat] || ACT_COLOR.other) + '"></b></span></div>';
+      });
+      h += '</div>';
+    }
+    if(shell.length){
+      h += '<div class="hint" style="margin-top:10px">另有系统窗口/桌面：'
+        + shell.map(function(x){ return esc(x.name) + ' ' + x.minutes + ' 分'; }).join('、') + '</div>';
+    }
+    h += '<div class="hint" style="margin-top:8px">⚠️ 采样是每 ' + (ACT.sampleSec || 60)
+      + ' 秒一次，来回切窗口切得快时会少算一点（想要更准可以在「我的 → 活动记录」把采样间隔调小）。</div>'
+      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">关闭</button></div>';
+    openSheet(h);
+  },
+
   actToggle:function(){
     if(!ACT || !window.landing || !window.landing.activity) return;
     window.landing.activity.setPref({ enabled: !ACT.enabled }).then(function(s){
@@ -4931,6 +5033,7 @@ document.addEventListener('click',function(e){
   /* 活动记录 */
   else if(act==='actToggle'){ App.actToggle(); }
   else if(act==='actFolder'){ App.actFolder(); }
+  else if(act==='actRank'){ App.actRank(); }
   else if(act==='actClearShots'){ App.actClearShots(); }
   else if(act==='actSave'){ App.actSave(); }
 

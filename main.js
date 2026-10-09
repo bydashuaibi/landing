@@ -844,6 +844,11 @@ function classifyActivity(proc, title) {
    ② 分隔符用 [char]9（PS 5.1 不认 `u{...}）；③ PS here-string 的 " @ 结束符必须顶格。 ---- */
 const { execFile } = require('child_process');
 const PS_FG = [
+  /* 🔴 必须在写 stdout 之前设 UTF8：默认按系统 ANSI(GBK) 编码输出，
+     中文窗口标题到 Node 这边就是 %EF%BF%BD 的乱码（实测过）。
+     后果不只是难看 —— ACT_RULES 里的中文规则（教程/课程/学习/哔哩哔哩/微信…）
+     全都匹配不上，分类直接退化成只看进程名。 */
+  '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
   'Add-Type @"',
   'using System;',
   'using System.Runtime.InteropServices;',
@@ -889,13 +894,48 @@ function saveActLog() {
   try { fs.mkdirSync(ACTIVITY_DIR, { recursive: true }); } catch (e) { }
   try { fs.writeFileSync(actLogPath(_act.date), JSON.stringify(_act), 'utf8'); } catch (e) { }
 }
+/* 每应用 / 每分类的**真实时长** —— 手机那种「应用使用时间」。
+   算法：相邻两条采样的时间差，归给**前一条**的应用（那段时间里他在用的就是它）。
+   ⚠️ 单段必须封顶 2×采样间隔：睡眠/关机/应用没开那种大空洞（开机后一算能差几小时）
+      不能记到某个应用头上。最后一条按"一个采样间隔"算，且不超过此刻。 */
+function actDurations() {
+  const step = Math.max(10, actPrefs().sampleSec) * 1000;
+  const cap = step * 2;
+  const byAppMs = {}, byCatMs = {}, appCat = {};
+  const arr = _act.samples;
+  const now = Date.now();
+  for (let i = 0; i < arr.length; i++) {
+    const cur = arr[i];
+    const nxt = (i + 1 < arr.length) ? arr[i + 1].at : Math.min(cur.at + step, now);
+    const seg = Math.min(Math.max(0, nxt - cur.at), cap);
+    if (!seg) continue;
+    const p = cur.proc || '(未知)';
+    byAppMs[p] = (byAppMs[p] || 0) + seg;
+    if (!appCat[p]) appCat[p] = cur.cat || 'other';
+    const c = cur.cat || 'other';
+    byCatMs[c] = (byCatMs[c] || 0) + seg;
+  }
+  const byApp = Object.keys(byAppMs)
+    .map((k) => ({ proc: k, ms: byAppMs[k], cat: appCat[k] }))
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 40);
+  const totalMs = Object.keys(byAppMs).reduce((a, k) => a + byAppMs[k], 0);
+  const byCatMin = {};
+  Object.keys(byCatMs).forEach((k) => { byCatMin[k] = Math.round(byCatMs[k] / 60000); });
+  return { byApp: byApp, byCatMin: byCatMin, totalMin: Math.round(totalMs / 60000), totalMs: totalMs };
+}
+
 function actSnapshot() {
   const p = actPrefs();
   const byCat = {};
   _act.samples.forEach((x) => { byCat[x.cat] = (byCat[x.cat] || 0) + 1; });
+  const dur = actDurations();
   return {
     date: _act.date, enabled: p.enabled, sampleSec: p.sampleSec, shotMin: p.shotMin, keepDays: p.keepDays,
-    count: _act.samples.length, byCat: byCat, minutes: {},
+    count: _act.samples.length, byCat: byCat,
+    /* byCatMin / byApp / totalMin 是**真实时长**（2026-10-09 加，手机式"应用使用时间"）；
+       byCat(条数) 留着兼容老渲染，新的都读 byCatMin */
+    byCatMin: dur.byCatMin, byApp: dur.byApp, totalMin: dur.totalMin,
     last: _act.last, isGame: !!(_act.last && GAME_RE.test(_act.last.proc)),
     shots: _act.shots, bytes: _act.bytes, dir: ACTIVITY_DIR,
   };
