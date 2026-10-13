@@ -4,3 +4,6 @@ community-backend/community.json
 *.log
 .env
 .DS_Store
+
+# 冒烟测试产物
+tools/_shots/

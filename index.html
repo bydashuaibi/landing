@@ -680,8 +680,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mod-head.hero .hero-line{font-size:clamp(30px,4.6vw,54px);line-height:1.14}
 .mod-head.hero .hero-line .warp-head{min-height:1.16em;margin:0;overflow:visible}
 .mod-head.hero .hero-line .warp-head h2{font-size:inherit;line-height:inherit;letter-spacing:-.03em}
+/* ⚠️ 必须 text-align:center：warp-text 是在框内**居中**画的（cursor = 框宽/2 − 文本宽/2），
+   所以前半那一行本来就是居中的；后半若左对齐，两行会错开半个屏，看着像版面 bug。 */
 .hero-serif{font-family:Georgia,'Times New Roman',var(--font-cjk),serif;font-style:italic;font-weight:400;
-  letter-spacing:-.005em;color:var(--terracotta);
+  letter-spacing:-.005em;color:var(--terracotta);text-align:center;
   text-shadow:0 0 34px rgba(224,138,78,.22)}
 @media(max-width:640px){.mod-head.hero .hero-line{font-size:clamp(27px,8vw,38px)}}
 .warp-head[data-warp-mounted] h2{visibility:hidden}

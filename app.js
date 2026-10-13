@@ -2721,7 +2721,13 @@ function viewToday(){
   /* 首页主视觉（结构化蓝图：主张 + 标题） */
   h += '<div class="mod-head hero">'
     + '<div class="kicker">Module 01 · 首页</div>'
-    + '<div class="warp-head" data-warp><h2>把焦虑，变成下一步。</h2></div>'
+    /* 两段式标题（2026-10-13）：前半「粗体无衬线陈述」交给 warp 渲染，
+       后半「衬线斜体升华」必须是真实 DOM —— warp-text 只认 textContent + 单一字体，没法混排。
+       两层共用同一个 font-size，视觉上才是同一行标题断成两句。 */
+    + '<div class="hero-line">'
+    +   '<div class="warp-head" data-warp><h2>把焦虑，</h2></div>'
+    +   '<div class="hero-serif">变成下一步。</div>'
+    + '</div>'
     + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
     + '</div>';
   /* 天气条：一行轻环境信息，夹在 hero 和下面内容之间 */
@@ -4013,6 +4019,8 @@ function render(){
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===CUR_TAB);
   });
+  /* 「一束光」：把当前栏目写到 body 上 —— CSS 只给 body[data-tab="today"] 在顶部打那束赭石暖光 */
+  document.body.setAttribute('data-tab', CUR_TAB);
 
   /* 卡片入场动画：staggered reveal */
   var cards = document.querySelectorAll('#view .card, #view .task, #view .dg-card, #view .stat-col, #view .mod-head');

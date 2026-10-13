@@ -1129,6 +1129,8 @@
     /* 面板 */
     '.pp-root{position:fixed;z-index:46;width:min(344px,calc(100vw - 28px));max-height:min(560px,calc(100vh - 200px));overflow:auto;padding:16px;border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.09));border:1px solid var(--line);box-shadow:0 22px 54px rgba(46,36,25,.28);backdrop-filter:blur(24px) saturate(118%);-webkit-backdrop-filter:blur(24px) saturate(118%);color:var(--ink);animation:ppIn .2s var(--e-out)}',
     '@keyframes ppIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}',
+    /* 走「共享元素形变」进场时关掉整块 ppIn（见 sharedFlip） */
+    '.pp-root.shared-in{animation:none}',
     '.pp-root.hidden{display:none}',
     '.pp-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}',
     '.pp-who{flex:1;min-width:0}',
@@ -1378,6 +1380,34 @@
     var pp = $('petPanel');
     return !!(pp && !pp.classList.contains('hidden'));
   }
+  /* 共享元素形变过渡（2026-10-13）——照参考站里 Aetheris Voyage 那招：
+     同一个物件在分段之间位移+缩放，而不是各自淡入淡出。这里用在宠物上，
+     点开面板时头像从右下角挂件的猫身上「长出来」，关掉时缩回猫身上。
+     FLIP：先量两端 rect，把目标反推回起点，下一帧再过渡回自身。
+     等比缩放（按宽度算）——两端长宽比差太多，非等比会把头像拉成一条。 */
+  function sharedFlip(fromEl, toEl) {
+    if (!fromEl || !toEl) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+    if (!a.width || !b.width || !b.height) return;
+    var dx = (a.left + a.width / 2) - (b.left + b.width / 2);
+    var dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+    var k = Math.max(0.4, Math.min(6, a.width / b.width));
+    toEl.style.transition = 'none';
+    toEl.style.transformOrigin = 'center center';
+    toEl.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(' + k.toFixed(3) + ')';
+    toEl.style.opacity = '.25';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      toEl.style.transition = 'transform .38s cubic-bezier(.16,1,.3,1), opacity .3s ease';
+      toEl.style.transform = '';
+      toEl.style.opacity = '';
+      setTimeout(function(){
+        toEl.style.transition = ''; toEl.style.transform = '';
+        toEl.style.opacity = ''; toEl.style.transformOrigin = '';
+      }, 430);
+    }); });
+  }
+
   function openPanel(tab) {
     var p = ensure();
     if (tab) panelTab = tab;
@@ -1386,11 +1416,18 @@
     applyPos();
     var pp = $('petPanel');
     pp.classList.remove('hidden');
+    pp.classList.add('shared-in');
     renderPanel();
+    sharedFlip($('pwCatBox'), pp.querySelector('.pp-avatar'));
+    setTimeout(function(){ pp.classList.remove('shared-in'); }, 430);
     closeInput();      /* 面板自己带聊天区 → 把气泡输入收掉，免得两块重复 */
   }
   function closePanel() {
     var pp = $('petPanel');
+    /* 先量头像位置再藏面板 —— 藏完 rect 就没了 */
+    if (pp && !pp.classList.contains('hidden')) {
+      sharedFlip(pp.querySelector('.pp-avatar'), $('pwCatBox'));
+    }
     if (pp) pp.classList.add('hidden');
     renderBubble();    /* 关掉面板 → 气泡状态重新评估（输入态是关了就关，不会自己冒出来） */
   }
