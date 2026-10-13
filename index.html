@@ -747,6 +747,29 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .pet-mini{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--muted)}
 .pet-mini b{color:var(--ink);font-size:15px}
 
+/* 换应用询问卡（2026-10-13 自动计时）—— 右下角，位置避开宠物挂件 */
+.askcard{position:fixed;right:186px;bottom:22px;width:306px;z-index:60;
+  display:flex;flex-direction:column;gap:9px;padding:15px 16px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(30,25,21,.95),rgba(16,13,12,.96));
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 20px 46px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.07);
+  backdrop-filter:blur(20px) saturate(130%);-webkit-backdrop-filter:blur(20px) saturate(130%);
+  animation:askIn .38s var(--e-out) both}
+@keyframes askIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.ask-hd{font-size:12.5px;color:var(--muted)}
+.ask-hd b{color:var(--ink);font-weight:700}
+.ask-q{font-size:15px;font-weight:700;color:var(--ink);margin-top:-3px}
+.askcard input{width:100%;padding:9px 12px;border-radius:11px;font-family:inherit;font-size:14px;
+  background:rgba(255,255,255,.10);color:var(--ink);border:1px solid var(--line);outline:none}
+.askcard input:focus{border-color:var(--terracotta)}
+.ask-hint{font-size:11.5px;color:var(--muted);line-height:1.42}
+.ask-btns{display:flex;gap:8px}
+.ask-btns .btn{flex:1;justify-content:center}
+/* 计时条上的「自动」标 —— 让他一眼看出这段不是自己点起来的 */
+.tb-auto{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.04em;
+  padding:1px 6px;border-radius:99px;margin-right:6px;background:rgba(224,138,78,.22);
+  color:var(--terracotta);border:1px solid rgba(224,138,78,.36)}
+
 /* 关键帧 */
 @keyframes reveal{from{opacity:0;transform:translateY(22px) scale(.98);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
 @keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -761,6 +784,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   .sidebar{display:none}
   .tabbar{display:flex}
   .fab{display:flex}
+  .askcard{right:12px;left:12px;bottom:152px;width:auto}
   #view{padding:16px 14px 90px}
   .topbar{padding:14px 16px}
   .kb-row .kl{width:72px}
@@ -853,7 +877,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=43"></script>
-<script src="app.js?v=54"></script>
+<script src="app.js?v=55"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

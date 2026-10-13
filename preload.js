@@ -90,7 +90,9 @@ contextBridge.exposeInMainWorld('landing', {
     setPref: (patch) => ipcRenderer.invoke('activity:setPref', patch),
     openFolder: () => ipcRenderer.invoke('activity:openFolder'),
     clearShots: () => ipcRenderer.invoke('activity:clearShots'),
-    onUpdate: (cb) => { ipcRenderer.on('activity:update', (_e, snap) => { try { cb(snap); } catch (e) { } }); }
+    onUpdate: (cb) => { ipcRenderer.on('activity:update', (_e, snap) => { try { cb(snap); } catch (e) { } }); },
+    /* 换应用了（主进程按进程名变化判定）→ 渲染进程决定要不要弹「这是在做什么」并开始计时 */
+    onAppChanged: (cb) => { ipcRenderer.on('activity:appChanged', (_e, inf) => { try { cb(inf); } catch (e) { } }); }
   },
   /* 窗口可见性：以主进程为准（原因见 main.js）。
      winVisGet() 启动时同步查一次当前值；onWinVis(cb) 订阅 hide/show/minimize/restore 的变化 */

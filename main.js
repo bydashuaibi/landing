@@ -809,7 +809,9 @@ ipcMain.on('window:vis:get', (e) => { e.returnValue = winVisibleNow(); });
 const ACTIVITY_DIR = path.join(app.getPath('userData'), 'activity');
 /* keepDays 默认两周 —— master 2026-10-02 定的（「保留两周自动清一次」）。
    他还没保存过 prefs.json，所以改这里立刻生效。 */
-const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 14 };
+/* ask / askCoolMin 是 2026-10-13 加的：换应用时问一句「这是在做什么」，
+   确认后自动开始计时（master：「每次点计时有点麻烦」）。 */
+const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 14, ask: true, askCoolMin: 15 };
 
 function actPrefs() {
   return Object.assign({}, ACT_DEFAULTS, readPrefs().activity || {});
@@ -979,6 +981,7 @@ function actSnapshot() {
   const dur = actDurations();
   return {
     date: _act.date, enabled: p.enabled, sampleSec: p.sampleSec, shotMin: p.shotMin, keepDays: p.keepDays,
+    ask: p.ask, askCoolMin: p.askCoolMin,
     count: _act.samples.length, byCat: byCat,
     /* byCatMin / byApp / totalMin 是**真实时长**（2026-10-09 加，手机式"应用使用时间"）；
        byCat(条数) 留着兼容老渲染，新的都读 byCatMin */
@@ -991,6 +994,41 @@ function actPush() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     try { mainWindow.webContents.send('activity:update', actSnapshot()); } catch (e) { }
   }
+}
+
+/* ---- 换应用 → 通知渲染进程（自动计时用，2026-10-13 加）----
+   ⚠️ 跟截图没关系：真正知道"他在用哪个程序"的是 sampleForeground 这条线。
+   只在**进程名真的变了**、且不在冷却期、且不是壳进程时才推 —— 免得切个输入法就被问一次。 */
+const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|idle)$/i;
+let _lastProc = '';
+let _askAt = 0;
+function _sendAppChanged(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.webContents.send('activity:appChanged', payload); } catch (e) { }
+  }
+}
+/* ⚠️ fg 可能是 null（桌面上没窗口 / 只有系统壳窗口）。
+   这时**也要发一条 idle 事件** —— 否则他切到桌面去吃饭，渲染进程那段自动计时会一直跑下去。 */
+function maybeAskApp(fg) {
+  const proc = (fg && fg.proc) || 'idle';
+  const prev = _lastProc;
+  _lastProc = proc;
+  if (!prev || prev === proc) return;                 /* 第一次采样 / 没换应用，不发 */
+
+  if (PROC_SHELL.test(proc)) {
+    /* 切到桌面/系统壳：不发"问一句"，只发"停" —— 只在上一段是真实应用时才值得发 */
+    if (proc === 'idle' || !fg) _sendAppChanged({ proc: 'idle', idle: true, at: Date.now() });
+    return;
+  }
+  if (!actPrefs().ask) return;                        /* 他自己关掉了自动询问 */
+  if (Date.now() - _askAt < Math.max(3, actPrefs().askCoolMin) * 60000) return;
+  _askAt = Date.now();
+  _sendAppChanged({
+    proc: proc,
+    title: String(fg.title || '').slice(0, 120),
+    cat: classifyActivity(proc, fg.title),
+    at: Date.now(),
+  });
 }
 
 /* ---- 采样一次 ---- */
@@ -1010,6 +1048,7 @@ async function actTick() {
     }
     saveActLog();
   }
+  maybeAskApp(fg);           /* ⚠️ 放在 if 外面：fg=null（桌面/没窗口）时也要发"停"信号 */
   actPush();
 }
 

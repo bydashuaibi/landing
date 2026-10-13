@@ -140,6 +140,8 @@ function blankState(){
     community: {nick:''},
     weeklyTasks: [],    // 每周任务：{id,name,type('exercise'|'custom'),category,dailyGoalMin,weeklyGoalDays,enabled,records:[{date,minutes,mode,plannedMin,ts}],createdAt}
     timer: null,        // 计时器：{taskId,plannedMin,startedAt,endsAt,paused,remainMs,finished}
+                        //   自动计时起的会多两个字段：auto:true + autoProc:'code.exe'
+    appNames: {},       // 应用 → 他给这件事起的名字：{'code.exe':'写代码'}（2026-10-13 自动计时用）
     memories: [],       // 记忆库：{id,at,kind,text,tags}
     pet: {},            // 伙伴（由 pet.js 负责默认值与演化）
     oneThing: null,     // 今天一件：{date,text,done,dumpId?}
@@ -213,6 +215,7 @@ function migrate(){
   s.digest = s.digest || {};
   s.dumps = s.dumps || [];
   s.loose = s.loose || [];   /* 松散时长（宠物「直接记一笔」用的） */
+  s.appNames = s.appNames || {};   /* 应用 → 他起的名字（自动计时用，2026-10-13） */
   s.fun = s.fun || [];                     /* 娱乐/放纵记录（2026-09-23 加） */
   s.weather = s.weather || [];
   if(s.wx === undefined) s.wx = null;      /* 今日天气快照，老存档必须补默认值 */
@@ -1138,7 +1141,7 @@ function renderTimerBar(){
     var used = timerElapsedMs();
     el.innerHTML = '<span class="tb-ico">▶</span>'
       +'<span class="tb-time">'+fmtClockLong(used)+'</span>'
-      +'<span class="tb-name">'+nm+' · 已 '+Math.floor(used/60000)+' 分钟</span>'
+      +'<span class="tb-name">'+(t.auto?'<i class="tb-auto">自动</i>':'')+nm+' · 已 '+Math.floor(used/60000)+' 分钟</span>'
       +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?'继续':'暂停')+'</button>'
       +'<button class="tb-btn" data-act="timerFinish">结束</button>';
     return;
@@ -1629,6 +1632,120 @@ function initActivity(){
   /* 本周 + 上周都要：宠物回答「我上周干了什么」时也算上周的松紧 */
   ensureActWeek(weekKey());
   ensureActWeek(addDays(weekKey(), -7));
+  /* 换应用 → 右下角问一句「这是在做什么」（2026-10-13 自动计时） */
+  if(window.landing.activity.onAppChanged) window.landing.activity.onAppChanged(onAppChanged);
+}
+
+/* ================= 换应用 → 问一句 + 自动计时（2026-10-13）=================
+   master 原话：「每次点计时有点麻烦……发现打开了不同的应用，
+   右下角弹窗问『这是在做什么』，然后自动进行计时。」
+
+   ⚠️ 判定"换了应用"用的是主进程的**前台窗口采样**（每 sampleSec 秒一次），**不是截图本身** ——
+      截图默认 5 分钟一张，拿它判太粗；截图那条线照旧只负责存图。
+   ⚠️ 自动计时**不新建数据模型**：直接走已有的「松散计时」（scope:'loose'），
+      收尾时 commitStopwatchRecord 会把它写进 STATE.loose + 今天的鱼干池 + 周报投入。
+      这也是它能跟「删掉任务模块」解耦的原因 —— 全程不碰任何任务。
+   ⚠️ 只在他**没有手动计时**的时候才问：手动计时中 = 他自己知道在做什么，别插嘴。
+   ⚠️ 主进程在切到桌面/没窗口时会推一条 `{idle:true}` —— 这就是"自动停"的信号，
+      否则他去吃个饭，那段计时会一直跑。 */
+
+var ASK = null;          /* 有值 = 右下角正显示询问卡 {proc,title,cat,name,known} */
+var ASK_TIMER = null;    /* 没人理就自己收起来 */
+var ASK_MUTE = {};       /* proc → 静音到什么时候（他点过「这次不用」） */
+
+/* 应用 → 建议的「事情名」。只是**第一次问**时的默认值，避免弹出来一个空框；
+   他改过/确认过之后就存进 STATE.appNames，以后直接用他的叫法。 */
+var ACT_SUGGEST = {
+  code:'写代码', cursor:'写代码', devenv:'写代码', idea64:'写代码', pycharm64:'写代码',
+  clion64:'写代码', goland64:'写代码', webstorm64:'写代码', rider64:'写代码',
+  ue4editor:'做游戏', unrealeditor:'做游戏', unity:'做游戏', blender:'做模型',
+  keil:'调单片机', stm32cubemx:'调单片机', matlab:'跑仿真', origin:'画图',
+  winword:'写文档', excel:'做表格', powerpnt:'做 PPT', wps:'写文档',
+  typora:'写东西', obsidian:'整理笔记', notion:'整理笔记', notepad:'记东西',
+  chrome:'查资料', msedge:'查资料', firefox:'查资料', brave:'查资料',
+  bilibili:'看视频', douyin:'刷视频', cloudmusic:'听歌', qqmusic:'听歌',
+  steam:'打游戏', wutheringwaves:'打游戏', 'client-win64-shipping':'打游戏',
+  potplayer:'看视频', vlc:'看视频',
+  wechat:'聊天', weixin:'聊天', qq:'聊天', dingtalk:'聊天', feishu:'聊天', discord:'聊天',
+  explorer:'找文件'
+};
+/* 活动分类 → 宠物分类（loose 记录要一个 category，走 PET_CATS 那套） */
+function actCatToPet(c){ return c==='work' ? 'work' : (c==='study' ? 'growth' : (c==='fun' ? 'fun' : 'life')); }
+
+function autoNameOf(proc, cat){
+  var raw = String(proc||'').trim();
+  var key = raw.replace(/\.exe$/i, '').toLowerCase();
+  var map = STATE.appNames || {};
+  if(map[raw]) return map[raw];
+  if(map[key]) return map[key];
+  if(ACT_SUGGEST[key]) return ACT_SUGGEST[key];
+  return ({work:'工作', study:'学习', fun:'玩', social:'聊天'})[cat] || appLabel(proc) || '这件事';
+}
+
+function askHostEl(){
+  var el = $('askCard');
+  if(!el){ el = document.createElement('div'); el.id='askCard'; el.className='askcard hidden'; document.body.appendChild(el); }
+  return el;
+}
+function renderAsk(){
+  var el = askHostEl();
+  if(!ASK){ el.className = 'askcard hidden'; el.innerHTML = ''; return; }
+  el.className = 'askcard';
+  el.innerHTML =
+    '<div class="ask-hd">👀 你在用 <b>' + esc(appLabel(ASK.proc)) + '</b></div>'
+    + '<div class="ask-q">这件事记作什么？</div>'
+    + '<input id="askName" type="text" maxlength="20" value="' + esc(ASK.name) + '" placeholder="例如：写代码">'
+    + '<div class="ask-hint">' + (ASK.known ? '按你上次的叫法填好了，改一下也行' : '确认一次就记住，下次直接开始') + '</div>'
+    + '<div class="ask-btns">'
+    +   '<button class="btn primary sm" data-act="askGo">开始计时</button>'
+    +   '<button class="btn ghost sm" data-act="askSkip">这次不用</button>'
+    + '</div>';
+  var inp = $('askName');
+  if(inp){
+    inp.onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); App.askGo(); } };
+    /* 只在窗口本来就是焦点的时候才自动聚焦 —— 他在别处打字时绝不抢光标 */
+    if(document.hasFocus()){ try{ inp.focus(); inp.select(); }catch(e){} }
+  }
+}
+/* 把正在跑的「自动计时」落账。只处理 auto 那一段，手动计时绝不碰。 */
+function autoCommit(){
+  var t = STATE.timer;
+  if(!t || !t.auto || t.finished) return;
+  var used = timerElapsedMs();
+  if(used >= SW_MIN_MS) commitStopwatchRecord(Math.round(used/60000));
+  else {
+    STATE.timer = null;
+    if(_timerTick){ clearInterval(_timerTick); _timerTick = null; }
+    save(); renderTimerBar();
+  }
+}
+function onAppChanged(inf){
+  if(!inf) return;
+  /* 1) 切到桌面/没窗口 → 这段自动计时收尾（"自动停"） */
+  if(inf.idle){
+    autoCommit();
+    ASK = null; if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
+    renderAsk();
+    return;
+  }
+  /* 2) 换到别的应用 → 上一段自动计时收尾，再问新的 */
+  if(STATE.timer && STATE.timer.auto && STATE.timer.autoProc !== inf.proc) autoCommit();
+
+  /* 3) 手动计时中 / 关掉了询问 / 这个应用刚被拒绝过 → 不打扰 */
+  if(STATE.timer && !STATE.timer.finished && !STATE.timer.auto) return;
+  if(ACT && ACT.ask === false) return;
+  if(ASK_MUTE[inf.proc] && Date.now() < ASK_MUTE[inf.proc]) return;
+
+  ASK = { proc:inf.proc, title:inf.title||'', cat:inf.cat||'other',
+          name:autoNameOf(inf.proc, inf.cat), known:!!((STATE.appNames||{})[inf.proc]) };
+  renderAsk();
+  if(ASK_TIMER) clearTimeout(ASK_TIMER);
+}
+function askClose(extra){
+  if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
+  ASK = null;
+  renderAsk();
+  if(extra) extra();
 }
 /* 采样条数 → 分钟（每条代表 sampleSec 秒） */
 function actMinutes(){
@@ -1732,6 +1849,13 @@ function renderActivitySettings(){
     + '<div class="field"><label>截图保留（天）</label>'
     + '<input id="act_keep" type="number" min="1" max="365" value="' + ACT.keepDays + '">'
     + '<div class="hint" style="margin-top:6px">过期的整天目录会自动删掉（每 6 小时扫一次，不用你管）。</div></div>'
+    /* 换应用自动计时（2026-10-13）—— 这是「不用手点计时」的那条路，得在这儿显化 */
+    + '<div class="hint" style="margin-top:10px">换应用自动计时：<b>' + (ACT.ask ? '开着' : '关了') + '</b>'
+    + ' —— 发现你换了个程序，右下角问一句「这件事记作什么」，确认后自动开始；'
+    + '切走或回到桌面就自动收尾，按「临时记一笔」进今天的池子和周报。<b>不碰任何任务。</b></div>'
+    + '<div class="field" style="margin-top:10px"><label>问过之后的最短静默（分钟）</label>'
+    + '<input id="act_cool" type="number" min="3" max="240" value="' + (ACT.askCoolMin || 15) + '">'
+    + '<div class="hint" style="margin-top:6px">刚问过又换应用，这段时间内不再问，免得烦。同一个应用被你点过「这次不用」也静默一小时。</div></div>'
     + '<div class="act-shot" style="margin-top:4px">'
     + '<span>已 <b>' + (ACT.shots || 0) + '</b> 张 · ' + fmtBytes(ACT.bytes) + ' · 目录 ' + esc(ACT.dir || '') + '</span>'
     + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
@@ -1740,6 +1864,7 @@ function renderActivitySettings(){
     + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
     + '<button class="btn primary sm" data-act="actSave">保存设置</button>'
     + '<button class="btn ghost sm" data-act="actToggle">' + (ACT.enabled ? '暂停记录' : '开始记录') + '</button>'
+    + '<button class="btn ghost sm" data-act="actAskToggle">' + (ACT.ask ? '关掉自动询问' : '打开自动询问') + '</button>'
     + '</div></div>';
   return h;
 }
@@ -3909,6 +4034,7 @@ function render(){
   /* 伙伴挂件不随视图销毁，只刷新数据 */
   if(window.Pet) Pet.refresh();
   renderTimerBar();
+  renderAsk();
 }
 
 /* ================= 统计数字 count-up ================= */
@@ -4447,6 +4573,12 @@ var App = {
       ACT = s; render(); toast(s.enabled ? '开始记录活动' : '已暂停活动记录');
     });
   },
+  actAskToggle:function(){
+    if(!ACT || !window.landing || !window.landing.activity) return;
+    window.landing.activity.setPref({ ask: !ACT.ask }).then(function(s){
+      ACT = s; render(); toast(s.ask ? '换应用时会问你一句' : '不再自动询问');
+    });
+  },
   actFolder:function(){
     if(window.landing && window.landing.activity) window.landing.activity.openFolder();
   },
@@ -4467,8 +4599,31 @@ var App = {
     window.landing.activity.setPref({
       sampleSec: num('act_sample', 60, 10, 600),
       shotMin:   num('act_shot',   5,  0, 120),
-      keepDays:  num('act_keep',  14,  1, 365)
+      keepDays:  num('act_keep',  14,  1, 365),
+      askCoolMin:num('act_cool',  15,  3, 240)
     }).then(function(s){ ACT = s; render(); toast('活动记录设置已保存'); });
+  },
+  /* --- 换应用自动计时（2026-10-13）--- */
+  askGo:function(){
+    if(!ASK) return;
+    var inp = $('askName');
+    var nm = String((inp && inp.value) || ASK.name || '').trim().slice(0, 20);
+    if(!nm){ toast('给它起个名字再开始'); if(inp) inp.focus(); return; }
+    var inf = ASK;
+    STATE.appNames = STATE.appNames || {};
+    STATE.appNames[inf.proc] = nm;      /* 记住他的叫法，下次直接用 */
+    save();
+    autoCommit();                        /* 保险：上一段自动计时先落账 */
+    askClose(function(){
+      startStopwatch('loose', null, { name:nm, category:actCatToPet(inf.cat) });
+      if(STATE.timer){ STATE.timer.auto = true; STATE.timer.autoProc = inf.proc; save(); renderTimerBar(); }
+      addMemory('timer', '自动开始计时：「'+nm+'」（检测到在用 '+appLabel(inf.proc)+'）', ['计时']);
+    });
+  },
+  askSkip:function(){
+    if(!ASK) return;
+    ASK_MUTE[ASK.proc] = Date.now() + 60*60000;   /* 同一个应用一小时内不再问 */
+    askClose(function(){ toast('好，这次不记'); });
   },
   /* 休息日：没有取消入口 —— 这是刻意的，有代价的行为才有信息量 */
   restToday:function(){
@@ -5100,6 +5255,10 @@ document.addEventListener('click',function(e){
   else if(act==='actRank'){ App.actRank(); }
   else if(act==='actClearShots'){ App.actClearShots(); }
   else if(act==='actSave'){ App.actSave(); }
+  /* 换应用自动计时（2026-10-13） */
+  else if(act==='actAskToggle'){ App.actAskToggle(); }
+  else if(act==='askGo'){ App.askGo(); }
+  else if(act==='askSkip'){ App.askSkip(); }
 
   /* AI */
   else if(act==='sendAI') App.sendAI();
