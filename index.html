@@ -77,6 +77,18 @@ body::before{content:"";position:fixed;inset:0;z-index:-3;
     radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.06), transparent 60%),
     #0d0b0a;
 }
+/* 「一束光」（2026-10-13）：只给今日页顶部打一束赭石暖光，其余 7 个栏目维持上面那四团环境光。
+   暗色系作品都是靠**一处**辉光把视线钉在标题上，不是全屏均匀发亮 —— 主次就是这么出来的。
+   data-tab 由 app.js 的 render() 写到 body 上。 */
+body[data-tab="today"]::before{content:"";position:fixed;inset:0;z-index:-3;
+  background:
+    radial-gradient(62% 36% at 50% -8%, rgba(224,138,78,.34), rgba(224,138,78,.08) 46%, transparent 74%),
+    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.15), transparent 60%),
+    radial-gradient(44% 38% at 84% 14%, rgba(47,191,174,.07), transparent 62%),
+    radial-gradient(64% 54% at 52% 104%, rgba(192,112,60,.11), transparent 62%),
+    radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.05), transparent 60%),
+    #0d0b0a;
+}
 /* GradientWaves 暖色渐变波浪背景（gradient-waves.js 注入 canvas，远处淡出透出底层渐变） */
 #bg-waves{position:fixed;inset:0;z-index:-2;pointer-events:none;}
 /* 可选背景图叠层：30% 透明度，留空则不显示 */
@@ -254,13 +266,16 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .empty{text-align:center;color:var(--muted);padding:34px 10px;font-size:14px}
 
 /* 按钮 */
-.btn{padding:10px 16px;border-radius:11px;font-weight:700;font-size:14px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+/* 按钮（2026-10-13 胶囊化）：参考站里主/次按钮一律是圆角胶囊、且成对出现
+   （主=实心品牌色，次=透明描边 ghost）。主按钮**保持赭石**，不学它们用白色 ——
+   白色在深底上会把品牌锚点抢掉。 */
+.btn{padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
 .btn.primary{background:linear-gradient(135deg,var(--terracotta),var(--terracotta-d));color:#fff}
 .btn.primary:hover{filter:brightness(1.05);box-shadow:0 0 0 1px rgba(168,93,44,.25),0 0 22px rgba(192,112,60,.28),0 4px 14px rgba(46,36,25,.16)}
 .btn.ghost{background:rgba(255,255,255,.08);color:var(--ink);border:1px solid var(--line)}
 .btn.ghost:hover{background:rgba(194,168,120,.18)}
 .btn.danger{background:var(--red);color:#fff}
-.btn.sm{padding:6px 11px;font-size:13px;border-radius:9px}
+.btn.sm{padding:6px 13px;font-size:13px;border-radius:999px}
 .btn.block{width:100%;justify-content:center}
 .btn.teal{background:linear-gradient(135deg,#1f9e8e,#0e8f9e);color:#fff}
 
@@ -297,6 +312,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
 }
 .task:hover{border-color:var(--terracotta);background:rgba(255,255,255,.11)}
+/* 顶部一道彩色渐变细边（2026-10-13）：照 Glow Features 那张卡的做法 ——
+   用一条 2px 渐变区分分类，比整块色或加图标都省视觉噪音。
+   四类各一色，跟 .cat.<cls> 那套标签色保持一致，别另起一套。 */
+.task,.wk-row{position:relative;overflow:hidden}
+.task[data-cat]::before,.wk-row[data-cat]::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:2px;pointer-events:none;
+  background:linear-gradient(90deg,transparent 0%,var(--cl,rgba(255,255,255,.4)) 30%,var(--cl,rgba(255,255,255,.4)) 100%);
+  opacity:.85}
+.task[data-cat="fun"]::before,.wk-row[data-cat="fun"]::before{--cl:#e5768e}
+.task[data-cat="work"]::before,.wk-row[data-cat="work"]::before{--cl:#5b93d6}
+.task[data-cat="life"]::before,.wk-row[data-cat="life"]::before{--cl:#e0a93b}
+.task[data-cat="growth"]::before,.wk-row[data-cat="growth"]::before{--cl:#8f74ff}
 .task .tinfo{flex:1;min-width:0}
 .task .tname{font-weight:800;font-size:15px;color:var(--ink)}
 .task .tmeta{color:var(--muted);font-size:12px;margin-top:2px}
@@ -634,7 +661,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* 结构化模块头（对齐 landing-prototype 蓝图） */
 .mod-head{margin-bottom:18px}
-.mod-head .kicker{font-family:var(--font-display);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--khaki-deep)}
+/* eyebrow（2026-10-13）：照 MotionSites 那批作品的规格 —— 11px / 0.3em 字距 / 全大写。
+   它不承载信息，只负责把视线引到下面的大标题上；原来是 13px / .06em，太像正文了。 */
+.mod-head .kicker{font-family:var(--font-display);font-size:11px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);opacity:.85}
 .mod-head h2{font-size:25px;font-weight:800;margin:5px 0 7px;font-family:var(--font-num),var(--font-cjk);letter-spacing:-.01em;color:var(--ink)}
 .mod-head p{color:var(--muted);max-width:680px;font-size:14px;line-height:1.55}
 
@@ -643,6 +672,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .warp-head h2{font-size:clamp(26px,3.4vw,38px);font-weight:800;margin:0;font-family:var(--font-num),var(--font-cjk);letter-spacing:-.02em;color:var(--ink);line-height:1.05}
 .mod-head.hero .warp-head{min-height:96px;margin:8px 0 10px}
 .mod-head.hero .warp-head h2{font-size:clamp(32px,5vw,56px)}
+/* 两段式标题（2026-10-13）：前半「无衬线粗体陈述」+ 后半「衬线斜体升华」。
+   这是 MotionSites 那批作品里出现频率最高的一招（Automate repetitive. / *Focus on growth.*）。
+   ⚠️ 前半仍交给 warp-text 渲染（它只认 textContent + 单一字体，没法混排），
+      所以后半必须是一个**独立的真实 DOM 节点**；两层共用同一个 font-size，
+      视觉上才是同一行标题断成两句，而不是两个标题。 */
+.mod-head.hero .hero-line{font-size:clamp(30px,4.6vw,54px);line-height:1.14}
+.mod-head.hero .hero-line .warp-head{min-height:1.16em;margin:0;overflow:visible}
+.mod-head.hero .hero-line .warp-head h2{font-size:inherit;line-height:inherit;letter-spacing:-.03em}
+.hero-serif{font-family:Georgia,'Times New Roman',var(--font-cjk),serif;font-style:italic;font-weight:400;
+  letter-spacing:-.005em;color:var(--terracotta);
+  text-shadow:0 0 34px rgba(224,138,78,.22)}
+@media(max-width:640px){.mod-head.hero .hero-line{font-size:clamp(27px,8vw,38px)}}
 .warp-head[data-warp-mounted] h2{visibility:hidden}
 .warp-head canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 
@@ -876,8 +917,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="gradient-waves.js?v=2"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
-<script src="pet.js?v=43"></script>
-<script src="app.js?v=55"></script>
+<script src="pet.js?v=44"></script>
+<script src="app.js?v=56"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>
