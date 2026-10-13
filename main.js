@@ -504,8 +504,8 @@ ipcMain.handle('jwgl:logout', () => {
 /* 菜单项在渲染进程里直接叫 window.App / window.Landing 的公开方法，
    不额外建一套 IPC 事件通道——这些函数本来就是给 UI 用的。 */
 const TABS = [
-  ['今日', 'today'], ['任务', 'tasks'], ['周报', 'weekly'], ['日报', 'digest'],
-  ['陪伴', 'companion'], ['伙伴', 'pet'], ['商城', 'shop'], ['我的', 'me']
+  ['今日', 'today'], ['周报', 'weekly'], ['日报', 'digest'], ['陪伴', 'companion'],
+  ['伙伴', 'pet'], ['商城', 'shop'], ['我的', 'me']
 ];
 
 function runInRenderer(js) {

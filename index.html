@@ -576,11 +576,21 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* 看板/周报 */
 .kanban{display:flex;flex-direction:column;gap:6px}
-.kb-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.kb-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;position:relative;padding-left:10px}
 .kb-row .kl{width:96px;font-size:13px;font-weight:700;flex:none;color:var(--ink)}
 .kb-row .kt{flex:1;height:24px;background:rgba(255,255,255,.06);border-radius:6px;overflow:hidden}
 .kb-row .kt>div{height:100%;border-radius:6px;transition:width .4s}
 .kb-row .kv{width:64px;text-align:right;font-size:12px;color:var(--muted);flex:none}
+/* 四类的彩色细边（2026-10-13，落地方案第 4 条改落点）：
+   原计划是压在任务卡顶部「区分任务四类」，但任务模块已删 —— 挪到周报这张分类看板的行左侧。
+   形状从"顶边"改成"左边"是配行的形状；色值跟 .cat.<cls> 标签同一套，别各写一套。 */
+.kb-row[data-cat]::before{content:"";position:absolute;left:0;top:1px;bottom:1px;width:2px;
+  border-radius:99px;pointer-events:none;
+  background:linear-gradient(180deg,transparent 0%,var(--cl,rgba(255,255,255,.35)) 34%,var(--cl,rgba(255,255,255,.35)) 100%);}
+.kb-row[data-cat="fun"]::before{--cl:#e5768e}
+.kb-row[data-cat="work"]::before{--cl:#5b93d6}
+.kb-row[data-cat="life"]::before{--cl:#e0a93b}
+.kb-row[data-cat="growth"]::before{--cl:#8f74ff}
 .stat-row{display:flex;gap:12px;text-align:center}
 .stat-col{flex:1;padding:14px 8px;border-radius:14px;background:rgba(255,255,255,.09);border:1px solid var(--line)}
 .stat-num{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
@@ -880,7 +890,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
       <div><div class="name">着陆</div><div class="sub">把焦虑变成下一步</div></div>
     </div>
     <button class="nav-item active" data-tab="today"><svg class="icon"><use href="#i-home"/></svg>今日</button>
-    <button class="nav-item" data-tab="tasks"><svg class="icon"><use href="#i-list"/></svg>任务</button>
     <button class="nav-item" data-tab="weekly"><svg class="icon"><use href="#i-chart"/></svg>周报</button>
     <button class="nav-item" data-tab="digest"><svg class="icon"><use href="#i-trending"/></svg>日报</button>
     <button class="nav-item" data-tab="companion"><svg class="icon"><use href="#i-chat"/></svg>陪伴</button>
@@ -902,7 +911,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
   <nav class="tabbar">
     <button class="nav-item active" data-tab="today"><svg class="icon"><use href="#i-home"/></svg>今日</button>
-    <button class="nav-item" data-tab="tasks"><svg class="icon"><use href="#i-list"/></svg>任务</button>
     <button class="nav-item" data-tab="weekly"><svg class="icon"><use href="#i-chart"/></svg>周报</button>
     <button class="nav-item" data-tab="digest"><svg class="icon"><use href="#i-trending"/></svg>日报</button>
     <button class="nav-item" data-tab="companion"><svg class="icon"><use href="#i-chat"/></svg>陪伴</button>
@@ -919,8 +927,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="gradient-waves.js?v=2"></script>
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
-<script src="pet.js?v=44"></script>
-<script src="app.js?v=56"></script>
+<script src="pet.js?v=45"></script>
+<script src="app.js?v=57"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

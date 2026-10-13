@@ -147,11 +147,94 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   log('\n== 7. 切栏目 ==');
   const nav = await page.$$('.nav-item');
   if (nav.length > 3) {
-    await nav[3].click();
+    await page.click('.nav-item[data-tab="weekly"]');
     await sleep(900);
     const t2 = await page.evaluate(() => document.body.getAttribute('data-tab'));
-    check('data-tab 跟着切', t2 && t2 !== 'today', t2);
+    check('data-tab 跟着切', t2 === 'weekly', t2);
   }
+
+  log('\n== 8. 「任务」模块确实没了 ==');
+  check('侧栏 / tabbar 没有 data-tab="tasks"',
+        (await page.$$eval('[data-tab="tasks"]', els => els.length)) === 0);
+  const navCount = (await page.$$('.nav-item')).length;
+  check('导航项 = 14（侧栏 7 + tabbar 7）', navCount === 14, navCount + ' 个');
+  // 切回今日页看卡片
+  await page.click('.nav-item[data-tab="today"]');
+  await sleep(900);
+  const todayHtml = await page.evaluate(() => document.getElementById('view').innerHTML);
+  check('今日页有「今天的池子」', /今天的池子/.test(todayHtml));
+  check('今日页没有「快捷打卡」', !/快捷打卡/.test(todayHtml));
+  check('今日页不报错地渲染完', todayHtml.length > 500);
+
+  log('\n== 9. 每日必做：管理弹层（任务页删掉后的替代入口）==');
+  // 造数据必须走**活跃 STATE** —— 直接 setItem 会被应用的自动保存覆盖（踩过）
+  await page.evaluate(() => {
+    const s = window.Landing.state();
+    s.mustDos = [
+      { id: 'm1', name: '吃维生素', enabled: true, records: [], createdAt: '2026-10-01' },
+      { id: 'm2', name: '记账', enabled: false, records: [], createdAt: '2026-10-01' },
+    ];
+    // 松散时长：本周几笔，覆盖两类，好让周报的「各类别投入占比」有东西渲染
+    const p = n => ('0' + n).slice(-2);
+    const day = off => { const d = new Date(); d.setDate(d.getDate() - off);
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
+    s.loose = [
+      { id: 'l1', date: day(0), name: '打游戏', minutes: 50, category: 'fun' },
+      { id: 'l2', date: day(0), name: '看论文', minutes: 30, category: 'work' },
+      { id: 'l3', date: day(1), name: '读了两章', minutes: 25, category: 'growth' },
+    ];
+    window.Landing.save();
+  });
+  await page.reload({ waitUntil: 'networkidle2' });
+  await sleep(1200);
+  check('必做卡出现「管理」按钮', await page.evaluate(() => !!document.querySelector('[data-act="mustManage"]')));
+  await page.click('[data-act="mustManage"]');
+  await sleep(400);
+  const s1 = await page.evaluate(() => document.getElementById('sheet').innerHTML);
+  check('管理弹层打开', /必做 · 管理/.test(s1));
+  check('关掉的项也在里面', /吃维生素/.test(s1) && /记账/.test(s1) && /已关/.test(s1));
+  await page.click('#sheet [data-act="toggleMust"][data-id="m2"]');
+  await sleep(450);
+  const s2 = await page.evaluate(() => document.getElementById('sheet').innerHTML);
+  check('点开关后弹层自己刷新（不再是「已关」）', /必做 · 管理/.test(s2) && !/已关/.test(s2));
+  await page.screenshot({ path: path.join(SHOTS, 'must-manage.png') });
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.evaluate(() => { const s = document.getElementById('sheet'); s.classList.add('hidden'); s.innerHTML = ''; });
+
+  log('\n== 10. 遍历全部栏目（防"删了东西把某一页搞白屏"）==');
+  // 报错基线必须在点之前取 —— 之前在点之后取，于是周报的 ReferenceError 被漏过去了，
+  // 最后是靠肉眼读截图才发现（教训：断言要放在动作前）
+  for (const t of ['weekly', 'digest', 'companion', 'pet', 'shop', 'me', 'today']) {
+    const before = errs.length;
+    await page.click(`.nav-item[data-tab="${t}"]`);
+    await sleep(1100);
+    const html = await page.evaluate(() => document.getElementById('view').innerHTML);
+    const failed = /渲染失败/.test(html);
+    check(`「${t}」正常渲染`, !failed && errs.length === before && html.length > 300,
+          failed ? '出现「渲染失败」卡片' : (errs.slice(before).join(' | ') || 'html ' + html.length + ' 字符'));
+  }
+
+  log('\n== 11. 周报的内容口径 ==');
+  await page.click('.nav-item[data-tab="weekly"]');
+  await sleep(1200);
+  const wkHtml = await page.evaluate(() => document.getElementById('view').innerHTML);
+  check('周报没有「每周任务」卡', !/每周任务<\/h2>/.test(wkHtml));
+  check('周报出现「每日回顾」', /每日回顾/.test(wkHtml));
+  const kb = await page.evaluate(() => {
+    const r = document.querySelector('.kb-row[data-cat]');
+    if (!r) return null;
+    const bar = r.querySelector('.kt>div');
+    return { cat: r.getAttribute('data-cat'),
+             edge: getComputedStyle(r, '::before').backgroundImage.length,
+             bar: bar ? getComputedStyle(bar).backgroundColor : '' };
+  });
+  check('看板行带分类标识 data-cat', !!kb, kb && kb.cat);
+  if (kb) {
+    check('看板行有彩色细边', kb.edge > 20, kb.edge + ' 字符');
+    // 旧代码按旧 key 取色 → 现在的 fun/work/life/growth 全掉到 #8b6dff 兜底紫（真 bug）
+    check('色条用的是四类色，不是兜底紫', kb.bar !== 'rgb(139, 109, 255)', kb.bar);
+  }
+  await page.screenshot({ path: path.join(SHOTS, 'weekly.png'), clip: { x: 0, y: 0, width: 1280, height: 900 } });
 
   await browser.close();
   server.close();

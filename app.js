@@ -1,8 +1,10 @@
 /* 着陆 Landing v2 — 把焦虑变成下一步
- * 模块：今日(情绪气象+倾倒台+一件+快捷打卡) / 任务(长周期+日常+每周) / 周报(复盘看板) /
- *       日报(GitHub 热度) / 陪伴(AI) / 伙伴(养成挂件) / 我的(设置+数据管理)
- * 核心机制：先倾倒外化 → 选今天最小一步 → 打卡即算数 → 长周期里程碑鼓励 +
- *          日常循环 + 连续2天未打卡自动暂停 + 每周首次打开自动生成复盘
+ * 模块（2026-10-13 起 7 个）：今日(情绪气象+倾倒台+一件+每日必做+今天的池子) / 周报(复盘看板) /
+ *       日报(GitHub 热度) / 陪伴(AI) / 伙伴(养成挂件) / 商城 / 我的(设置+数据管理)
+ *       ⚠️ 「任务」模块已删（master 选的 A 档）：长周期 / 日常循环 / 每周任务全没了，
+ *          只留「每日必做」并挪到今日页；时间投入统一走松散计时（含换应用自动计时）。
+ * 核心机制：先倾倒外化 → 选今天最小一步 → 打卡即算数 → 换个应用自动开始计时 →
+ *          每日必做清空累计连续天数 → 每周首次打开自动生成复盘
  */
 (function(){
 'use strict';
@@ -112,6 +114,23 @@ function catName(key){
   var c=CATEGORIES.find(function(x){return x.key===(CAT_ALIAS_KEY[key]||key);});
   return c ? c.label : key;
 }
+/* 四类的**唯一**色源（2026-10-13）：必须和 index.html 里 `.cat.<cls>` 那套标签色一模一样，
+   别在别处再写一张 map —— 之前周报就自己写了两张按**旧 key** 取色的表，
+   结果现在的 fun/work/life/growth 全掉到紫色兜底（"工作学习"显示成紫的）。 */
+var CAT_COLOR = {fun:'#e5768e', work:'#5b93d6', life:'#e0a93b', growth:'#8f74ff'};
+
+/* 分类 key 归一化 → data-cat / 取色用。认不出来返回空串（调用方别写 data-cat，会渲染成灰线）。 */
+function catKeyOf(key){
+  var k = CAT_ALIAS_KEY[key] || key;
+  return CATEGORIES.some(function(x){return x.key===k;}) ? k : '';
+}
+function catAttr(key){
+  var k = catKeyOf(key);
+  return k ? ' data-cat="'+k+'"' : '';
+}
+function catColor(key){
+  return CAT_COLOR[catKeyOf(key)] || 'rgba(255,255,255,.35)';
+}
 
 /* ================= 数据模型 ================= */
 var STATE = null;
@@ -121,8 +140,6 @@ var _digestFilter = '全部';  /* 日报分类筛选（瞬态，不持久化） 
 function blankState(){
   return {
     version: APP_CONFIG.version,
-    longTasks: [],      // 长周期：{id,name,unit,total,current,deadline,category,status,records:[],createdAt}
-    dailyTasks: [],     // 日常循环：{id,name,category,subCategory,type('habit'|'recharge'),enabled,records:[],createdAt}
     mustDos: [],        // 每日必做：{id,name,enabled,records:[{date,ts}],createdAt}（ts = 首次打卡时刻）
     reports: {},        // {weekKey:{generatedAt,summary,moodTrack,dailyCards}}
     digest: {},         // {date:{fetchedAt,categories:{label:[{name,desc,stars,url,lang}]}}}
@@ -138,7 +155,6 @@ function blankState(){
                         // ⚠️ 故意**不放**在 schedule 里 —— 那个快照每次同步都被整体替换，会被冲掉
     companion: {messages: []},
     community: {nick:''},
-    weeklyTasks: [],    // 每周任务：{id,name,type('exercise'|'custom'),category,dailyGoalMin,weeklyGoalDays,enabled,records:[{date,minutes,mode,plannedMin,ts}],createdAt}
     timer: null,        // 计时器：{taskId,plannedMin,startedAt,endsAt,paused,remainMs,finished}
                         //   自动计时起的会多两个字段：auto:true + autoProc:'code.exe'
     appNames: {},       // 应用 → 他给这件事起的名字：{'code.exe':'写代码'}（2026-10-13 自动计时用）
@@ -172,21 +188,6 @@ function stripLegacySeed(){
   if(s.seedStripped) return;
   s.seedStripped = true;
 
-  var ltNames = ['背完考研红宝书单词','读完《深度工作》'];
-  var dtNames = ['英语背词 30 个','跑步 30 分钟','冥想 10 分钟'];
-  var wkNames = ['跑步 / 健身房'];
-  var ltUntouched = function(g){ return g.records.length===0 && !g._milestoneHalf && !g._milestoneDone; };
-  var dtUntouched = function(d){ return d.records.length===0; };
-
-  if(s.longTasks.length===2 && s.longTasks.every(function(g){ return ltNames.indexOf(g.name)>=0 && ltUntouched(g); })){
-    s.longTasks = [];
-  }
-  if(s.dailyTasks.length===3 && s.dailyTasks.every(function(d){ return dtNames.indexOf(d.name)>=0 && dtUntouched(d); })){
-    s.dailyTasks = [];
-  }
-  if(s.weeklyTasks.length===1 && s.weeklyTasks.every(function(w){ return wkNames.indexOf(w.name)>=0 && w.records.length===0; })){
-    s.weeklyTasks = [];
-  }
   /* 情绪气象是今天页那个选心情控件写的，但那个控件一直没做出来——
      所以这组记录只可能来自示例。用「完全等于当初那 5 条」做签名匹配：
      用户只要自己在今日页选过心情，日期或备注就会对不上，整体不碰。 */
@@ -208,8 +209,6 @@ function stripLegacySeed(){
 function migrate(){
   var s = STATE;
   s.version = s.version || APP_CONFIG.version;
-  s.longTasks = s.longTasks || [];
-  s.dailyTasks = s.dailyTasks || [];
   s.mustDos = s.mustDos || [];         /* 每日必做，老存档必须补默认值 */
   s.reports = s.reports || {};
   s.digest = s.digest || {};
@@ -225,7 +224,6 @@ function migrate(){
   if(!s.termStart) s.termStart = (s.schedule && s.schedule.termStart) || '2026-08-31';
   s.companion = s.companion || {messages:[]};
   s.community = s.community || {nick:''};
-  s.weeklyTasks = s.weeklyTasks || [];
   s.memories = s.memories || [];
   /* 一次性：清掉历史里所有「对话流水」记忆（master 要求：不要有你问我答的记录）。
      用 flag 保证只跑一次；新的对话本来就不再写进来了（pet.js 的 chat() 已去掉 addMemory）。
@@ -239,12 +237,12 @@ function migrate(){
      ⚠️ 必须用 flag 挡住 —— 否则每次启动都会把他手动改过的分类冲回去。 */
   if(!s.catMigrated){
     s.catMigrated = true;
-    [].concat(s.dailyTasks||[], s.weeklyTasks||[], s.longTasks||[], s.mustDos||[])
+    (s.mustDos||[])
       .forEach(function(t){ t.category = guessCategory(t.name, t.category); });
   }
   s.timer = s.timer || null;
   if(s.timer){
-    if(!s.timer.scope) s.timer.scope = 'weekly';   /* 兼容旧版：原来只有每周任务能计时 */
+    if(!s.timer.scope) s.timer.scope = 'loose';   /* 任务模块已删，只剩松散计时（2026-10-13） */
     if(!s.timer.mode) s.timer.mode = 'countdown';
     if(s.timer.mode==='stopwatch' && s.timer.accMs===undefined) s.timer.accMs = 0;
   }
@@ -260,80 +258,13 @@ function migrate(){
   if(!s.dumps.length && s.dumps_v1) s.dumps = s.dumps_v1;
   if(!s.weather.length && s.weather_v1) s.weather = s.weather_v1;
 
-  s.longTasks.forEach(function(g){
-    g.records = g.records || [];
-    if(g.status===undefined) g.status = 'active';
-    if(g.current===undefined) g.current = 0;
-  });
-  s.dailyTasks.forEach(function(d){
-    d.records = d.records || [];
-    if(d.enabled===undefined) d.enabled = true;
-    if(d.type===undefined) d.type = 'habit';
-  });
   s.mustDos.forEach(function(m){
     m.records = m.records || [];
     if(m.enabled===undefined) m.enabled = true;
     if(!m.createdAt) m.createdAt = today();   /* 连续天数的追溯下限靠它，缺了会把历史天数算丢 */
   });
-  s.weeklyTasks.forEach(function(w){
-    w.records = w.records || [];
-    if(w.type===undefined) w.type = 'exercise';
-    if(w.enabled===undefined) w.enabled = true;
-    if(!w.dailyGoalMin) w.dailyGoalMin = 30;
-    if(!w.weeklyGoalDays) w.weeklyGoalDays = 5;
-    if(!w.category) w.category = w.type==='exercise' ? 'life' : 'work';
-  });
 
   stripLegacySeed();
-}
-
-/* 示例数据：只在用户主动点「载入示例数据」时用，不再自动播种 */
-function seedDemo(){
-  var t = today();
-
-  STATE.longTasks = [
-    {id:uid('lt'), name:'背完考研红宝书单词', unit:'词', total:5500, current:1200,
-     deadline:addDays(t,90), category:'work', status:'active',
-     records:[
-       {date:addDays(t,-5),amount:80,minutes:25},
-       {date:addDays(t,-4),amount:60,minutes:20},
-       {date:addDays(t,-3),amount:100,minutes:30},
-       {date:addDays(t,-1),amount:50,minutes:15}
-     ], createdAt:addDays(t,-10)},
-    {id:uid('lt'), name:'读完《深度工作》', unit:'页', total:320, current:85,
-     deadline:addDays(t,21), category:'work', status:'active',
-     records:[
-       {date:addDays(t,-3),amount:15,minutes:40},
-       {date:addDays(t,-2),amount:20,minutes:45},
-       {date:addDays(t,-1),amount:10,minutes:30}
-     ], createdAt:addDays(t,-7)}
-  ];
-
-  STATE.dailyTasks = [
-    {id:uid('dt'), name:'英语背词 30 个', category:'growth', subCategory:'学习', type:'habit', enabled:true,
-     records:[
-       {date:addDays(t,-5),amount:30,minutes:10},{date:addDays(t,-4),amount:30,minutes:12},
-       {date:addDays(t,-3),amount:30,minutes:11},{date:addDays(t,-1),amount:30,minutes:10}
-     ], createdAt:addDays(t,-14)},
-    {id:uid('dt'), name:'跑步 30 分钟', category:'life', subCategory:'运动', type:'habit', enabled:true,
-     records:[
-       {date:addDays(t,-4),amount:30,minutes:30},{date:addDays(t,-2),amount:30,minutes:28}
-     ], createdAt:addDays(t,-14)},
-    {id:uid('dt'), name:'冥想 10 分钟', category:'growth', subCategory:'冥想', type:'recharge', enabled:true,
-     records:[
-       {date:addDays(t,-5),amount:10,minutes:10},{date:addDays(t,-3),amount:10,minutes:10},
-       {date:addDays(t,-2),amount:10,minutes:10},{date:addDays(t,-1),amount:10,minutes:10}
-     ], createdAt:addDays(t,-7)}
-  ];
-
-  STATE.weeklyTasks = [
-    {id:uid('wk'), name:'跑步 / 健身房', type:'exercise', category:'life',
-     dailyGoalMin:30, weeklyGoalDays:5, enabled:true,
-     records:[
-       {date:addDays(t,-4), minutes:30, mode:'timer', plannedMin:30, ts:Date.now()},
-       {date:addDays(t,-2), minutes:35, mode:'timer', plannedMin:30, ts:Date.now()}
-     ], createdAt:addDays(t,-14)}
-  ];
 }
 
 function save(){
@@ -457,103 +388,8 @@ function fmtNum(n){
   return String(n);
 }
 
-/* ================= 长周期任务 ================= */
-function longPct(g){
-  if(!g.total || g.total<=0) return 0;
-  return Math.min(100, Math.round((g.current||0)/g.total*100));
-}
-
-function checkLongMilestones(g){
-  var pct = longPct(g);
-  var msgs = [];
-  if(pct>=100 && !g._milestoneDone){
-    g._milestoneDone = true;
-    msgs.push('🎉 「'+g.name+'」已完成！你做到了！');
-    addMemory('milestone', '「'+g.name+'」全部完成 🎉', ['里程碑']);
-    grantFish(5, '「'+g.name+'」全部完成 🎉');
-  } else if(pct>=50 && !g._milestoneHalf){
-    g._milestoneHalf = true;
-    msgs.push('💪 「'+g.name+'」进度已到 '+pct+'%！过半了，继续！');
-    addMemory('milestone', '「'+g.name+'」进度过半（'+pct+'%）', ['里程碑']);
-    grantFish(2, '「'+g.name+'」进度过半 '+pct+'%');
-  }
-  return msgs;
-}
-
-/* 检查所有活跃长周期是否连续2天未打卡 → 自动暂停 */
-function checkAutoPause(){
-  var yesterday = addDays(today(),-1);
-  var paused = [];
-  STATE.longTasks.forEach(function(g){
-    if(g.status!=='active') return;
-    var lastRec = null;
-    for(var i=g.records.length-1;i>=0;i--){
-      if(g.records[i].date<=yesterday){ lastRec=g.records[i]; break; }
-    }
-    if(lastRec && lastRec.date<yesterday){
-      /* 最后一次打卡不是昨天也不是今天 → 漏了至少1天，检查是否连续漏2天 */
-      var dayBefore = addDays(yesterday,-1);
-      var hasDayBefore = g.records.some(function(r){return r.date===dayBefore;});
-      var hasToday = g.records.some(function(r){return r.date===today();});
-      /* 休息日不算"漏"：昨天或前天有休息记录，就别暂停他 */
-      if(!hasDayBefore && !hasToday && !isRestDay(yesterday) && !isRestDay(dayBefore)){
-        g.status='paused';
-        g.pausedAt=today();
-        paused.push(g.name);
-      }
-    }
-  });
-  return paused;   /* 调用方决定怎么温和地说，startup 时才提示一次 */
-}
-
-function renderLongTaskCard(g){
-  var pct = longPct(g);
-  var isTodayChecked = g.records.some(function(r){return r.date===today();});
-  var statusBadge = '';
-  if(g.status==='done') statusBadge = '<span class="badge-done">已完成</span>';
-  else if(g.status==='paused') statusBadge = '<span class="badge-pause">已暂停</span>';
-
-  return '<div class="task '+(g.status==='paused'?'paused':'')+'" data-id="'+g.id+'">'
-    +'<div class="tinfo">'
-    +'<div class="tname">'+esc(g.name)+' '+statusBadge+'</div>'
-    +'<div class="tmeta">'+catLabel(g.category)+' · '+g.current+'/'+g.total+' '+g.unit+' · 截止 '+g.deadline+'</div>'
-    +'<div class="bar"><div style="width:'+pct+'%"></div></div>'
-    +'</div>'
-    +(g.status==='active'
-      ? '<button class="btn teal sm" data-act="startTimer" data-scope="long" data-id="'+g.id+'">'+icon('play')+'计时</button>'
-        + (isTodayChecked
-        ? '<button class="btn ghost sm" data-act="editLong" data-id="'+g.id+'">'+icon('edit')+'编辑</button>'
-        : '<button class="btn primary sm" data-act="checkinLong" data-id="'+g.id+'">'+icon('check')+'打卡</button>')
-      : (g.status==='paused'
-        ? '<button class="btn teal sm" data-act="resumeLong" data-id="'+g.id+'">继续</button>'
-        : ''))
-    +'<button class="btn ghost sm" data-act="editLong" data-id="'+g.id+'">'+icon('edit')+'</button>'
-    +'<button class="btn ghost sm" data-act="delLong" data-id="'+g.id+'">'+icon('trash')+'</button>'
-    +'</div>';
-}
-
-/* ================= 日常循环任务 ================= */
-function isDailyCheckedToday(dt){
-  return dt.records.some(function(r){return r.date===today();});
-}
-
-function dailyTodayMinutes(dt){
-  var rec = dt.records.find(function(r){return r.date===today();});
-  return rec ? (rec.minutes||0) : 0;
-}
-
 function weeklyDailyStats(wk){
   var stats = {}; /* {categoryKey: {minutes:0, days:0, targetDays:7}} */
-  STATE.dailyTasks.forEach(function(dt){
-    if(!dt.enabled) return;
-    if(!stats[dt.category]) stats[dt.category]={minutes:0,days:0,targetDays:7};
-    dt.records.forEach(function(r){
-      if(r.date>=wk && r.date<addDays(wk,7)){
-        stats[dt.category].minutes += (r.minutes||0);
-        stats[dt.category].days++;
-      }
-    });
-  });
   /* 松散时长（不挂任何任务的那些，如「玩一会杀戮尖塔」）也算投入 ——
      master 2026-10-09：「直接记入时间积累池和周报总结中」。放这里而不是放调用方，
      是为了让所有读投入的地方（周报、宠物上下文）自动都算上。 */
@@ -566,27 +402,6 @@ function weeklyDailyStats(wk){
     }
   });
   return stats;
-}
-
-function renderDailyTaskCard(dt){
-  var checked = isDailyCheckedToday(dt);
-  var typeIcon = dt.type==='recharge' ? '🔋' : '📌';
-  var typeLabel = dt.type==='recharge' ? '<span class="cat recharge">充能</span>' : '';
-
-  return '<div class="task '+(checked?'':'')+'" data-id="'+dt.id+'">'
-    +'<div class="tinfo">'
-    +'<div class="tname">'+esc(dt.name)+' '+typeLabel+(dt.enabled?'':'<span class="badge-pause">已关</span>')+'</div>'
-    +'<div class="tmeta">'+catLabel(dt.category)+(dt.subCategory?' · '+esc(dt.subCategory):'')+'</div>'
-    +'</div>'
-    +(checked
-      ? '<span class="badge-done">✓ 已完成 '+dailyTodayMinutes(dt)+'分钟</span>'
-        + '<button class="btn teal sm" data-act="startTimer" data-scope="daily" data-id="'+dt.id+'">'+icon('play')+'再计时</button>'
-      : '<button class="btn primary sm" data-act="checkinDaily" data-id="'+dt.id+'">'+icon('check')+'打卡</button>'
-        + '<button class="btn teal sm" data-act="startTimer" data-scope="daily" data-id="'+dt.id+'">'+icon('play')+'计时</button>')
-    +'<button class="btn ghost sm" data-act="toggleDaily" data-id="'+dt.id+'">'+(dt.enabled?'关':'开')+'</button>'
-    +'<button class="btn ghost sm" data-act="editDaily" data-id="'+dt.id+'">'+icon('edit')+'</button>'
-    +'<button class="btn ghost sm" data-act="delDaily" data-id="'+dt.id+'">'+icon('trash')+'</button>'
-    +'</div>';
 }
 
 /* ================= 每日必做 =================
@@ -674,13 +489,13 @@ function renderMustCard(){
       + '<div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
       + '<span class="must-count">0 / 0</span></div>'
       + '<div class="hint">'+(allOff
-          ? '必做项都被你关掉了。想重新用，去任务页把它们打开就行。'
+          ? '必做项都被你关掉了。点「管理」可以把它们重新打开。'
           : '还没设必做项。每天都要交代的那几件（吃药、记账、背词…）放这儿 —— '
             + '点一下打勾，软件记下<b>完成时刻</b>，全部清掉还会累计连续天数。')+'</div>'
-      + '<div class="must-foot">'+(allOff
-          ? '<button class="btn primary sm" data-act="goMustManage">去任务页</button>'
-          : '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
-            + '<button class="btn ghost sm" data-act="goMustManage">去任务页看看</button>')+'</div>'
+      + '<div class="must-foot">'
+      +   '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
+      +   (allOff ? '<button class="btn ghost sm" data-act="mustManage">管理</button>' : '')
+      + '</div>'
       + '</div>';
   }
 
@@ -724,12 +539,13 @@ function renderMustCard(){
   });
   h += '</div>'
     + '<div class="must-foot"><button class="btn ghost sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
-    + '<button class="btn ghost sm" data-act="goMustManage">管理 / 看记录</button></div>'
+    + '<button class="btn ghost sm" data-act="mustManage">管理</button></div>'
     + '</div>';
   return h;
 }
 
-/* 任务页的管理卡：只有这里能改名字、开关、看最近 7 天 */
+/* 必做项的管理卡（2026-10-13 起挂在今日页的「管理」弹层里，不再是任务页）：
+   只有这里能改名字、开关、看最近 7 天。 */
 function renderMustItemCard(m){
   var r = mustRecOn(m, today());
   var st = mustStreak(m);
@@ -760,235 +576,6 @@ function renderMustItemCard(m){
     + '</div>';
 }
 
-/* ================= 每周任务 ================= */
-/* 设计：双目标——【每日时长】+【每周达标天数】，能区分「练得久」和「练得勤」。
-   运动型打卡有两个入口：「已完成」直接把设定时长计入周报；「现在开始」起倒计时，
-   时间到再问「已完成 / 完成部分」，完成部分由你自己填实际做了多久。
-   原则延续：不催不罚，记录本身就算数。 */
-var WEEKLY_TYPES = [
-  {key:'exercise', label:'运动型', cat:'life', timed:true,
-   hint:'设每日运动时长，打卡可立即完成，也可起倒计时跟着做'},
-  {key:'custom',   label:'自定义型', cat:'work',    timed:false,
-   hint:'设每日目标与每周天数，打卡即完成，不记时长'}
-];
-function weeklyTypeOf(key){
-  return WEEKLY_TYPES.find(function(x){return x.key===key;}) || WEEKLY_TYPES[0];
-}
-
-function weeklyTodayMinutes(w){
-  var m=0;
-  (w.records||[]).forEach(function(r){ if(r.date===today()) m+=(r.minutes||0); });
-  return m;
-}
-function isWeeklyCheckedToday(w){ return weeklyTodayMinutes(w)>0; }
-
-/* 某一自然周（周一为界）的统计 */
-function weeklyTaskStats(w, wk){
-  wk = wk || weekKey();
-  var end = addDays(wk,7);
-  var byDate={}, total=0;
-  (w.records||[]).forEach(function(r){
-    if(r.date<wk || r.date>=end) return;
-    byDate[r.date]=(byDate[r.date]||0)+(r.minutes||0);
-    total += (r.minutes||0);
-  });
-  var goal = w.dailyGoalMin||0;
-  var actDays=0, okDays=0;
-  for(var i=0;i<7;i++){
-    var m = byDate[addDays(wk,i)]||0;
-    if(m>0){
-      actDays++;
-      if(goal<=0 || m>=goal) okDays++;   /* 部分完成也算「动了」，但不算达标 */
-    }
-  }
-  return {byDate:byDate, total:total, actDays:actDays, okDays:okDays,
-          goalDays:w.weeklyGoalDays||7, dailyGoal:goal};
-}
-
-/* 所有启用的每周任务合计（喂给周报） */
-function weeklyTasksSummary(wk){
-  var r = {goalMin:0, doneMin:0, goalDays:0, okDays:0, totalMin:0, byCat:{}};
-  STATE.weeklyTasks.forEach(function(w){
-    if(!w.enabled) return;
-    var st = weeklyTaskStats(w, wk);
-    r.goalMin += (w.dailyGoalMin||0)*(w.weeklyGoalDays||7);
-    r.doneMin += st.total;
-    r.totalMin += st.total;
-    r.goalDays += (w.weeklyGoalDays||7);
-    r.okDays += st.okDays;
-    var c = w.category||'life';
-    r.byCat[c] = (r.byCat[c]||0) + st.total;
-  });
-  return r;
-}
-
-/* 本周 7 天格子 */
-function weeklyDots(w){
-  var wk = weekKey();
-  var st = weeklyTaskStats(w);
-  var goal = w.dailyGoalMin||0;
-  var now = today();
-  var html = '<div class="wk-dots">';
-  for(var i=0;i<7;i++){
-    var d = addDays(wk,i);
-    var m = st.byDate[d]||0;
-    var cls = 'wk-dot';
-    if(d>now) cls += ' future';
-    else if(goal<=0 ? m>0 : m>=goal) cls += ' ok';
-    else if(m>0) cls += ' part';
-    var ways = m>0 ? dayModeLabels(w, d) : [];
-    html += '<i class="'+cls+'" title="'+d+' · '+m+' 分钟'+(ways.length?' · '+ways.join('/'):'')+'"></i>';
-  }
-  return html+'</div>';
-}
-
-/* 计时方式标签：正计时 / 倒计时 等 */
-var MODE_LABEL = {instant:'直接完成', timer:'倒计时', partial:'完成部分', extra:'追加', tap:'打卡', stopwatch:'正计时'};
-function modeLabel(m){ return MODE_LABEL[m]||'记录'; }
-
-/* 某天用过哪些计时方式（周报格子的 title 用） */
-function dayModeLabels(w, d){
-  var s = [];
-  (w.records||[]).forEach(function(r){
-    if(r.date!==d) return;
-    var l = modeLabel(r.mode);
-    if(s.indexOf(l)<0) s.push(l);
-  });
-  return s;
-}
-
-/* 本周各任务的计时方式分解（周报用来标出正计时/倒计时） */
-function weeklyModeStat(w, wk){
-  wk = wk || weekKey();
-  var end = addDays(wk,7);
-  var g = {sw:{n:0,min:0}, cd:{n:0,min:0}, dc:{n:0,min:0}};
-  (w.records||[]).forEach(function(r){
-    if(r.date<wk || r.date>=end) return;
-    var k = r.mode==='stopwatch' ? 'sw' : (r.mode==='timer'||r.mode==='partial') ? 'cd' : 'dc';
-    g[k].n++; g[k].min += (r.minutes||0);
-  });
-  return g;
-}
-
-/* 周报里那一排「正计时/倒计时/直接打卡」小标签 */
-function weeklyModeChips(w, wk){
-  var g = weeklyModeStat(w, wk);
-  if(!g.sw.n && !g.cd.n && !g.dc.n) return '';
-  var h = '<div class="wk-modes">';
-  if(g.sw.n) h += '<span class="mt sw">'+icon('play')+' 正计时 '+g.sw.n+' 次 · '+g.sw.min+' 分钟</span>';
-  if(g.cd.n) h += '<span class="mt cd">⏱ 倒计时 '+g.cd.n+' 次 · '+g.cd.min+' 分钟</span>';
-  if(g.dc.n) h += '<span class="mt dc">'+icon('check')+' 直接打卡 '+g.dc.n+' 次 · '+g.dc.min+' 分钟</span>';
-  return h+'</div>';
-}
-
-function renderWeeklyTaskCard(w){
-  var st = weeklyTaskStats(w);
-  var tmin = weeklyTodayMinutes(w);
-  var goal = w.dailyGoalMin||0;
-  var tp = weeklyTypeOf(w.type);
-  var dayPct = goal>0 ? Math.min(100, Math.round(tmin/goal*100)) : (tmin>0?100:0);
-  var checked = tmin>0;
-  var catCls = (CATEGORIES.find(function(c){return c.key===w.category;})||{}).cls || 'life';
-
-  return '<div class="task wtask'+(w.enabled?'':' paused')+'" data-id="'+w.id+'">'
-    +'<div class="tinfo">'
-    +'<div class="tname">'+esc(w.name)
-      +' <span class="cat '+catCls+'">'+tp.label+'</span>'
-      +(w.enabled?'':'<span class="badge-pause">已关</span>')+'</div>'
-    +'<div class="tmeta">每日 '+(goal||'—')+' 分钟 · 本周达标 <b>'+st.okDays+'/'+st.goalDays+'</b> 天 · 累计 '+st.total+' 分钟</div>'
-    +weeklyDots(w)
-    +'<div class="bar"><div style="width:'+dayPct+'%"></div></div>'
-    +'</div>'
-    +(checked
-      ? '<span class="badge-done">✓ 今天 '+tmin+' 分钟</span>'
-      : '<button class="btn primary sm" data-act="checkinWeekly" data-id="'+w.id+'">'+icon('check')+'打卡</button>')
-    +'<button class="btn teal sm" data-act="startTimer" data-scope="weekly" data-id="'+w.id+'">'+icon('play')+'计时</button>'
-    +'<button class="btn ghost sm" data-act="toggleWeekly" data-id="'+w.id+'">'+(w.enabled?'关':'开')+'</button>'
-    +'<button class="btn ghost sm" data-act="editWeekly" data-id="'+w.id+'">'+icon('edit')+'</button>'
-    +'<button class="btn ghost sm" data-act="delWeekly" data-id="'+w.id+'">'+icon('trash')+'</button>'
-    +'</div>';
-}
-
-/* ---- 打卡：已完成 / 现在开始 ---- */
-function openWeeklyCheckin(id){
-  var w = STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w) return;
-  var st = weeklyTaskStats(w);
-  var tp = weeklyTypeOf(w.type);
-  var tmin = weeklyTodayMinutes(w);
-
-  if(!tp.timed){
-    /* 自定义型：不记时长，直接确认 */
-    openSheet('<h2>打卡：'+esc(w.name)+'</h2>'
-      +'<div class="hint">'+tp.label+' · 本周达标 '+st.okDays+'/'+st.goalDays+' 天</div>'
-      +'<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
-      +'<button class="btn primary" id="wc_ok">已完成</button></div>');
-    $('wc_ok').onclick=function(){ commitWeeklyRecord(w, 0, 'tap', 0); };
-    return;
-  }
-
-  if(tmin>0){
-    /* 今天已经打过卡，仍允许追加一段 */
-    openSheet('<h2>再来一段？</h2>'
-      +'<div class="hint">「'+esc(w.name)+'」今天已记录 '+tmin+' 分钟（每日目标 '+w.dailyGoalMin+' 分钟）</div>'
-      +'<div class="field"><label>本次时长（分钟）</label><input id="wc_min" type="number" value="'+w.dailyGoalMin+'" min="1"></div>'
-      +'<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
-      +'<button class="btn teal" id="wc_sw2">'+icon('play')+'计时</button>'
-      +'<button class="btn primary" id="wc_add">记下</button></div>');
-    $('wc_add').onclick=function(){
-      var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
-      commitWeeklyRecord(w, m, 'extra', m);
-    };
-    $('wc_sw2').onclick=function(){
-      closeSheet();
-      startStopwatch('weekly', w.id);
-    };
-    return;
-  }
-
-  openSheet('<h2>打卡：'+esc(w.name)+'</h2>'
-    +'<div class="hint">今日目标 <b>'+w.dailyGoalMin+' 分钟</b> · 本周达标 '+st.okDays+'/'+st.goalDays+' 天</div>'
-    +'<div class="wk-pick">'
-      +'<button class="wk-choice" id="wc_done"><b>已完成</b><span>按设定时长直接计入周报</span></button>'
-      +'<button class="wk-choice" id="wc_start"><b>现在开始</b><span>按设定时长起倒计时</span></button>'
-      +'<button class="wk-choice" id="wc_sw"><b>计时</b><span>正计时，做多久算多久</span></button>'
-    +'</div>'
-    +'<div class="field" style="margin-top:14px"><label>本次时长（分钟）</label>'
-      +'<input id="wc_min" type="number" value="'+w.dailyGoalMin+'" min="1"></div>');
-
-  $('wc_done').onclick=function(){
-    var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
-    commitWeeklyRecord(w, m, 'instant', m);
-  };
-  $('wc_start').onclick=function(){
-    var m=parseInt($('wc_min').value,10)||w.dailyGoalMin;
-    closeSheet();
-    startWeeklyTimer(w, m);
-  };
-  $('wc_sw').onclick=function(){
-    closeSheet();
-    startStopwatch('weekly', w.id);
-  };
-}
-
-/* 写入一条每周任务记录 */
-function commitWeeklyRecord(w, minutes, mode, plannedMin){
-  minutes = Math.max(0, minutes||0);
-  w.records = w.records||[];
-  /* ⚠️ 这个判断必须在 push **之前**取：push 完今天就有记录了，
-     "今天是不是已经打过" 会永远为真，那条鱼就白设了 */
-  var hadToday = (w.records).some(function(r){ return r.date===today(); });
-  w.records.push({date:today(), minutes:minutes, mode:mode||'instant', plannedMin:plannedMin||minutes, ts:Date.now()});
-  if(STATE.timer && STATE.timer.taskId===w.id) STATE.timer=null;
-  /* 有时长 → 倒进全局时间池；零时长的"打卡"（自定义型每周任务）没有时间可进池 → 按"次"给一条 */
-  var f = minutes>0 ? awardFish(minutes, w.name) : 0;
-  if(minutes<=0 && !hadToday) f += awardWeeklyTap(w);
-  addMemory('task', '「'+w.name+'」'+minutes+' 分钟（'+(mode==='timer'?'计时完成':modeLabel(mode||'instant'))+'）', ['每周任务']);
-  var st = weeklyTaskStats(w);
-  save(); closeSheet(); render(); renderTimerBar();
-  toast('已记录 '+(minutes>0?(minutes+' 分钟'):'打卡')+' · 本周达标 '+st.okDays+'/'+st.goalDays+' 天'
-    +(f?(' · +'+f+' 🐟'):poolTail(f)));
-}
-
 /* 没发鱼的时候也告诉他池子攒到哪了 —— 否则"做了却没鱼"会被当成功能没生效
    （上一轮「没看见」就是同一类问题：机制不显化 = 不存在）。 */
 function poolTail(awarded){
@@ -1005,7 +592,10 @@ function timerRemainMs(){
   if(t.paused) return Math.max(0, t.remainMs||0);
   return Math.max(0, t.endsAt - Date.now());
 }
-function timerScope(){ var t=STATE.timer; return t ? (t.scope||'weekly') : 'weekly'; }
+/* 任务模块删掉后只剩 loose 一条路（2026-10-13）。这里的兜底**必须是 loose** ——
+   写成别的，commitStopwatchRecord 会走「无任务 → 只收走计时、不落账」那条路，
+   他这段时长就静默没了。 */
+function timerScope(){ var t=STATE.timer; return (t && t.scope) || 'loose'; }
 function timerIsStopwatch(){ return !!(STATE.timer && STATE.timer.mode==='stopwatch'); }
 function timerElapsedMs(){
   var t=STATE.timer; if(!t) return 0;
@@ -1015,12 +605,9 @@ function timerElapsedMs(){
   }
   return Math.max(0, (t.plannedMin*60000) - timerRemainMs());
 }
-function timerTask(){
-  if(!STATE.timer) return null;
-  var sc = timerScope();
-  var list = sc==='daily' ? STATE.dailyTasks : (sc==='long' ? STATE.longTasks : STATE.weeklyTasks);
-  return list.find(function(x){ return x.id===STATE.timer.taskId; }) || null;
-}
+/* 任务模块删了之后，计时只剩「松散（临时记一笔）」一条路 —— 自动计时也走它。 */
+function timerTask(){ return null; }
+
 function fmtClock(ms){
   var s=Math.max(0,Math.round(ms/1000));
   var m=Math.floor(s/60); s=s%60;
@@ -1186,18 +773,6 @@ function ensureTimerTick(){
     renderTimerBar();
   }, 500);
 }
-function startWeeklyTimer(w, plannedMin){
-  STATE.timer = {
-    scope:'weekly', mode:'countdown', name:w.name,
-    taskId:w.id, plannedMin:plannedMin, startedAt:Date.now(),
-    endsAt: Date.now()+plannedMin*60000, paused:false, remainMs:null, finished:false
-  };
-  save(); renderTimerBar(); ensureTimerTick();
-  var tip = '倒计时 '+plannedMin+' 分钟开始了，去动起来。';
-  toast(tip);
-  if(window.Pet && Pet.say) Pet.say('我帮你盯着时间，' + plannedMin + ' 分钟后叫你。');
-  addMemory('timer', '开始专注：「'+w.name+'」计划 '+plannedMin+' 分钟', ['计时']);
-}
 function toggleTimer(){
   var t=STATE.timer; if(!t||t.finished) return;
   if(t.mode==='stopwatch'){
@@ -1229,8 +804,7 @@ function finishTimerEarly(){
 /* 收尾弹窗：已完成 / 完成部分 */
 function openTimerFinishSheet(early){
   var t=STATE.timer; if(!t) return;
-  var w = timerTask();
-  var name = w?w.name:'专注';
+  var name = '专注';   /* 任务模块删掉后（2026-10-13）倒计时只剩这一种 */
   var passed = Math.max(1, Math.round(timerElapsedMs()/60000));
   openSheet('<h2>'+(early?'结束本次专注？':'⏰ 时间到！')+'</h2>'
     +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+' 分钟'+(early?(' · 已进行 '+passed+' 分钟'):'')+'</div>'
@@ -1241,8 +815,7 @@ function openTimerFinishSheet(early){
     +'</div>');
 
   $('tf_done').onclick=function(){
-    if(w) commitWeeklyRecord(w, t.plannedMin, 'timer', t.plannedMin);
-    else { STATE.timer=null; save(); closeSheet(); render(); renderTimerBar(); }
+    STATE.timer=null; save(); closeSheet(); render(); renderTimerBar();
   };
   $('tf_part').onclick=function(){
     var def = Math.max(1, Math.round(timerElapsedMs()/60000));
@@ -1255,8 +828,7 @@ function openTimerFinishSheet(early){
     $('tf_save').onclick=function(){
       var m=parseInt($('tf_min').value,10);
       if(!m||m<=0){ toast('填个分钟数'); return; }
-      if(w) commitWeeklyRecord(w, m, 'partial', t.plannedMin);
-      else { STATE.timer=null; save(); closeSheet(); render(); }
+      STATE.timer=null; save(); closeSheet(); render();
     };
   };
   if(early && $('tf_giveup')){
@@ -1280,19 +852,10 @@ var SW_NAG_MS = 60*60*1000;
 var SW_NUDGE_MS = 30*60*1000;
 var SW_RETRACT_MS = 20*1000;      /* 弹出来后没人理，20 秒自己收回去 */
 
-function scopeList(scope){
-  if(scope==='daily') return STATE.dailyTasks;
-  if(scope==='long')  return STATE.longTasks;
-  return STATE.weeklyTasks;
-}
-function scopeName(scope){
-  if(scope==='daily') return '日常任务';
-  if(scope==='long')  return '长周期任务';
-  return '每周任务';
-}
+/* 任务模块已删 —— 只剩 loose 一条路。 */
+function scopeList(){ return []; }
+function scopeName(){ return "临时记一笔"; }
 
-/* scope === 'loose' = 不计入任何任务的临时计时（宠物替你起的「玩一会XX」）。
-   opts: {name, category} */
 function startStopwatch(scope, id, opts){
   opts = opts || {};
   var task = null;
@@ -1336,7 +899,7 @@ function startStopwatch(scope, id, opts){
 /* 把当前正计时落账：写进对应任务的记录里 */
 function commitStopwatchRecord(minutes, meta){
   var t = STATE.timer; if(!t) return 0;
-  var scope = t.scope||'weekly', id = t.taskId;
+  var scope = t.scope || 'loose', id = t.taskId;
   var task = timerTask();
   minutes = Math.max(0, Math.round(minutes||0));
   meta = meta||{};
@@ -1397,10 +960,6 @@ function commitStopwatchRecord(minutes, meta){
   save(); closeSheet(); render(); renderTimerBar();
   toast('记下 '+minutes+' 分钟'+(fish?(' · +'+fish+' 🐟'):poolTail(0))+(scope==='daily'?'，今天已打卡 ✓':''));
 
-  if(scope==='long' && (parseInt(meta.amount,10)||0)>0){
-    var ms = checkLongMilestones(task);
-    if(ms.length) setTimeout(function(){ toast(ms[0]); }, 400);
-  }
   return minutes;
 }
 
@@ -1453,22 +1012,6 @@ function dropStopwatch(){
   if(window.Pet && Pet.say) Pet.say('不算数就不算数，你动过就已经不一样了。');
 }
 
-/* 卡片/芯片上的「▶ 计时」：不用切页也能开正计时
-   没在跑 → ▶ 开始；正在跑同一个任务 → 点击即结束并落账 */
-function timerMatchesTask(scope, id){
-  return !!(STATE.timer && !STATE.timer.finished && STATE.timer.scope===scope && STATE.timer.taskId===id);
-}
-function qciTimerBtn(scope, id){
-  var running = timerMatchesTask(scope, id);
-  return '<button class="qci-timer'+(running?' on':'')+'"'
-    + ' data-act="'+(running?'timerFinish':'startTimer')+'"'
-    + ' data-scope="'+scope+'" data-id="'+id+'"'
-    + ' title="'+(running?'正在计时 · 点这里结束并记下':'开始正计时，做多久算多久')+'">'
-    + (running ? '计时中 ⏹' : icon('play'))
-    + '</button>';
-}
-
-/* 到期提醒音（WebAudio，无音频文件依赖） */
 function alarmSound(){
   try{
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -2044,9 +1587,6 @@ function catLandingDays(){
   STATE.dumps.forEach(function(d){
     if(d.createdAt) days[ymd(new Date(d.createdAt))] = 1;
   });
-  STATE.dailyTasks.forEach(function(t){
-    (t.records||[]).forEach(function(r){ if(r.date) days[r.date] = 1; });
-  });
   STATE.weather.forEach(function(w){ if(w.date) days[w.date] = 1; });
   var n = 0, cur = today(), guard = 0;
   /* 今天正在休息 → 从昨天接着数。
@@ -2143,7 +1683,7 @@ function catVitality(){
   var ts0 = new Date(); ts0.setHours(0,0,0,0);
   var dumped = STATE.dumps.filter(function(d){ return d.createdAt >= ts0.getTime(); }).length;
   v += Math.min(dumped*12, 24);                  /* 倾倒焦虑 */
-  var checked = STATE.dailyTasks.filter(function(d){ return d.enabled && isDailyCheckedToday(d); }).length;
+  var checked = mustTodayStats().done;
   v += Math.min(checked*11, 33);                 /* 日常打卡 */
   if(STATE.oneThing && STATE.oneThing.date===today() && STATE.oneThing.done) v += 20;
   v += Math.min(catLandingDays()*4, 20);         /* 连续着陆 */
@@ -2763,28 +2303,10 @@ function viewToday(){
       + pastRestChips() + '</div></div>';
   }
 
-  /* 每周任务：今天还没动的那几个（伙伴已改为全局悬浮挂件，见右下角）
-     回归日先把它收起来 —— 它是最直接的待办压力源，而他刚休息完。 */
-  var weeklyTodo = STATE.weeklyTasks.filter(function(w){ return w.enabled && !isWeeklyCheckedToday(w); });
-  var pp = poolProgress();    /* 今日时间池进度，给下面的文案用 */
-  var lt = looseToday();      /* 今天「直接记一笔」的那些（没挂任务的临时时长） */
-  if(weeklyTodo.length && !isSoftLanding()){
-    h += '<div class="card"><div class="row between"><h2>🏃 今天还没动</h2>'
-      + '<span class="muted" style="font-size:12px">每日目标 · 本周达标</span></div>'
-      + '<div class="hint">打开这里就是胜利。打卡后选「已完成」直接记账，或选「现在开始」跟着倒计时做。</div>';
-    weeklyTodo.forEach(function(w){
-      var st = weeklyTaskStats(w);
-      h += '<div class="wk-row">'
-        + '<div class="wk-info"><div class="wk-name">'+esc(w.name)+'</div>'
-        + '<div class="wk-sub">每日 '+w.dailyGoalMin+' 分钟 · 本周 <b>'+st.okDays+'/'+st.goalDays+'</b> 天</div>'
-        + weeklyDots(w) + '</div>'
-        + '<button class="btn primary sm" data-act="checkinWeekly" data-id="'+w.id+'">'+icon('check')+'打卡</button>'
-        + '<button class="btn teal sm" data-act="startTimer" data-scope="weekly" data-id="'+w.id+'">'+icon('play')+'计时</button>'
-        + '</div>';
-    });
-    h += '</div>';
-  }
-
+  /* 「🏃 今天还没动」（每周任务）随任务模块一起删了（2026-10-13 master 选的 A）。
+     下面两个还得留着 —— 池子那段文案要用。 */
+  var pp = poolProgress();
+  var lt = looseToday();
   /* 今天的课 / 每日必做：非情绪优先时已经插在天气条下面了，这里补上让位的情况
      （课表连了教务系统才出现；没连 / 今天没课就不打扰他） */
   if(emotionFirst) h += mustCard + schedCard;
@@ -2832,202 +2354,24 @@ function viewToday(){
   }
   h += '</div>';
 
-  /* 快捷打卡区：启用的日常任务 + 每周任务 */
-  var activeDailies = STATE.dailyTasks.filter(function(d){return d.enabled;});
-  var activeWeeklies = STATE.weeklyTasks.filter(function(w){return w.enabled;});
-  if(activeDailies.length || activeWeeklies.length){
-    h += '<div class="card"><h2>快捷打卡</h2><div class="hint">做了就打，不催不罚。'
-      + '花的每一分钟都会攒进今天的池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟'
-      + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟'
-      + (pp.classMin ? '，另外<b>今天上课 '+pp.classPeriods+' 节（'+pp.classMin+' 分钟）</b>也已经算进去了' : '')
-      + '。'
-      + (lt.length ? '<br>⏱ <b>临时记的</b>：' + lt.map(function(r){
-            return esc(r.name)+' '+r.minutes+' 分钟'
-              + '<button class="act-mini" data-act="looseDel" data-id="'+r.id+'" title="删掉这一笔">✕</button>';
-          }).join('　') : '')
-      + '<br>▶ 是正计时：点一下就开始，做多久算多久，不用切到任务页。</div><div class="quick-checkin">';
-    activeDailies.forEach(function(dt){
-      var checked = isDailyCheckedToday(dt);
-      h += '<div class="qci '+(checked?'done':'')+'" data-act="quickCheckin" data-id="'+dt.id+'">'
-        + '<span class="qci-lb">'+(checked ? icon('check')+' '+esc(dt.name) : esc(dt.name))+'</span>'
-        + qciTimerBtn('daily', dt.id)
-        + '</div>';
-    });
-    activeWeeklies.forEach(function(w){
-      var m = weeklyTodayMinutes(w);
-      h += '<div class="qci '+(m>0?'done':'')+'" data-act="quickWeekly" data-id="'+w.id+'">'
-        + '<span class="qci-lb">'+(m>0 ? icon('check')+' '+esc(w.name)+' · '+m+'min' : '🏃 '+esc(w.name))+'</span>'
-        + qciTimerBtn('weekly', w.id)
-        + '</div>';
-    });
-    h += '</div></div>';
-  }
+  /* 今天的池子（2026-10-13 任务模块删掉后重做）。
+     原来这张卡叫「快捷打卡」，挂的是日常/每周任务的打卡 + 正计时按钮 —— 任务没了，那些都得摘。
+     但**池子必须留下并且显化**：「做了却没看见鱼」是这个项目最忌讳的失败模式。
+     卡里只剩两块：今天攒到哪了、以及「临时记的」那几笔（可删）。 */
+  h += '<div class="card"><h2>今天的池子</h2><div class="hint">'
+    + '花的每一分钟都会攒进今天的池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟'
+    + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟'
+    + (pp.classMin ? '，另外<b>今天上课 '+pp.classPeriods+' 节（'+pp.classMin+' 分钟）</b>也已经算进去了' : '')
+    + '。'
+    + (lt.length ? '<br>⏱ <b>临时记的</b>：' + lt.map(function(r){
+          return esc(r.name)+' '+r.minutes+' 分钟'
+            + '<button class="act-mini" data-act="looseDel" data-id="'+r.id+'" title="删掉这一笔">✕</button>';
+        }).join('　') : '')
+    + '<br>换应用时右下角会问你一句「这件事记作什么」，确认后自动开始计时 —— 不用手动点。</div></div>';
 
   /* 放开一下：娱乐 / 放纵。放在「做了什么」之后、「想说什么」之前 */
   h += renderFunCard();
   h += renderActivityCard();
-
-  return h;
-}
-
-/* ================= 视图：任务 ================= */
-/* ---- 任务页的分类筛选（2026-09-28 master 要求）----
-   分类：休闲娱乐 / 工作学习 / 生活品质 / 素养提高。
-   筛选是**瞬态**（不持久化），跟日报那个同一套路，刷新回到「全部」。 */
-var _taskFilter = '';
-function taskList(){
-  return [].concat(STATE.longTasks||[], STATE.dailyTasks||[], STATE.mustDos||[], STATE.weeklyTasks||[]);
-}
-/* 任务 → 它属于哪个新分类（老 key 自动折算；归不上的返回空串） */
-function taskCatOf(t){
-  var k = CAT_ALIAS_KEY[t.category] || t.category || '';
-  return CATEGORIES.some(function(c){ return c.key === k; }) ? k : '';
-}
-function filterTasks(list){
-  if(!_taskFilter) return list;
-  return list.filter(function(t){ return taskCatOf(t) === _taskFilter; });
-}
-/* 按分类分组（顺序固定 = CATEGORIES 的顺序，没归类的排最后） */
-function taskCatGroups(list){
-  var order = CATEGORIES.map(function(c){ return c.key; });
-  var by = {};
-  list.forEach(function(t){
-    var k = taskCatOf(t) || '_none';
-    (by[k] = by[k] || []).push(t);
-  });
-  return order.concat(by._none ? ['_none'] : [])
-    .filter(function(k){ return by[k] && by[k].length; })
-    .map(function(k){ return { key:k, label:(k === '_none' ? '未分类' : catName(k)), items:by[k] }; });
-}
-/* 「筛选 + 按分类分组」渲染一个任务列表。
-   ⚠️ 分组小标题只在「有多组」或「正在筛选」时出现 —— 只有一组时加标题就是噪音。
-   ⚠️ quiet=true 时空结果不吭声（免得太筛完之后四个块各喊一次「这一类里还没有任务」）。 */
-function renderGroupedTasks(list, renderFn, quiet){
-  var items = filterTasks(list);
-  if(!items.length) return quiet ? '' : '<div class="empty">这一类里还没有任务。</div>';
-  var groups = taskCatGroups(items);
-  /* 标题只在「一组以上」时出现：筛选后每组只剩一类，再加标题就是重复
-     （曾经出现过「工作学习 1」+「工作学习 5」两个一样的标题） */
-  var head = groups.length > 1;
-  var h = '';
-  groups.forEach(function(g){
-    if(head) h += '<div class="task-grp">' + esc(g.label) + ' <b>' + g.items.length + '</b></div>';
-    g.items.forEach(function(t){ h += renderFn(t); });
-  });
-  return h;
-}
-/* 顶部的分类筛选条（带每类条数） */
-function taskFilterBar(){
-  var all = taskList();
-  var cnt = function(k){
-    return k ? all.filter(function(t){ return taskCatOf(t) === k; }).length : all.length;
-  };
-  var h = '<div class="digest-filters">'
-    + '<button class="dg-pill' + (_taskFilter === '' ? ' on' : '') + '" data-act="filterTask" data-cat="">全部 ' + cnt('') + '</button>';
-  CATEGORIES.forEach(function(c){
-    var n = cnt(c.key);
-    h += '<button class="dg-pill' + (_taskFilter === c.key ? ' on' : '') + '" data-act="filterTask" data-cat="' + c.key + '">'
-      + c.label + (n ? ' ' + n : '') + '</button>';
-  });
-  return h + '</div>';
-}
-
-function viewTasks(){
-  var h = '';
-  var f = _taskFilter;   /* '' = 全部 */
-
-  /* 模块头（结构化蓝图） */
-  h += '<div class="mod-head">'
-    + '<div class="kicker">Module 02 · Tasks</div>'
-    + '<div class="warp-head" data-warp><h2>任务</h2></div>'
-    + '<p>两套并行：<b>长周期（导入型）</b>有终点有总量，到 50%/100% 自动鼓励，连续两天没打卡先暂停等你回来；<b>日常循环（提升型）</b>按类别每天做、不中断，可自由开关。</p>'
-    + '</div>';
-
-  /* 分类筛选：全部 / 休闲娱乐 / 工作学习 / 生活品质 / 素养提高 */
-  h += taskFilterBar();
-  if(f) h += '<div class="hint" style="margin:-6px 0 16px">正在只看「'+esc(catName(f))+'」—— 再点一次「全部」看所有任务。</div>';
-
-  var activeLts = STATE.longTasks.filter(function(g){return g.status!=='done';});
-  var doneLts = STATE.longTasks.filter(function(g){return g.status==='done';});
-  /* ⚠️ 筛选时，这一类里没有内容的块**整块收掉**（连头卡一起）——
-     否则四个块头全晾在那儿、每个都写一遍「这一类里还没有任务」。 */
-  var showLt = filterTasks(activeLts.concat(doneLts)).length;
-  var showDt = filterTasks(STATE.dailyTasks).length;
-  var showMd = filterTasks(STATE.mustDos).length;
-  var showWk = filterTasks(STATE.weeklyTasks).length;
-
-  /* 长周期 */
-  if(!f || showLt){
-    h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 长周期任务</h2>'
-      + '<button class="btn primary sm" data-act="newLong">'+icon('plus')+' 导入长周期</button></div>'
-      + '<div class="hint">有终点有总量的目标（如背完红宝书）。必填截止日，超期温和提醒；连续两天未打卡自动暂停。</div></div>';
-
-    if(!activeLts.length && !doneLts.length){
-      h += '<div class="empty">还没有长周期任务。点「导入长周期」添加一个。</div>';
-    } else {
-      h += renderGroupedTasks(activeLts, renderLongTaskCard);
-      var doneShow = filterTasks(doneLts);
-      if(doneShow.length){
-        h += '<div class="hint" style="margin-top:12px">✓ 已完成</div>';
-        doneShow.forEach(function(g){ h += renderLongTaskCard(g); });
-      }
-    }
-  }
-
-  /* 日常循环 */
-  if(!f || showDt){
-    h += '<div class="card"><div class="row between"><h2>'+icon('list')+' 日常循环</h2>'
-      + '<button class="btn primary sm" data-act="newDaily">'+icon('plus')+' 新建日常</button></div>'
-      + '<div class="hint">每天提升自己的短周期任务（如跑步、背词、冥想）。不生成清单，做了就打卡。可自由开关。</div></div>';
-
-    if(!STATE.dailyTasks.length){
-      h += '<div class="empty">还没有日常任务。点「新建日常」添加。</div>';
-    } else {
-      h += renderGroupedTasks(STATE.dailyTasks, renderDailyTaskCard);
-    }
-  }
-
-  /* 每日必做 */
-  if(!f || showMd){
-    var mStats = mustTodayStats();
-    h += '<div class="card" id="mustSec"><div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
-      + '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 新建必做</button></div>'
-      + '<div class="hint">每天都要交代一下的那几件（吃药、记账、背词…）。点一下打勾，'
-      + '软件记下<b>打卡时刻</b>；一天只记一次，再点一下是撤销。'
-      + (mStats.total ? '今天 <b>'+mStats.done+'/'+mStats.total+'</b>。' : '')+'</div></div>';
-
-    if(!STATE.mustDos.length){
-      h += '<div class="empty">还没有必做项。点「新建必做」加一条 —— 建议不超过 3 条，多了就成了清单。</div>';
-    } else {
-      h += renderGroupedTasks(STATE.mustDos, renderMustItemCard);
-    }
-  }
-
-  /* 每周任务 */
-  if(!f || showWk){
-    var wSum = weeklyTasksSummary();
-    h += '<div class="card"><div class="row between"><h2>'+icon('target')+' 每周任务</h2>'
-      + '<button class="btn primary sm" data-act="newWeekly">'+icon('plus')+' 新建每周任务</button></div>'
-      + '<div class="hint">按「每日时长 + 每周达标天数」双目标推进，适合运动这类需要节奏的事。'
-      + '打卡可选<b>已完成</b>（按设定时长直接计入周报）或<b>现在开始</b>（起倒计时，结束后再问完成多少）。</div>';
-    if(wSum.goalDays){
-      h += '<div class="wk-sum"><span>本周达标 <b>'+wSum.okDays+'/'+wSum.goalDays+'</b> 天</span>'
-        + '<span>累计 <b>'+wSum.doneMin+'</b> 分钟</span>'
-        + '<span>目标 <b style="color:var(--khaki-deep)">'+wSum.goalMin+'</b> 分钟</span></div>';
-    }
-    h += '</div>';
-
-    if(!STATE.weeklyTasks.length){
-      h += '<div class="empty">还没有每周任务。点「新建每周任务」加一个，比如「每天运动 30 分钟、每周至少 5 天」。</div>';
-    } else {
-      h += renderGroupedTasks(STATE.weeklyTasks, renderWeeklyTaskCard, true);
-    }
-  }
-
-  /* 这一类一个任务都没有 —— 给个说法 + 指路，别留白 */
-  if(f && !showLt && !showDt && !showMd && !showWk){
-    h += '<div class="empty">「'+esc(catName(f))+'」这一类里还没有任务 —— 新建的时候选上它，就会出现在这里。</div>';
-  }
 
   return h;
 }
@@ -3130,22 +2474,9 @@ function generateWeeklyReport(wkArg){
   var monday = wk;
   var sunday = addDays(wk,6);
 
-  /* 长周期本周进展 */
-  var ltActive = 0, ltTotal = STATE.longTasks.length;
-  STATE.longTasks.forEach(function(g){
-    if(g.status==='active') ltActive++;
-    /* 检查本周是否有记录 */
-    var hasThisWeek = g.records.some(function(r){return r.date>=monday && r.date<=sunday;});
-    if(hasThisWeek && !g._weekNoted) g._weekNoted=true;
-  });
-
-  /* 日常统计（把每周任务的时长并进来，运动这类主要走每周任务） */
+  /* 投入统计（2026-10-13 任务模块删掉后重定口径）：**松散时长 + 上课**。
+     来源是 weeklyDailyStats（它内部已改成只读 STATE.loose，见 master 选的方案）。 */
   var dStats = weeklyDailyStats(wk);
-  var wSum = weeklyTasksSummary(wk);
-  Object.keys(wSum.byCat).forEach(function(c){
-    if(!dStats[c]) dStats[c] = {minutes:0, days:0, targetDays:7};
-    dStats[c].minutes += wSum.byCat[c];
-  });
   /* 课表时间也算进「学习成长」—— master：「把课表占的时间也算学习时间」。
      按天累加（每天的课不一样），只算**周一~今天**：周报是复盘，不是预报，未来几天不算。 */
   var classMin = 0, classPeriodCnt = 0;
@@ -3177,24 +2508,14 @@ function generateWeeklyReport(wkArg){
     var d=addDays(monday,i);
     if(d>today()) continue; /* 未来不生成 */
 
-    /* 当天完成的任务数 */
-    var tasksDone=0, tasksTotal=0, loadMin=0, rechargeMin=0;
-    STATE.longTasks.forEach(function(g){
-      if(g.records.some(function(r){return r.date===d;})) tasksDone++;
-      tasksTotal++;
+    /* 当天完成情况（2026-10-13 改口径）：必做清了几件 + 投入分钟（松散时长 + 上课）。
+       任务模块删掉后 longTasks/dailyTasks/weeklyTasks 三个统计源都没了，别再往这儿加回来。 */
+    var _musts = mustActive();
+    var tasksDone=0, tasksTotal=_musts.length, loadMin=0, rechargeMin=0;
+    _musts.forEach(function(m){
+      if((m.records||[]).some(function(r){return r.date===d;})) tasksDone++;
     });
-    STATE.dailyTasks.forEach(function(dt){
-      if(!dt.enabled) return;
-      var rec=dt.records.find(function(r){return r.date===d;});
-      if(rec){
-        loadMin+=(rec.minutes||0);
-        if(dt.type==='recharge') rechargeMin+=(rec.minutes||0);
-      }
-    });
-    STATE.weeklyTasks.forEach(function(w){
-      if(!w.enabled) return;
-      (w.records||[]).forEach(function(r){ if(r.date===d) loadMin+=(r.minutes||0); });
-    });
+    (STATE.loose||[]).forEach(function(r){ if(r.date===d) loadMin += (r.minutes||0); });
     /* 上课也进当天的「投入」—— 否则日均投入只统计他手动记的那部分，跟总计对不上 */
     var classMinD = classMinutesOn(d);
     loadMin += classMinD;
@@ -3246,7 +2567,6 @@ function generateWeeklyReport(wkArg){
     moodTrack: moodTrack,
     dailyCards: dailyCards,
     dailyStats: dStats,
-    weekly: wSum,
     /* 本周（周一~今天）上课占的时间 —— 已经并进 dailyStats.edu 和日均投入，
        这里单独留一份给界面标注，免得他以为"我明明在上课，投入怎么这么点" */
     classMin: classMin,
@@ -3282,8 +2602,7 @@ function weekHasData(wk){
   if((STATE.weather||[]).some(function(x){ return inW(x.date); })) return true;
   if((STATE.fun||[]).some(function(x){ return inW(x.date); })) return true;
   if((STATE.restDays||[]).some(function(d){ return inW(d); })) return true;
-  var tasks = [].concat(STATE.dailyTasks||[], STATE.weeklyTasks||[], STATE.longTasks||[]);
-  return tasks.some(function(t){ return (t.records||[]).some(function(r){ return inW(r.date); }); });
+  if((STATE.mustDos||[]).some(function(m){ return (m.records||[]).some(function(r){ return inW(r.date); }); })) return true;
 }
 /* 一周压缩成一句话。⚠️ 顺带把这一周的周报**落盘** —— 这正是 master 说的「周报要记录下来」：
    他问宠物"上周干了什么"的时候，那一周的周报就被固定下来了，以后翻得到。 */
@@ -3373,7 +2692,7 @@ function viewWeekly(){
   ensureActWeek(wk);
   var rpt = generateWeeklyReport();
   var h = '<div class="mod-head"><div class="kicker">Module 03 · Weekly</div><div class="warp-head" data-warp><h2>周报</h2></div>'
-    + '<p>每周首次打开自动生成。看板按<b>投入时间占比</b>展示各类日常；长周期进度告知；最后用温柔复盘接住你，而不是评判。</p></div>';
+    + '<p>每周首次打开自动生成。看板按<b>投入时间占比</b>展示各类日常；最后用温柔复盘接住你，而不是评判。</p></div>';
   h += '<div class="card"><h2>'+icon('chart')+' 复盘 · 本周</h2>'
     + '<div class="hint">回顾你的一周。每周首次打开自动生成。</div></div>';
 
@@ -3422,28 +2741,13 @@ function viewWeekly(){
     + '<span class="muted" style="font-size:11.5px;align-self:center">建议只是建议，加不加进任务你定。</span>'
     + '</div></div>';
 
-  /* 每周任务：双目标达成情况 */
-  if(STATE.weeklyTasks.length){
-    var wl = rpt.weekly || weeklyTasksSummary(wk);
-    var wkFish = (petState().fishLog||[]).filter(function(x){ return ymd(new Date(x.at||0)) >= wk; })
-      .reduce(function(a,x){ return a+(x.n||0); }, 0);
-    h += '<div class="card"><h2>'+icon('target')+' 每周任务</h2>'
-      + '<div class="hint">本周达标 <b>'+wl.okDays+'/'+wl.goalDays+'</b> 天 · 累计投入 <b>'+wl.doneMin+'</b> 分钟 · 本周赚到 <b>'+wkFish+'</b> 条小鱼干 🐟</div>';
-    STATE.weeklyTasks.forEach(function(w){
-      if(!w.enabled) return;
-      var st = weeklyTaskStats(w, wk);
-      var okPct = Math.min(100, Math.round(st.okDays/Math.max(1,st.goalDays)*100));
-      var minPct = w.dailyGoalMin ? Math.min(100, Math.round(st.total/(w.dailyGoalMin*(w.weeklyGoalDays||7))*100)) : 0;
-      h += '<div class="wk-rpt">'
-        + '<div class="wk-rpt-head"><b>'+esc(w.name)+'</b>'
-        + '<span class="muted">达标 '+st.okDays+'/'+st.goalDays+' 天 · '+st.total+' 分钟</span></div>'
-        + weeklyDots(w)
-        + weeklyModeChips(w, wk)
-        + '<div class="bar" title="达标天数进度"><div style="width:'+okPct+'%"></div></div>'
-        + '<div class="wk-rpt-foot"><span>天数进度 '+okPct+'%</span><span>时长进度 '+minPct+'%</span></div>'
-        + '</div>';
-    });
-    h += '</div>';
+  /* 「每周任务」那张双目标卡随任务模块删掉了（2026-10-13）。
+     但「本周赚到多少鱼」值得留着 —— 它是这个项目里最直接的显化。 */
+  var wkFish = (petState().fishLog||[]).filter(function(x){ return ymd(new Date(x.at||0)) >= wk; })
+    .reduce(function(a,x){ return a+(x.n||0); }, 0);
+  if(wkFish > 0){
+    h += '<div class="card"><h2>🐟 本周小鱼干</h2><div class="hint">这周一共赚到 <b>'+wkFish+'</b> 条。'
+      + '每满 60 分钟投入换 1 条，零头当天清零 —— 攒着可以换玩具、装扮，或者兑换你给自己定的现实奖励。</div></div>';
   }
 
   /* 心情轨迹 */
@@ -3460,8 +2764,7 @@ function viewWeekly(){
   if(catKeys.length){
     /* SVG 环形图：各类别投入占比 */
     var totalMin = catKeys.reduce(function(a,k){return a+ds[k].minutes;},0);
-    var pieColors = {health:'#22c55e',edu:'#3b82f6',create:'#9333ea',life:'#f59e0b',nature:'#14b8a6'};
-    var pieData = catKeys.map(function(k){ return {k:k, min:ds[k].minutes, pct:ds[k].minutes/totalMin, col:pieColors[k]||'#8b6dff'}; });
+    var pieData = catKeys.map(function(k){ return {k:k, min:ds[k].minutes, pct:ds[k].minutes/totalMin, col:catColor(k)}; });
     var svgW=220, svgH=120, cx=60, cy=60, r=50, hole=30;
     var acc=0, arcs='';
     pieData.forEach(function(d){
@@ -3491,9 +2794,8 @@ function viewWeekly(){
 
     catKeys.forEach(function(k){
       var pct = Math.round(ds[k].minutes/maxMin*100);
-      var colors = {health:'#22c55e',edu:'#3b82f6',create:'#9333ea',life:'#f59e0b',nature:'#14b8a6'};
-      var col = colors[k]||'var(--violet)';
-      h += '<div class="kb-row"><div class="kl">'+catName(k)+'</div>'
+      var col = catColor(k);
+      h += '<div class="kb-row"'+catAttr(k)+'><div class="kl">'+catName(k)+'</div>'
         + '<div class="kt"><div style="width:'+pct+'%;background:'+col+'"></div></div>'
         + '<div class="kv">'+ds[k].minutes+'min</div></div>';
     });
@@ -3506,10 +2808,10 @@ function viewWeekly(){
     var barColor = dc.rate>=80 ? 'var(--green)' : dc.rate>=50 ? 'var(--amber)' : 'var(--red)';
     var moodE={sun:'😊',cloud:'🙂',rain:'☁️',storm:'😫'};
     h += '<div class="day-card">'
-      + '<div class="dc-head"><strong>'+dc.date.slice(5)+'</strong> <span class="muted">'+dc.tasksDone+'/'+dc.tasksTotal+' 任务</span>'
+      + '<div class="dc-head"><strong>'+dc.date.slice(5)+'</strong> <span class="muted">必做 '+dc.tasksDone+'/'+dc.tasksTotal+'</span>'
       + '<span style="margin-left:auto;font-size:18px">'+(moodE[dc.mood]||'')+'</span>'
       + '<span style="color:'+(dc.rate>=80?'var(--green)':dc.rate>=50?'var(--amber)':'var(--red)')+';font-weight:800;margin-left:8px">'+dc.rate+'%</span></div>'
-      + '<div class="dc-stats"><span>负荷 '+dc.load+'min</span><span>充能 '+dc.recharge+'min</span></div>'
+      + '<div class="dc-stats"><span>投入 '+dc.load+'min</span></div>'
       + '<div class="dc-bar"><div style="width:'+dc.rate+'%;background:'+barColor+'"></div></div>'
       + '<div class="dc-comment">'+dc.comment+'</div>'
       + '</div>';
@@ -3606,14 +2908,14 @@ function callAI(messages, which, opts){
 /* ================= 宠物的「手」：function calling =================
    master 2026-10-09 定的边界：
    - 「我想玩一会XX」这类 → **只记时间，不建任务**（进今天的池子 + 周报投入）
-   - 只有他明确说「建个任务」时才真的建（`create_task`）
+   - 任务模块已删（2026-10-13）→ `create_task` 一并摘掉，他的"手"只剩：记时间 / 起计时 / 记休息日
    - 删除类、清空数据、教务登录、改设置 —— **一律不给**
    - 休息日不可逆 → 执行后给 5 秒撤销（他选的「直接做 + 5 秒可撤销」）
    ⚠️ 只有**名字在这张表里**的动作会被执行（runPetTool 白名单），模型编出来的名字当没听见。 */
 var PET_TOOLS = [
   { type:'function', function:{
     name:'start_timer',
-    description:'开始给某事计时（**不创建任务**）。只有他表达「现在就要开始做某事 / 想玩一会X」时才用；只是聊到某个游戏、问建议、陈述过去，都不要用。',
+    description:'开始给某事计时。只有他表达「现在就要开始做某事 / 想玩一会X」时才用；只是聊到某个游戏、问建议、陈述过去，都不要用。',
     parameters:{ type:'object', properties:{
       name:{type:'string', description:'要计时的事，用他原话，如「玩一会杀戮尖塔」'},
       category:{type:'string', enum:PET_CATS, description:'归到哪一类：休闲娱乐 fun / 工作学习 work / 生活品质 life / 素养提高 growth'}
@@ -3630,15 +2932,6 @@ var PET_TOOLS = [
     name:'stop_timer',
     description:'结束当前正在跑的计时。只有他明确说「玩完了 / 停了吧 / 不做了 / 结束」时才用。',
     parameters:{ type:'object', properties:{} } } },
-  { type:'function', function:{
-    name:'create_task',
-    description:'创建一个正式任务（会一直留在任务页）。**只有他明确说「帮我建个任务/加个日常/加个每周任务」时才用**；只是说想做什么事时不要用，那用 start_timer。',
-    parameters:{ type:'object', properties:{
-      name:{type:'string', description:'任务名'},
-      scope:{type:'string', enum:['daily','weekly'], description:'daily=日常任务（每天要做）；weekly=每周任务（有每日目标时长）'},
-      category:{type:'string', enum:PET_CATS, description:'归类'},
-      minutes:{type:'number', description:'weekly 时的每日目标分钟数，默认 30'}
-    }, required:['name','scope'] } } },
   { type:'function', function:{
     name:'rest_today',
     description:'把今天记成休息日（连续天数冻结）。**只有他明确要求记休息日时才用**（如「今天想休息一天」「帮我记成休息日」「今天不干了」）。只是感叹累、心情不好、想吐槽时**不要**用，那种情况用 no_action。',
@@ -3695,43 +2988,6 @@ function runPetTool(name, args){
         var used = Math.round(ms0/60000);
         commitStopwatchRecord(used);
         return {ok:true, say:'结束了「'+tn+'」，记下 '+used+' 分钟。'};
-      }
-      case 'create_task': {
-        var n3 = String(args.name||'').trim().slice(0,30);
-        if(!n3) return {ok:false, say:'任务是空的，问他叫什么名字。'};
-        var sc = (args.scope === 'weekly') ? 'weekly' : 'daily';
-        var c3 = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'work';
-        if((scopeList(sc)||[]).some(function(x){ return x.name === n3; })){
-          return {ok:false, say:'已经有一个叫「'+n3+'」的任务了，没重复建。'};
-        }
-        if(sc === 'daily'){
-          STATE.dailyTasks.push({id:uid('dt'), name:n3, category:c3, subCategory:'',
-            type:'habit', enabled:true, records:[], createdAt:today()});
-        } else {
-          var gm = Math.max(1, Math.min(600, Math.round(Number(args.minutes)||30)));
-          STATE.weeklyTasks.push({id:uid('wk'), name:n3,
-            type:(c3 === 'life' ? 'exercise' : 'custom'), category:c3,
-            dailyGoalMin:gm, weeklyGoalDays:7, enabled:true, records:[], createdAt:today()});
-        }
-        addMemory('task', '新建'+(sc==='daily'?'日常':'每周')+'任务：「'+n3+'」（'+catName(c3)+'）', ['任务']);
-        save(); render();
-        toast('建好了：'+(sc==='daily'?'日常':'每周')+'任务「'+n3+'」');
-        return {ok:true, say:'建好了：'+(sc==='daily'?'日常':'每周')+'任务「'+n3+'」（'+catName(c3)+'）'
-               + (sc==='weekly' ? ('，每天目标 '+gm+' 分钟') : '') + '。它已经出现在任务页了。'};
-      }
-      case 'rest_today': {
-        if((STATE.restDays||[]).indexOf(today()) >= 0){
-          return {ok:true, say:'今天已经是休息日了，不用再记。跟他说「今天不算断链」。'};
-        }
-        var okr = takeRestDay(today());
-        if(okr){
-          toastAction('已把今天记成休息日', '撤销', function(){
-            STATE.restDays = (STATE.restDays||[]).filter(function(x){ return x !== today(); });
-            save(); render(); toast('撤掉了，今天不算休息日');
-          }, 6000);
-        }
-        return okr ? {ok:true, say:'已经把今天记成休息日了（连续天数冻结、不用补）。回一句让他好好歇着的话，别提任务。'}
-                   : {ok:false, say:'没记上休息日。'};
       }
       case 'query_today': {
         var out = [];
@@ -3818,7 +3074,7 @@ function viewPet(){
   return '<div class="mod-head"><div class="kicker">Module 07 · Companion Pet</div>'
     + '<div class="warp-head" data-warp><h2>伙伴</h2></div>'
     + '<p>它不是待办，是你做事时顺手养起来的一只猫：<b>花的每一分钟都攒进池子，每满 60 分钟换 1 条小鱼干</b>，'
-    + '长周期任务的推进和里程碑另外算。小鱼干换吃的、玩具、装扮，也能换你自己定的现实奖励。'
+    + '小鱼干换吃的、玩具、装扮，也能换你自己定的现实奖励。'
     + '右下角挂件是它的日常视角，这一页是它的全部细节。</p></div>'
     + '<div id="petPage"><div class="empty">正在唤醒…</div></div>';
 }
@@ -3860,10 +3116,7 @@ function viewMe(){
   var _ppNow = poolProgress();
   h += renderActivitySettings();
   h += '<div class="card"><h2>数据概览</h2>'
-    + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>长周期：<b>'+(STATE.longTasks.filter(function(g){return g.status!=='done';}).length)+'</b> 进行中</div>'
-    + '<div>日常：<b>'+STATE.dailyTasks.filter(function(d){return d.enabled;}).length+'</b> 启用中</div>'
-    + '<div>必做：<b>'+mustTodayStats().done+'/'+mustActive().length+'</b> 今天</div>'
-    + '<div>每周：<b>'+STATE.weeklyTasks.filter(function(w){return w.enabled;}).length+'</b> 进行中</div>'
+    + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>必做：<b>'+mustTodayStats().done+'/'+mustActive().length+'</b> 今天</div>'
     + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
     + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
     + '<div>休息日：<b>'+restTotal()+'</b> 天</div>'
@@ -3906,8 +3159,7 @@ function viewMe(){
     + (isDesk ? '<button class="btn ghost sm" data-act="openDataDir">打开数据文件夹</button>' : '')
     + '</div>'
     + '<div class="muted" style="font-size:12px;margin-top:10px" id="meDataPath">'
-    + '长周期 '+STATE.longTasks.length+' · 日常 '+STATE.dailyTasks.length+' · 每周 '+STATE.weeklyTasks.length
-    + ' · 倾倒 '+STATE.dumps.length+' · 情绪 '+STATE.weather.length+' · 记忆 '+STATE.memories.length
+    + '松散时长 '+(STATE.loose||[]).length+' 笔 · 倾倒 '+STATE.dumps.length
     + '</div></div>';
 
   /* 树洞：只在桌面版里有（借助 preload 暴露的本地存储），
@@ -3932,7 +3184,7 @@ function viewMe(){
 
 
 /* ================= 渲染入口 ================= */
-var TAB_TITLE = {today:'今日',tasks:'任务',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',shop:'商城',me:'我的'};
+var TAB_TITLE = {today:'今日',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',shop:'商城',me:'我的'};
 
 /* 出错兜底：单个视图抛异常不应该让整个应用白屏，其它模块仍然能用 */
 function renderErrorView(tab, err){
@@ -3973,7 +3225,7 @@ function viewShop(){
   return '<div class="mod-head"><div class="kicker">小鱼干换来的</div>'
     + '<div class="warp-head" data-warp><h2>商城</h2></div>'
     + '<p>做事的每一分钟都攒进池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟（零头当天清零）；'
-    + '长周期任务的推进和里程碑另算。换吃的、换装扮，也能换你自己定的现实奖励 —— '
+    + '换吃的、换装扮，也能换你自己定的现实奖励 —— '
     + '奖励不是"努力的理由"，是"努力过之后的证据"。</p></div>'
     + '<div class="card" id="shopPage">' + body + '</div>';
 }
@@ -3991,7 +3243,7 @@ function bindShopActions(){
 }
 
 function render(){
-  var views = {today:viewToday,tasks:viewTasks,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,me:viewMe};
+  var views = {today:viewToday,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
 
   var html;
@@ -4088,6 +3340,13 @@ function closeSheet(){
   s.classList.add('hidden');
   s.classList.remove('show');
   s.innerHTML='';
+}
+
+/* 管理弹层开着的时候，改完数据要把它自己重画一遍 ——
+   否则点了「关」弹层还停在旧状态，看着像没生效。 */
+function mustSheetRefresh(){
+  var s = $('sheet');
+  if(s && s.classList.contains('show') && /必做 · 管理/.test(s.innerHTML)) App.mustManageRender();
 }
 
 /* ================= 业务动作 ================= */
@@ -4218,154 +3477,20 @@ var App = {
     toast(first ? '记下了 ✓ · +1 🐟' : '改好了');
   },
 
-  /* --- 长周期 CRUD --- */
-  newLong:function(){ App.openLongForm(null); },
-  editLong:function(id){ App.openLongForm(id); },
-  openLongForm:function(id){
-    var g=id ? STATE.longTasks.find(function(x){return x.id===id;}) : null;
-    var isEdit=!!g;
-    openSheet('<h2>'+(isEdit?'编辑':'导入')+'长周期任务</h2>'
-      + '<div class="field"><label>名称</label><input id="lt_name" value="'+esc(g?g.name:'')+'" placeholder="如：背完考研红宝书单词"></div>'
-      + '<div class="field"><label>单位</label><input id="lt_unit" value="'+esc(g?g.unit:'个')+'" placeholder="个/页/词/节"></div>'
-      + '<div class="row" style="gap:10px"><div class="field" style="flex:1"><label>总量</label><input id="lt_total" type="number" value="'+(g?g.total:'')+'" placeholder="5500"></div>'
-      + '<div class="field" style="flex:1"><label>当前进度</label><input id="lt_cur" type="number" value="'+(g?g.current:'0')+'" placeholder="0"></div></div>'
-      + '<div class="field"><label>截止日期</label><input id="lt_dl" type="date" value="'+(g?g.deadline:'')+'"></div>'
-      + '<div class="field"><label>类别</label><div class="cat-grid" id="lt_cat"></div></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="lt_save">'+(isEdit?'保存':'创建')+'</button></div>');
-
-    /* 渲染类别选择 */
-    var catHtml='';
-    CATEGORIES.forEach(function(c){
-      /* ⚠️ 新建时也得有默认高亮（跟下面 selCat 的默认值一致），否则四个 chip 全灰，
-         看不出会建到哪一类 */
-      catHtml+='<div class="cat-chip '+(((g?g.category:'work')===c.key)?'on':'')+'" data-ck="'+c.key+'">'+c.label+'</div>';
-    });
-    $('lt_cat').innerHTML=catHtml;
-    var selCat=g?g.category:'work';
-    $('lt_cat').querySelectorAll('[data-ck]').forEach(function(el){
-      el.addEventListener('click',function(){
-        $('lt_cat').querySelectorAll('[data-ck]').forEach(function(x){x.classList.remove('on');});
-        el.classList.add('on'); selCat=el.dataset.ck;
-      });
-    });
-
-    $('lt_save').addEventListener('click',function(){
-      var name=$('lt_name').value.trim(), unit=$('lt_unit').value.trim()||'个';
-      var total=parseInt($('lt_total').value,10), cur=parseInt($('lt_cur').value,10)||0;
-      var dl=$('lt_dl').value;
-      if(!name||!total||!dl){toast('名称、总量、截止日必填');return;}
-      if(g){ g.name=name;g.unit=unit;g.total=total;g.current=cur;g.deadline=dl;g.category=selCat; }
-      else{ STATE.longTasks.push({id:uid('lt'),name:name,unit:unit,total:total,current:cur,deadline:dl,category:selCat,status:'active',records:[],createdAt:today()}); }
-      save(); closeSheet(); render(); toast(isEdit?'已更新':'已导入长周期任务');
-    });
-  },
-
-  checkinLong:function(id){
-    var g=STATE.longTasks.find(function(x){return x.id===id;}); if(!g)return;
-    openSheet('<h2>打卡：'+esc(g.name)+'</h2>'
-      + '<div class="muted">当前 '+g.current+'/'+g.total+' '+g.unit+' ('+longPct(g)+'%)</div>'
-      + '<div class="field"><label>本次完成量（'+g.unit+'）</label><input id="ci_amt" type="number" value="1" min="0"></div>'
-      + '<div class="field"><label>花费时间（分钟，可选）</label><input id="ci_min" type="number" value="" placeholder="可选"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="ci_ok">确认打卡</button></div>');
-    $('ci_ok').addEventListener('click',function(){
-      var amt=parseInt($('ci_amt').value,10)||0;
-      var mins=parseInt($('ci_min').value,10)||0;
-      g.current=(g.current||0)+amt;
-      g.records.push({date:today(),amount:amt,minutes:mins,ts:Date.now()});
-      if(g.current>=g.total){ g.status='done'; }
-      var fish = (mins>0 ? awardFish(mins, g.name) : 0) + awardLongProgress(g, amt);
-      save(); closeSheet();
-      var ms=checkLongMilestones(g);
-      render(); renderTimerBar();
-      if(ms.length){ setTimeout(function(){toast(ms[0]);},300); }
-      else{ toast('已打卡 +'+amt+' '+g.unit+(fish?(' · +'+fish+' 🐟'):poolTail(fish))); }
-    });
-  },
-
-  resumeLong:function(id){
-    var g=STATE.longTasks.find(function(x){return x.id===id;}); if(!g)return;
-    g.status='active'; g.pausedAt=null; save(); render(); toast('已恢复「'+g.name+'」');
-  },
-
-  delLong:function(id){
-    var g=STATE.longTasks.find(function(x){return x.id===id;}); if(!g)return;
-    openSheet('<h2>删除长周期任务？</h2><div class="hint">「'+esc(g.name)+'」及其 '+g.records.length+' 条记录将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="dl_yes">确认删除</button></div>');
-    $('dl_yes').addEventListener('click',function(){
-      STATE.longTasks=STATE.longTasks.filter(function(x){return x.id!==id;}); save(); closeSheet(); render(); toast('已删除');
-    });
-  },
-
-  /* --- 日常 CRUD --- */
-  newDaily:function(){ App.openDailyForm(null); },
-  editDaily:function(id){ App.openDailyForm(id); },
-  toggleDaily:function(id){
-    var dt=STATE.dailyTasks.find(function(x){return x.id===id;}); if(!dt)return;
-    dt.enabled=!dt.enabled; save(); render(); toast(dt.enabled?'已启用':'已关闭');
-  },
-  openDailyForm:function(id){
-    var dt=id?STATE.dailyTasks.find(function(x){return x.id===id;}):null;
-    var isEdit=!!dt;
-    openSheet('<h2>'+(isEdit?'编辑':'新建')+'日常任务</h2>'
-      + '<div class="field"><label>名称</label><input id="dn_name" value="'+esc(dt?dt.name:'')+'" placeholder="如：跑步 30 分钟"></div>'
-      + '<div class="field"><label>类型</label><div class="seg" id="dn_type">'
-      + '<button class="btn '+(dt&&dt.type==='habit'?'primary':'ghost')+'" data-dt="habit">习惯提升</button>'
-      + '<button class="btn '+(dt&&dt.type==='recharge'?'primary':'ghost')+'" data-dt="recharge">充能恢复</button>'
-      + '</div></div>'
-      + '<div class="field"><label>大类</label><div class="cat-grid" id="dn_cat"></div></div>'
-      + '<div class="field"><label>子类（可选）</label><input id="dn_sub" value="'+esc(dt?dt.subCategory:'')+'" placeholder="如：运动 / 冥想 / 阅读"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="dn_save">'+(isEdit?'保存':'创建')+'</button></div>');
-
-    var selType=dt?dt.type:'habit';
-    $('dn_type').querySelectorAll('[data-dt]').forEach(function(b){
-      b.addEventListener('click',function(){
-        selType=b.dataset.dt;
-        $('dn_type').querySelectorAll('[data-dt]').forEach(function(x){
-          x.className='btn '+(x===b?'primary':'ghost');
-        });
-      });
-    });
-
-    var catHtml='';
-    CATEGORIES.forEach(function(c){
-      catHtml+='<div class="cat-chip '+(((dt?dt.category:'work')===c.key)?'on':'')+'" data-dk="'+c.key+'">'+c.label+'</div>';
-    });
-    $('dn_cat').innerHTML=catHtml;
-    var selCat=dt?dt.category:'work';
-    $('dn_cat').querySelectorAll('[data-dk]').forEach(function(el){
-      el.addEventListener('click',function(){
-        $('dn_cat').querySelectorAll('[data-dk]').forEach(function(x){x.classList.remove('on');});
-        el.classList.add('on'); selCat=el.dataset.dk;
-      });
-    });
-
-    $('dn_save').addEventListener('click',function(){
-      var name=$('dn_name').value.trim(), sub=$('dn_sub').value.trim();
-      if(!name){toast('写个名字');return;}
-      if(dt){ dt.name=name;dt.category=selCat;dt.subCategory=sub;dt.type=selType; }
-      else{ STATE.dailyTasks.push({id:uid('dt'),name:name,category:selCat,subCategory:sub,type:selType,enabled:true,records:[],createdAt:today()}); }
-      save(); closeSheet(); render(); toast(isEdit?'已更新':'已创建日常任务');
-    });
-  },
-
-  checkinDaily:function(id){
-    var dt=STATE.dailyTasks.find(function(x){return x.id===id;}); if(!dt)return;
-    if(isDailyCheckedToday(dt)){ toast('今天已经打过卡了'); return; }
-    openSheet('<h2>打卡：'+esc(dt.name)+'</h2>'
-      + '<div class="field"><label>花费时间（分钟）</label><input id="dci_min" type="number" value="10" min="1"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="dci_ok">确认</button></div>');
-    $('dci_ok').addEventListener('click',function(){
-      var mins=parseInt($('dci_min').value,10)||10;
-      dt.records.push({date:today(),amount:1,minutes:mins,ts:Date.now()});
-      var fish = awardFish(mins, dt.name);
-      save(); closeSheet(); render();
-      toast('已打卡 '+mins+' 分钟 ✓'+(fish?(' · +'+fish+' 条小鱼干 🐟'):poolTail(fish)));
-    });
-  },
-
-  quickCheckin:function(id){ App.checkinDaily(id); },
-
   /* --- 每日必做 --- */
+  /* 管理弹层（2026-10-13 新增）：任务页删掉后，「必做」的改名/开关/删除/近 7 天就没有别的入口了。
+     光能"加一条"不算"保留每日必做"。这里复用原来任务页那张 renderMustItemCard，不另写一套。 */
+  mustManage:function(){ App.mustManageRender(); },
+  mustManageRender:function(){
+    var all = STATE.mustDos||[];
+    if(!all.length){ toast('还没有必做项，先加一条'); return; }
+    openSheet('<h2>每日必做 · 管理</h2>'
+      + '<div class="hint">改名、开关、删除，还有最近 7 天。被关掉的项也在下面。</div>'
+      + all.map(renderMustItemCard).join('')
+      + '<div class="sheet-actions"><button class="btn primary" data-act="newMustManage">'+icon('plus')+' 加一条</button>'
+      + '<button class="btn ghost" data-act="closeSheet">关闭</button></div>');
+  },
+  newMustManage:function(){ App.openMustForm(null, true); },
   /* 点一下打勾并写 ts（打卡时刻）；已打过 → 再点就是撤销。
      一天只保留一条记录：不是"限制"，是为了让那个时间真的是「第一次打完的时刻」。 */
   mustToggle:function(id){
@@ -4375,14 +3500,14 @@ var App = {
 
     if(idx >= 0){
       m.records.splice(idx,1);
-      save(); render(); toast('已撤销今天的打卡');
+      save(); render(); mustSheetRefresh(); toast('已撤销今天的打卡');
       return;
     }
     var ts = Date.now();
     m.records = m.records || [];
     m.records.push({date:d, ts:ts});
     m.records.sort(function(a,b){ return a.date<b.date ? -1 : 1; });
-    save(); render();
+    save(); render(); mustSheetRefresh();
     var st = mustTodayStats();
     toast('已打卡 '+clockOf(ts)+' ✓'+(st.done===st.total ? ' · 今天全清了' : ' · 还差 '+(st.total-st.done)+' 件'));
   },
@@ -4392,10 +3517,10 @@ var App = {
 
   toggleMust:function(id){
     var m = STATE.mustDos.find(function(x){return x.id===id;}); if(!m) return;
-    m.enabled = !m.enabled; save(); render(); toast(m.enabled?'已启用':'已关闭');
+    m.enabled = !m.enabled; save(); render(); mustSheetRefresh(); toast(m.enabled?'已启用':'已关闭');
   },
 
-  openMustForm:function(id){
+  openMustForm:function(id, fromManage){
     var m = id ? STATE.mustDos.find(function(x){return x.id===id;}) : null;
     var isEdit = !!m;
     openSheet('<h2>'+(isEdit?'编辑':'新建')+'必做</h2>'
@@ -4409,7 +3534,9 @@ var App = {
       if(!name){ toast('写个名字'); return; }
       if(m){ m.name = name; }
       else{ STATE.mustDos.push({id:uid('mu'), name:name, enabled:true, records:[], createdAt:today()}); }
-      save(); closeSheet(); render(); toast(isEdit?'已更新':'已加入必做');
+      save(); render();
+      if(fromManage) App.mustManageRender(); else closeSheet();   /* 从管理弹层进来的 → 存完回管理弹层 */
+      toast(isEdit?'已更新':'已加入必做');
     });
   },
 
@@ -4420,100 +3547,9 @@ var App = {
       + '<button class="btn danger" id="mu_del">确认删除</button></div>');
     $('mu_del').addEventListener('click',function(){
       STATE.mustDos = STATE.mustDos.filter(function(x){return x.id!==id;});
-      save(); closeSheet(); render(); toast('已删除');
-    });
-  },
-
-  goMustManage:function(){
-    CUR_TAB = 'tasks'; render();
-    var el = $('mustSec');
-    if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'start'});
-  },
-
-  delDaily:function(id){
-    var dt=STATE.dailyTasks.find(function(x){return x.id===id;}); if(!dt)return;
-    openSheet('<h2>删除日常任务？</h2><div class="hint">「'+esc(dt.name)+'」将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="dd_yes">确认删除</button></div>');
-    $('dd_yes').addEventListener('click',function(){
-      STATE.dailyTasks=STATE.dailyTasks.filter(function(x){return x.id!==id;}); save(); closeSheet(); render(); toast('已删除');
-    });
-  },
-
-  /* --- 每周任务 CRUD --- */
-  newWeekly:function(){ App.openWeeklyForm(null); },
-  editWeekly:function(id){ App.openWeeklyForm(id); },
-  checkinWeekly:function(id){ openWeeklyCheckin(id); },
-  toggleWeekly:function(id){
-    var w=STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w)return;
-    w.enabled=!w.enabled; save(); render(); toast(w.enabled?'已启用':'已关闭');
-  },
-  openWeeklyForm:function(id){
-    var w = id ? STATE.weeklyTasks.find(function(x){return x.id===id;}) : null;
-    var isEdit = !!w;
-    openSheet('<h2>'+(isEdit?'编辑':'新建')+'每周任务</h2>'
-      + '<div class="field"><label>类型</label><div class="cat-grid" id="wk_type"></div>'
-      + '<div class="muted" id="wk_type_hint" style="font-size:12px;margin-top:6px;display:block"></div></div>'
-      + '<div class="field"><label>名称</label><input id="wk_name" value="'+esc(w?w.name:'')+'" placeholder="如：跑步 / 健身房"></div>'
-      + '<div class="row" style="gap:10px">'
-      + '<div class="field" style="flex:1"><label>每日目标（分钟）</label><input id="wk_daily" type="number" value="'+(w?w.dailyGoalMin:30)+'" min="1"></div>'
-      + '<div class="field" style="flex:1"><label>每周达标天数</label><input id="wk_days" type="number" value="'+(w?w.weeklyGoalDays:5)+'" min="1" max="7"></div>'
-      + '</div>'
-      + '<div class="field"><label>大类</label><div class="cat-grid" id="wk_cat"></div></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
-      + '<button class="btn primary" id="wk_save">'+(isEdit?'保存':'创建')+'</button></div>');
-
-    var selType = w ? w.type : 'exercise';
-    var selCat  = w ? w.category : weeklyTypeOf(selType).cat;
-
-    function paintType(){
-      var html='';
-      WEEKLY_TYPES.forEach(function(t){
-        html += '<div class="cat-chip '+(selType===t.key?'on':'')+'" data-tk="'+t.key+'">'+t.label+'</div>';
-      });
-      $('wk_type').innerHTML = html;
-      $('wk_type_hint').textContent = weeklyTypeOf(selType).hint;
-      $('wk_type').querySelectorAll('[data-tk]').forEach(function(el){
-        el.addEventListener('click',function(){
-          selType = el.dataset.tk;
-          selCat = weeklyTypeOf(selType).cat;
-          paintType(); paintCat();
-        });
-      });
-    }
-    function paintCat(){
-      var html='';
-      CATEGORIES.forEach(function(c){
-        html += '<div class="cat-chip '+(selCat===c.key?'on':'')+'" data-ck2="'+c.key+'">'+c.label+'</div>';
-      });
-      $('wk_cat').innerHTML = html;
-      $('wk_cat').querySelectorAll('[data-ck2]').forEach(function(el){
-        el.addEventListener('click',function(){ selCat = el.dataset.ck2; paintCat(); });
-      });
-    }
-    paintType(); paintCat();
-
-    $('wk_save').onclick=function(){
-      var name = $('wk_name').value.trim();
-      if(!name){ toast('写个名字'); return; }
-      var daily = parseInt($('wk_daily').value,10)||0;
-      var days = Math.min(7, Math.max(1, parseInt($('wk_days').value,10)||5));
-      if(!weeklyTypeOf(selType).timed) daily = 0;
-      if(w){ w.name=name; w.type=selType; w.category=selCat; w.dailyGoalMin=daily; w.weeklyGoalDays=days; }
-      else{
-        STATE.weeklyTasks.push({id:uid('wk'), name:name, type:selType, category:selCat,
-          dailyGoalMin:daily, weeklyGoalDays:days, enabled:true, records:[], createdAt:today()});
-      }
-      save(); closeSheet(); render(); toast(isEdit?'已更新':'已创建每周任务');
-    };
-  },
-  delWeekly:function(id){
-    var w=STATE.weeklyTasks.find(function(x){return x.id===id;}); if(!w)return;
-    openSheet('<h2>删除每周任务？</h2><div class="hint">「'+esc(w.name)+'」及其 '+w.records.length+' 条记录将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="dw_yes">确认删除</button></div>');
-    $('dw_yes').addEventListener('click',function(){
-      STATE.weeklyTasks=STATE.weeklyTasks.filter(function(x){return x.id!==id;});
-      if(STATE.timer && STATE.timer.taskId===id) STATE.timer=null;
-      save(); closeSheet(); render(); renderTimerBar(); toast('已删除');
+      save(); render();
+      if((STATE.mustDos||[]).length){ App.mustManageRender(); toast('已删除'); }
+      else { closeSheet(); toast('已删除，必做项清空了'); }
     });
   },
 
@@ -4796,7 +3832,9 @@ var App = {
       var obj;
       try{ obj=JSON.parse(text); }
       catch(err){ toast('导入失败：不是有效的 JSON'); return; }
-      if(!obj||typeof obj!=='object'||!Array.isArray(obj.longTasks)){ toast('导入失败：不是着陆的备份文件'); return; }
+      /* 任务模块删掉后不能再拿 longTasks 当"是不是着陆备份"的凭据了 ——
+         换成"保留字段里命中任意一个就算数"，这样**旧备份也还能导回来**。 */
+      if(!obj||typeof obj!=='object'||!(obj.mustDos||obj.loose||obj.weather||obj.dumps||obj.timer||obj.longTasks)){ toast('导入失败：不是着陆的备份文件'); return; }
       /* 必须就地改 STATE：内部所有函数都闭包引用同一个对象，
          整个替换掉会让它们继续看旧对象，导入等于没导。 */
       var keep = STATE;
@@ -4969,7 +4007,6 @@ var App = {
       + '<div class="row between" style="margin-top:14px;gap:10px;flex-wrap:wrap">'
       + '<button class="btn ghost sm" id="s_export">导出备份</button>'
       + '<button class="btn ghost sm" id="s_import">导入备份</button>'
-      + '<button class="btn ghost sm" id="s_demo">载入示例数据</button>'
       + '</div>'
       + '<div class="field" style="margin-top:14px"><label>后台常驻</label>'
       +   '<div class="hint" style="margin:0 0 8px">关掉窗口只是缩到右下角托盘，程序继续跑、计时照常走（托盘悬停能看到剩余时间）。要彻底退出：右键托盘图标 → 退出着陆。</div>'
@@ -5103,10 +4140,6 @@ var App = {
     };
     $('s_export').onclick=App.exportData;
     $('s_import').onclick=App.importData;
-    $('s_demo').onclick=function(){
-      if(!confirm('载入示例数据？会覆盖当前的任务设置（倾倒、情绪、伙伴、记忆保留）。')) return;
-      seedDemo(); save(); closeSheet(); render(); toast('示例数据已载入');
-    };
 
     /* 关窗偏好：点 × 是"每次问我 / 直接缩托盘 / 直接退出" */
     var cpBtn = $('s_closepref');
@@ -5187,7 +4220,6 @@ document.addEventListener('click',function(e){
   if(act==='markOne') App.markOne();
   else if(act==='changeOne') App.changeOne();
   else if(act==='newOne') App.newOne();
-  else if(act==='quickCheckin') App.quickCheckin(id);
   else if(act==='restToday') App.restToday();
   else if(act==='restPast') App.restPast(el.dataset.date);
   else if(act==='looseDel') App.looseDel(el.dataset.id);
@@ -5208,38 +4240,17 @@ document.addEventListener('click',function(e){
   else if(act==='dumpStart') App.dumpStart(id);
   else if(act==='setMood') App.setMood(el.dataset.mood);
 
-  /* 长周期 */
-  else if(act==='newLong') App.newLong();
-  else if(act==='editLong') App.editLong(id);
-  else if(act==='checkinLong') App.checkinLong(id);
-  else if(act==='resumeLong') App.resumeLong(id);
-  else if(act==='delLong') App.delLong(id);
-
-  /* 日常 */
-  else if(act==='newDaily') App.newDaily();
-  else if(act==='editDaily') App.editDaily(id);
-  else if(act==='checkinDaily') App.checkinDaily(id);
-  else if(act==='toggleDaily') App.toggleDaily(id);
-  else if(act==='delDaily') App.delDaily(id);
-
   /* 每日必做 */
   else if(act==='mustToggle') App.mustToggle(id);
   else if(act==='newMust') App.newMust();
   else if(act==='editMust') App.editMust(id);
   else if(act==='toggleMust') App.toggleMust(id);
   else if(act==='delMust') App.delMust(id);
-  else if(act==='goMustManage') App.goMustManage();
-
-  /* 每周任务 */
-  else if(act==='newWeekly') App.newWeekly();
-  else if(act==='editWeekly') App.editWeekly(id);
-  else if(act==='checkinWeekly') App.checkinWeekly(id);
-  else if(act==='quickWeekly') App.checkinWeekly(id);
-  else if(act==='toggleWeekly') App.toggleWeekly(id);
-  else if(act==='delWeekly') App.delWeekly(id);
+  else if(act==='mustManage') App.mustManage();
+  else if(act==='newMustManage') App.newMustManage();
 
   /* 计时器 */
-  else if(act==='startTimer') App.startTimer(el.dataset.scope||'weekly', id);
+  else if(act==='startTimer') App.startTimer(el.dataset.scope || 'loose', id);
   else if(act==='timerToggle') App.timerToggle();
   else if(act==='timerFinish') App.timerFinish();
 
@@ -5345,44 +4356,20 @@ function init(){
     tab:function(t){ CUR_TAB=t; render(); }
   };
 
-  var pausedNames = checkAutoPause();
-
-  /* 渲染期间不产生副作用：里程碑在这里统一结算一次。
-     ⚠️ 整段包 try/catch —— 这是 init() 早期，任何一个任务数据异常都不该让应用起不来
-     （2026-09-20 就是这里抛过一次，直接把 window.App/Landing 带走、整页白屏）。 */
-  var milestoneMsgs = [];
-  try{
-    STATE.longTasks.forEach(function(g){
-      if(g.status!=='active' && g.status!=='done') return;
-      try{ milestoneMsgs = milestoneMsgs.concat(checkLongMilestones(g)); }
-      catch(e){ try{ console.warn('[app] 里程碑结算失败（已跳过）', g && g.name, e); }catch(_){} }
-    });
-  }catch(e){
-    try{ console.warn('[app] 里程碑批量结算失败（已跳过）', e); }catch(_){}
-  }
-  if(pausedNames.length) save();
   /* 上课时间结算：把今天的课表分钟倒进小鱼干池（幂等，只倒增量）。
      ⚠️ 刻意放 try/catch —— 这是 init() 早期，任何一步抛错都会把 window.App/Landing 带走、整页白屏
      （2026-09-20 在这段里踩过一次，见上面里程碑那段的注释）。 */
   var classFishToday = 0;
   try{ classFishToday = settleClassFish(); }
   catch(e){ try{ console.warn('[app] 上课时间结算失败（已跳过）', e); }catch(_){} }
-  if(milestoneMsgs.length){
-    setTimeout(function(){ toast(milestoneMsgs[0]); }, 900);
-  }
   /* 上课换来的鱼要**说出来** —— 不然他打开应用莫名其妙多了几条鱼（或者反过来：上了 8 节课
      却一条鱼没见着，就会以为没生效）。只在真发了鱼的那天提示一次。 */
   if(classFishToday > 0){
     setTimeout(function(){
       toast('今天 '+classPeriodsOn(today())+' 节课也算投入 · +'+classFishToday+' 🐟');
-    }, milestoneMsgs.length ? 4200 : 1600);
+    }, 1600);
   }
-  if(pausedNames.length){
-    setTimeout(function(){
-      toast('「'+pausedNames[0]+'」停了两天，先歇着——想继续随时点「继续」');
-    }, pausedNames.length && milestoneMsgs.length ? 3200 : 900);
-  }
-  /* 深链：#tab=tasks 之类的锚点可以直接打开对应模块 */
+  /* 深链：#tab=me 之类的锚点可以直接打开对应模块（键名必须出现在 TAB_TITLE 里） */
   try{
     (location.hash||'').replace(/^#/,'').split('&').forEach(function(kv){
       var p = kv.split('=');
@@ -5394,15 +4381,9 @@ function init(){
     b.addEventListener('click',function(){ CUR_TAB=b.dataset.tab; render(); });
   });
 
-  $('topNew').addEventListener('click',function(){
-    if(CUR_TAB==='tasks'){ App.newLong(); }
-    else if(CUR_TAB==='today'){ App.newOne(); }
-    else{ App.newLong(); }
-  });
-  $('fabNew').addEventListener('click',function(){
-    if(CUR_TAB==='tasks'){ App.newLong(); }
-    else{ App.newOne(); }
-  });
+  /* 任务模块删掉后，「新建」只剩"定今天那一件"这一个去处 */
+  $('topNew').addEventListener('click',function(){ App.newOne(); });
+  $('fabNew').addEventListener('click',function(){ App.newOne(); });
   $('topSettings').addEventListener('click',function(){ App.openSettings(); });
 
   /* 桥（window.closeSheet / window.App / window.Landing）已经在 init() 开头挂好了 —— 别挪回这儿 */
