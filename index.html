@@ -60,6 +60,9 @@
      换成本地 Inter Tight + 系统中文字体，数字和标题一样有分量，而且永远在。 */
   --font-display:var(--font-num);
   --shadow-soft:0 4px 14px rgba(0,0,0,.42);
+  /* 胶片颗粒（2026-10-14）：一层极淡的单色噪声，压住渐变的色带、给暗部加质感。
+     「电影感」和「纯色块」的差别就在这。定义成变量，两条 ::after 都要用。 */
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.075'/%3E%3C/svg%3E");
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -69,13 +72,14 @@ body{
   background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
+/* 🔴 2026-10-14：最后那层不透明的 `#0d0b0a` 拿掉了 —— 它会把 z-index 更低的
+   #bg-aurora 整个盖住。底色由 body 自己的 background 提供（同一个色，视觉无差）。 */
 body::before{content:"";position:fixed;inset:0;z-index:-3;
   background:
-    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.17), transparent 60%),
-    radial-gradient(44% 38% at 84% 14%, rgba(47,191,174,.09), transparent 62%),
-    radial-gradient(64% 54% at 52% 104%, rgba(192,112,60,.13), transparent 62%),
-    radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.06), transparent 60%),
-    #0d0b0a;
+    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.15), transparent 60%),
+    radial-gradient(44% 38% at 84% 14%, rgba(47,191,174,.08), transparent 62%),
+    radial-gradient(64% 54% at 52% 104%, rgba(192,112,60,.12), transparent 62%),
+    radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.06), transparent 60%);
 }
 /* 「一束光」（2026-10-13）：只给今日页顶部打一束赭石暖光，其余 6 个栏目维持上面那四团环境光。
    暗色系作品都是靠**一处**辉光把视线钉在标题上，不是全屏均匀发亮 —— 主次就是这么出来的。
@@ -88,24 +92,43 @@ body::before{content:"";position:fixed;inset:0;z-index:-3;
    所以：① 中心提到视口内、半径收紧、峰值 alpha 加大；② **把今日页的暗角放开**（见下一条规则）。 */
 body[data-tab="today"]::before{content:"";position:fixed;inset:0;z-index:-3;
   background:
-    radial-gradient(72% 44% at 50% 1%, rgba(232,150,86,.60), rgba(224,138,78,.24) 38%, transparent 72%),
-    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.16), transparent 60%),
+    radial-gradient(66% 42% at 50% 0%, rgba(232,150,86,.50), rgba(224,138,78,.20) 38%, transparent 72%),
+    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.15), transparent 60%),
     radial-gradient(44% 38% at 84% 14%, rgba(47,191,174,.07), transparent 62%),
     radial-gradient(64% 54% at 52% 104%, rgba(192,112,60,.11), transparent 62%),
-    radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.05), transparent 60%),
-    #0d0b0a;
+    radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.05), transparent 60%);
 }
 /* 🔴 今日页的暗角必须给那束光让路。
    body::after 原本是 `linear-gradient(180deg, rgba(0,0,0,.42), transparent 30%)`，
    它 z-index 更高（-1 > -3），把顶部那道光的峰值压掉一大半。
    这里只重写 background，position/inset/z-index 仍继承 body::after（特异性 0,1,1 > 0,0,1）。 */
 body[data-tab="today"]::after{
-  background:linear-gradient(180deg, rgba(0,0,0,.06), transparent 36%),
-             linear-gradient(0deg, rgba(0,0,0,.55), transparent 46%);
+  background-image:var(--grain),
+    linear-gradient(180deg, rgba(0,0,0,.04), transparent 36%),
+    linear-gradient(0deg, rgba(0,0,0,.30), transparent 46%);
 }
 /* GradientWaves 暖色渐变波浪背景（gradient-waves.js 注入 canvas，远处淡出透出底层渐变） */
 #bg-waves{position:fixed;inset:0;z-index:-2;pointer-events:none;
   transform:scale(1.08);will-change:transform;}
+/* 「极光」（2026-10-14）：三个大色域以 36-54s 的极慢速度漂移。
+   之前背景的问题：所有层次挤在顶部 25%，下面三分之二是死黑。
+   纯 transform 动画（GPU 合成，不触发重绘）；radial-gradient 本身就是软边，不需要 filter:blur。
+   🔴 它在 body::before 底下（z-index -4），所以 body::before 里**不能**有不透明的底色。 */
+#bg-aurora{position:fixed;inset:-12%;z-index:-4;pointer-events:none}
+#bg-aurora i{position:absolute;border-radius:50%;will-change:transform}
+#bg-aurora i:nth-child(1){width:62vw;height:62vw;left:-16vw;top:-8vh;
+  background:radial-gradient(circle at 50% 50%, rgba(224,138,78,.16), transparent 64%);
+  animation:aur1 36s ease-in-out infinite alternate}
+#bg-aurora i:nth-child(2){width:54vw;height:54vw;right:-18vw;top:22vh;
+  background:radial-gradient(circle at 50% 50%, rgba(143,116,255,.17), transparent 64%);
+  animation:aur2 46s ease-in-out infinite alternate}
+#bg-aurora i:nth-child(3){width:66vw;height:48vw;left:14vw;bottom:-26vh;
+  background:radial-gradient(circle at 50% 50%, rgba(47,191,174,.15), transparent 64%);
+  animation:aur3 54s ease-in-out infinite alternate}
+@keyframes aur1{to{transform:translate3d(15vw,8vh,0) scale(1.16)}}
+@keyframes aur2{to{transform:translate3d(-13vw,-7vh,0) scale(1.12)}}
+@keyframes aur3{to{transform:translate3d(-9vw,-8vh,0) scale(1.1)}}
+@media(prefers-reduced-motion:reduce){#bg-aurora i{animation:none}}
 /* 可选背景图叠层：30% 透明度，留空则不显示 */
 .bg-ph{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.3;
   background-image:none;background-size:cover;background-position:center;background-repeat:no-repeat;
@@ -114,9 +137,14 @@ body[data-tab="today"]::after{
   font-family:var(--font-display);font-size:13px;letter-spacing:.06em;
   color:rgba(255,255,255,.30);border:1px dashed rgba(255,255,255,.10);
   padding:10px 16px;border-radius:12px;}
+/* 🔴 2026-10-14 两处改动：
+   ① 顶层加 var(--grain) —— 之前整屏是一块平滑渐变，放大全是色带、没有质感；
+   ② 暗角大幅收敛（顶 .42→.28、底 .55→.32）：之前底部 46% 被 .55 的黑盖住，
+      波浪和极光全被压成死黑，等于下半屏没有背景。 */
 body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(180deg, rgba(0,0,0,.42), transparent 30%),
-             linear-gradient(0deg, rgba(0,0,0,.55), transparent 46%);}
+  background-image:var(--grain),
+    linear-gradient(180deg, rgba(0,0,0,.28), transparent 30%),
+    linear-gradient(0deg, rgba(0,0,0,.32), transparent 46%);}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .hidden{display:none!important}
 .muted{color:var(--muted)}
@@ -875,7 +903,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 </head>
 <body>
 
-<!-- 全屏背景层：gradient-waves 暖色波浪背景 + 可选的 30% 背景图叠层 -->
+<!-- 全屏背景层（从底到顶）：极光色域 → gradient-waves 波浪 → 暗角+颗粒 -->
+<div id="bg-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 <div id="bg-waves"></div>
 <div id="bg-ph" class="bg-ph" aria-hidden="true"></div>
 
