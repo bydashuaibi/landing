@@ -77,17 +77,31 @@ body::before{content:"";position:fixed;inset:0;z-index:-3;
     radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.06), transparent 60%),
     #0d0b0a;
 }
-/* 「一束光」（2026-10-13）：只给今日页顶部打一束赭石暖光，其余 7 个栏目维持上面那四团环境光。
+/* 「一束光」（2026-10-13）：只给今日页顶部打一束赭石暖光，其余 6 个栏目维持上面那四团环境光。
    暗色系作品都是靠**一处**辉光把视线钉在标题上，不是全屏均匀发亮 —— 主次就是这么出来的。
-   data-tab 由 app.js 的 render() 写到 body 上。 */
+   data-tab 由 app.js 的 render() 写到 body 上。
+   🔴 第一版做完全是废的（master 说"重启还是和原来一样的单一深色背景"），实测出来两个原因：
+     ① 光束中心在视口**外**（at 50% -8%）+ 半径太大 → 到标题位置已经衰减成薄雾；
+     ② 更要命的是 body::after 的暗角 `rgba(0,0,0,.42)` **正好压在顶部 30%**，而光的峰值就在顶部，
+        等于每一点光都被吃掉四成 —— 实测顶部中心只比不开时亮 +20（32,31,30 → 52,43,34），
+        在近黑底上肉眼根本看不出来。
+   所以：① 中心提到视口内、半径收紧、峰值 alpha 加大；② **把今日页的暗角放开**（见下一条规则）。 */
 body[data-tab="today"]::before{content:"";position:fixed;inset:0;z-index:-3;
   background:
-    radial-gradient(62% 36% at 50% -8%, rgba(224,138,78,.34), rgba(224,138,78,.08) 46%, transparent 74%),
-    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.15), transparent 60%),
+    radial-gradient(72% 44% at 50% 1%, rgba(232,150,86,.60), rgba(224,138,78,.24) 38%, transparent 72%),
+    radial-gradient(46% 40% at 16% 6%, rgba(224,138,78,.16), transparent 60%),
     radial-gradient(44% 38% at 84% 14%, rgba(47,191,174,.07), transparent 62%),
     radial-gradient(64% 54% at 52% 104%, rgba(192,112,60,.11), transparent 62%),
     radial-gradient(36% 28% at 78% 78%, rgba(229,123,147,.05), transparent 60%),
     #0d0b0a;
+}
+/* 🔴 今日页的暗角必须给那束光让路。
+   body::after 原本是 `linear-gradient(180deg, rgba(0,0,0,.42), transparent 30%)`，
+   它 z-index 更高（-1 > -3），把顶部那道光的峰值压掉一大半。
+   这里只重写 background，position/inset/z-index 仍继承 body::after（特异性 0,1,1 > 0,0,1）。 */
+body[data-tab="today"]::after{
+  background:linear-gradient(180deg, rgba(0,0,0,.06), transparent 36%),
+             linear-gradient(0deg, rgba(0,0,0,.55), transparent 46%);
 }
 /* GradientWaves 暖色渐变波浪背景（gradient-waves.js 注入 canvas，远处淡出透出底层渐变） */
 #bg-waves{position:fixed;inset:0;z-index:-2;pointer-events:none;}

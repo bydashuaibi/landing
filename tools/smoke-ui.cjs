@@ -236,6 +236,37 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   }
   await page.screenshot({ path: path.join(SHOTS, 'weekly.png'), clip: { x: 0, y: 0, width: 1280, height: 900 } });
 
+  log('\n== 12. 「一束光」真的看得见吗 ==');
+  // 🔴 防回归：第一版「一束光」**规则生效了、但肉眼完全看不见**
+  //    （顶部中心只比不开时亮 +20，master 原话"重启还是和原来一样的单一深色背景"）。
+  //    纯 CSS 断言抓不到这种"应用了但没效果"，所以这里量**真实渲染出来的像素**。
+  await page.click('.nav-item[data-tab="today"]');
+  await sleep(1000);
+  await page.evaluate(() => { const w = document.getElementById('bg-waves');
+    if (w) { w.dataset._d = w.style.display; w.style.display = 'none'; } });
+  await sleep(400);
+  const clip = { x: 0, y: 0, width: 1280, height: 300 };
+  const onB64 = await page.screenshot({ clip, encoding: 'base64' });
+  await page.evaluate(() => document.body.removeAttribute('data-tab'));
+  await sleep(500);
+  const offB64 = await page.screenshot({ clip, encoding: 'base64' });
+  check('开关 data-tab 会改变顶部画面（光真的渲染了）', onB64 !== offB64);
+  const css = await page.evaluate(() => {
+    document.body.setAttribute('data-tab', 'today');
+    return { on: getComputedStyle(document.body, '::before').backgroundImage,
+             after: getComputedStyle(document.body, '::after').backgroundImage };
+  });
+  const peak = /rgba\(2\d\d,\s*1\d\d,\s*\d\d,\s*([\d.]+)\)/.exec(css.on);
+  check('光束峰值 alpha ≥ 0.5（不是一层看不见的薄雾）', !!peak && parseFloat(peak[1]) >= 0.5,
+        peak ? peak[1] : css.on.slice(0, 90));
+  const vig = /linear-gradient\(rgba\(0, 0, 0, ([\d.]+)\)/.exec(css.after);
+  check('今日页暗角已给光让路（顶部黑 ≤ 0.15）', !!vig && parseFloat(vig[1]) <= 0.15,
+        vig ? vig[1] : css.after.slice(0, 80));
+  await page.evaluate(() => { const w = document.getElementById('bg-waves');
+    if (w) { w.style.display = w.dataset._d || 'block'; delete w.dataset._d; } });
+  await page.evaluate(() => document.body.setAttribute('data-tab', 'today'));
+  await page.screenshot({ path: path.join(SHOTS, 'today.png'), clip: { x: 0, y: 0, width: 1280, height: 760 } });
+
   await browser.close();
   server.close();
   log('\n' + (fails ? '❌ 失败 ' + fails + ' 项' : '✅ 全部通过') + '  截图 → tools/_shots/');
