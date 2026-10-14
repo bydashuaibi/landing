@@ -1322,12 +1322,25 @@ function onAppChanged(inf){
   var pp = inf.prevProc;
   if(!pp){ return; }
 
-  /* 不打扰的三种情况：
+  /* 不打扰的情况：
      ① 手动计时中 —— 手动计时已经在记这段时间了，再问一遍就是重复记账；
-     ② 他关掉了自动询问；
-     ③ 这个应用刚被「这次不用」过（一小时静音）。 */
+     ② 他把整个自动询问关了。 */
   if(STATE.timer && !STATE.timer.finished) return;
   if(ACT && ACT.ask === false) return;
+
+  /* 「不用确认」模式（2026-10-14，master 选的）：不弹窗问，按建议名直接落账，
+     只弹一个几秒就收的「已记下」通知让他知道机制在跑（机制要显化）。
+     静音表在这个模式下没意义 —— 没人问他话。 */
+  if(ACT && ACT.askConfirm === false){
+    var nm = autoNameOf(pp, inf.prevCat);
+    var mins = Math.max(1, Math.round(Number(inf.prevMinutes) || 0));
+    looseRecord(nm, mins, actCatToPet(inf.prevCat));
+    if(hasAskWin()) window.landing.ask.show({ notify:true, appLabel:appLabel(pp), name:nm, minutes:mins });
+    else toast('已记下：「' + nm + '」约 ' + fmtMin(mins));
+    return;
+  }
+
+  /* ③ 这个应用刚被「这次不用」过（一小时静音）—— 只作用于「弹窗问」模式 */
   if(ASK_MUTE[pp] && Date.now() < ASK_MUTE[pp]) return;
 
   if(ASK_TIMER) clearTimeout(ASK_TIMER);
@@ -1452,8 +1465,15 @@ function renderActivitySettings(){
     /* 换应用回问（2026-10-14 改语义）—— 不用手点计时：主进程一直在记，
        切走时问一句「刚才那段记作什么」，确认后按大概时间直接落账 */
     + '<div class="hint" style="margin-top:10px">换应用回问：<b>' + (ACT.ask ? '开着' : '关了') + '</b>'
-    + ' —— 一直在记；等你切到下一个程序（或回到桌面），右下角浮窗问一句「刚才那段时间记作什么」，'
-    + '确认后按大概时长直接记进今天的池子和周报。<b>不碰任何任务。</b></div>'
+    + ' —— 一直在记；等你切到下一个程序（或回到桌面），右下角浮窗处理「刚才那段时间」，'
+    + '按大概时长直接记进今天的池子和周报。<b>不碰任何任务。</b></div>'
+    /* 确认方式（2026-10-14 加）：默认弹窗问；选「不用确认」就是全自动 + 通知 */
+    + '<div class="hint">确认方式：<b>' + (ACT.askConfirm === false ? '不用确认，直接记（全自动）' : '弹窗问我') + '</b>'
+    + '<button class="btn ghost sm" style="margin-left:8px" data-act="askConfirmToggle">'
+    + (ACT.askConfirm === false ? '改回弹窗问我' : '不用我确认，直接记') + '</button>'
+    + (ACT.askConfirm === false
+        ? '<div class="hint" style="margin-top:4px">全自动：切走后按建议名直接落账，右下角只弹一个几秒就收的「已记下」通知。记错了去今日页「今天的池子」里删。</div>'
+        : '') + '</div>'
     + '<div class="field" style="margin-top:10px"><label>问过之后的最短静默（分钟）</label>'
     + '<input id="act_cool" type="number" min="3" max="240" value="' + (ACT.askCoolMin || 15) + '">'
     + '<div class="hint" style="margin-top:6px">刚问过又换应用，这段时间内不再问，免得烦。同一个应用被你点过「这次不用」也静默一小时。</div></div>'
@@ -3683,6 +3703,15 @@ var App = {
       ACT = s; render(); toast(s.ask ? '切走后会问一句刚才那段记作什么' : '不再自动询问');
     });
   },
+  /* 确认方式切换：弹窗问 ↔ 不用确认直接记（2026-10-14，master 要的自动化档） */
+  askConfirmToggle:function(){
+    if(!ACT || !window.landing || !window.landing.activity) return;
+    var to = (ACT.askConfirm === false);        /* true = 改回「弹窗问」 */
+    window.landing.activity.setPref({ askConfirm: to }).then(function(s){
+      ACT = s; render();
+      toast(to ? '改回弹窗问：切走后会先问你' : '全自动：切走后直接记，只弹「已记下」通知');
+    });
+  },
   actFolder:function(){
     if(window.landing && window.landing.activity) window.landing.activity.openFolder();
   },
@@ -4325,8 +4354,9 @@ document.addEventListener('click',function(e){
   else if(act==='actRank'){ App.actRank(); }
   else if(act==='actClearShots'){ App.actClearShots(); }
   else if(act==='actSave'){ App.actSave(); }
-  /* 换应用自动计时（2026-10-13） */
+  /* 换应用回问（2026-10-13；10-14 加确认方式切换） */
   else if(act==='actAskToggle'){ App.actAskToggle(); }
+  else if(act==='askConfirmToggle'){ App.askConfirmToggle(); }
   else if(act==='askGo'){ App.askGo(); }
   else if(act==='askSkip'){ App.askSkip(); }
 

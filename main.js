@@ -810,8 +810,10 @@ const ACTIVITY_DIR = path.join(app.getPath('userData'), 'activity');
 /* keepDays 默认两周 —— master 2026-10-02 定的（「保留两周自动清一次」）。
    他还没保存过 prefs.json，所以改这里立刻生效。 */
 /* ask / askCoolMin 是 2026-10-13 加的：换应用时问一句「这是在做什么」，
-   确认后自动开始计时（master：「每次点计时有点麻烦」）。 */
-const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 14, ask: true, askCoolMin: 15 };
+   确认后自动开始计时（master：「每次点计时有点麻烦」）。
+   askConfirm 是 2026-10-14 加的：master 要「不用我确认，只告知，实现自动化」，
+   但选择权在他 —— false = 不弹窗问，按建议名直接落账 + 弹一个几秒就收的「已记下」通知。 */
+const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 14, ask: true, askConfirm: true, askCoolMin: 15 };
 
 function actPrefs() {
   return Object.assign({}, ACT_DEFAULTS, readPrefs().activity || {});
@@ -981,7 +983,7 @@ function actSnapshot() {
   const dur = actDurations();
   return {
     date: _act.date, enabled: p.enabled, sampleSec: p.sampleSec, shotMin: p.shotMin, keepDays: p.keepDays,
-    ask: p.ask, askCoolMin: p.askCoolMin,
+    ask: p.ask, askConfirm: p.askConfirm !== false, askCoolMin: p.askCoolMin,
     count: _act.samples.length, byCat: byCat,
     /* byCatMin / byApp / totalMin 是**真实时长**（2026-10-09 加，手机式"应用使用时间"）；
        byCat(条数) 留着兼容老渲染，新的都读 byCatMin */
@@ -1124,7 +1126,8 @@ function askWinShow(payload) {
   try { w.showInactive(); } catch (e) { try { w.show(); } catch (e2) { } }
   try { w.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { }
   if (askHideTimer) clearTimeout(askHideTimer);
-  askHideTimer = setTimeout(() => askWinHide(), 3 * 60 * 1000);   /* 没人理就自己收 */
+  /* 通知模式（notify:true）：不是在问问题，没人需要点它 —— 几秒就自己收 */
+  askHideTimer = setTimeout(() => askWinHide(), (payload && payload.notify) ? 6000 : 3 * 60 * 1000);
 }
 function askWinHide() {
   if (askHideTimer) { clearTimeout(askHideTimer); askHideTimer = null; }
