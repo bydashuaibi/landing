@@ -104,7 +104,8 @@ body[data-tab="today"]::after{
              linear-gradient(0deg, rgba(0,0,0,.55), transparent 46%);
 }
 /* GradientWaves 暖色渐变波浪背景（gradient-waves.js 注入 canvas，远处淡出透出底层渐变） */
-#bg-waves{position:fixed;inset:0;z-index:-2;pointer-events:none;}
+#bg-waves{position:fixed;inset:0;z-index:-2;pointer-events:none;
+  transform:scale(1.08);will-change:transform;}
 /* 可选背景图叠层：30% 透明度，留空则不显示 */
 .bg-ph{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.3;
   background-image:none;background-size:cover;background-position:center;background-repeat:no-repeat;
@@ -338,6 +339,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .task[data-cat="work"]::before,.wk-row[data-cat="work"]::before{--cl:#5b93d6}
 .task[data-cat="life"]::before,.wk-row[data-cat="life"]::before{--cl:#e0a93b}
 .task[data-cat="growth"]::before,.wk-row[data-cat="growth"]::before{--cl:#8f74ff}
+/* ⑤ 延伸（2026-10-14）：任务卡没了之后，四类还出现在两处 —— 周报看板（细边）和
+   今日页「今天的池子」的临时记录（inline 小圆点）。同一套 CAT_COLOR，别另起色。 */
+.cat-dot{display:inline-block;width:7px;height:7px;border-radius:99px;margin:0 5px 1px 0;
+  vertical-align:middle;box-shadow:0 0 8px rgba(0,0,0,.4)}
 .task .tinfo{flex:1;min-width:0}
 .task .tname{font-weight:800;font-size:15px;color:var(--ink)}
 .task .tmeta{color:var(--muted);font-size:12px;margin-top:2px}
@@ -844,7 +849,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 @keyframes popIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes sheen{from{transform:translate3d(-150%,0,0) skewX(-18deg)}to{transform:translate3d(260%,0,0) skewX(-18deg)}}
-.anim{opacity:0;animation:reveal .85s var(--e-out) forwards;animation-delay:var(--d,0s)}
+/* 2026-10-14 节奏放慢：参考站整页动效都在 1.5-3s 的慢速区间，0.85s 显得"抢"。
+   1.25s + 原 stagger（0.04s/个）→ 整页约 1.8s 落定，有"沉下来"的质感又不拖沓。
+   ⚠️ 只慢**页面级**的进场；按钮/弹层这类交互过渡仍保持 <0.4s，否则工具会显得卡。 */
+.anim{opacity:0;animation:reveal 1.25s var(--e-out) forwards;animation-delay:var(--d,0s)}
 :focus-visible{outline:2px solid var(--khaki-deep);outline-offset:2px}
 
 @media(max-width:820px){
@@ -942,7 +950,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="warp-text.js?v=2"></script>
 <script src="cyber-cat.js?v=6"></script>
 <script src="pet.js?v=45"></script>
-<script src="app.js?v=60"></script>
+<script src="app.js?v=61"></script>
 <script src="click-feedback.js?v=2"></script>
 </body>
 </html>

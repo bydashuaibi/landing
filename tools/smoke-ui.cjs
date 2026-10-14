@@ -186,6 +186,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     window.Landing.save();
   });
   await page.reload({ waitUntil: 'networkidle2' });
+  // ⚠️ emulateMediaFeatures 在 reload 后会丢 —— 无头默认是 reduce，所有动效又会走降级分支。
+  //    （12 组的入场时长断言就是这么变成 0s 的。）
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
   await sleep(1200);
   check('必做卡出现「管理」按钮', await page.evaluate(() => !!document.querySelector('[data-act="mustManage"]')));
   await page.click('[data-act="mustManage"]');
@@ -266,6 +269,21 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (w) { w.style.display = w.dataset._d || 'block'; delete w.dataset._d; } });
   await page.evaluate(() => document.body.setAttribute('data-tab', 'today'));
   await page.screenshot({ path: path.join(SHOTS, 'today.png'), clip: { x: 0, y: 0, width: 1280, height: 760 } });
+
+  log('\n== 13. 动效节奏 / 分类色点 / 背景视差 ==');
+  const dur = await page.evaluate(() => {
+    const el = document.querySelector('#view .anim');
+    return el ? getComputedStyle(el).animationDuration : null;
+  });
+  check('入场动画 1.25s（参考站是 1.5-3s 的慢节奏）', dur === '1.25s', dur);
+  const dots = await page.evaluate(() => document.querySelectorAll('#view .cat-dot').length);
+  check('池子的临时记录带分类色点', dots >= 2, dots + ' 个');
+  const t0 = await page.evaluate(() => getComputedStyle(document.getElementById('bg-waves')).transform);
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await sleep(450);
+  const t1 = await page.evaluate(() => getComputedStyle(document.getElementById('bg-waves')).transform);
+  check('滚动时背景有视差位移', t0 !== t1, String(t0).slice(0, 34) + ' → ' + String(t1).slice(0, 34));
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   await browser.close();
   server.close();

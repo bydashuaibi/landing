@@ -2422,7 +2422,9 @@ function viewToday(){
     + (pp.classMin ? '，另外<b>今天上课 '+pp.classPeriods+' 节（'+pp.classMin+' 分钟）</b>也已经算进去了' : '')
     + '。'
     + (lt.length ? '<br>⏱ <b>临时记的</b>：' + lt.map(function(r){
-          return esc(r.name)+' '+r.minutes+' 分钟'
+          /* ⑤：每笔按它的四类着色 —— 一眼看出今天的时间都花在哪类上 */
+          return '<i class="cat-dot" style="background:'+catColor(r.category)+'" title="'+catName(r.category)+'"></i>'
+            + esc(r.name)+' '+r.minutes+' 分钟'
             + '<button class="act-mini" data-act="looseDel" data-id="'+r.id+'" title="删掉这一笔">✕</button>';
         }).join('　') : '')
     + '<br>换应用时右下角会问你一句「这件事记作什么」，确认后自动开始计时 —— 不用手动点。</div></div>';
@@ -4437,6 +4439,27 @@ function init(){
   $('topNew').addEventListener('click',function(){ App.newOne(); });
   $('fabNew').addEventListener('click',function(){ App.newOne(); });
   $('topSettings').addEventListener('click',function(){ App.openSettings(); });
+
+  /* 视差（2026-10-14，审美研究 ⑩）：背景比内容慢半拍，才有多层深度。
+     ⚠️ 三个自我约束 —— ① 幅度压得很小还带 30px 上限（画布 scale(1.08) 只有 36px 余量，
+        超了会露边）；② rAF 合帧，滚动时不每帧都算；③ prefers-reduced-motion 整个不挂。
+     这是每天要用的工具不是营销页，晃眼就烦了。 */
+  try{
+    if(!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+      var _pxQueued = false;
+      window.addEventListener('scroll', function(){
+        if(_pxQueued) return;
+        _pxQueued = true;
+        requestAnimationFrame(function(){
+          _pxQueued = false;
+          var y = window.scrollY || document.documentElement.scrollTop || 0;
+          var off = Math.max(-30, Math.min(30, y * -0.05));
+          var w = $('bg-waves');
+          if(w) w.style.transform = 'translate3d(0,' + off.toFixed(1) + 'px,0) scale(1.08)';
+        });
+      }, {passive:true});
+    }
+  }catch(e){}
 
   /* 桥（window.closeSheet / window.App / window.Landing）已经在 init() 开头挂好了 —— 别挪回这儿 */
 
