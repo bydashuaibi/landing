@@ -1181,20 +1181,25 @@ function initActivity(){
   if(window.landing.ask && window.landing.ask.onResult) window.landing.ask.onResult(onAskResult);
 }
 
-/* ================= 换应用 → 问一句 + 自动计时（2026-10-13）=================
-   master 原话：「每次点计时有点麻烦……发现打开了不同的应用，
-   右下角弹窗问『这是在做什么』，然后自动进行计时。」
+/* ================= 换应用 → 回头问一句「刚才那段记作什么」（2026-10-14）=================
+   master 原话：「不需要自己点开计时，开始记录到识别切换到下一个应用的时候
+   再提出这件事记作什么，然后系统自动根据大概时间录入应用的鱼干时间池和周报统计。」
+
+   语义（第二代）：**没有"自动计时器"这回事了** —— 主进程的前台采样本来就在一直记，
+   切走时把「上一段：谁 + 大概多久」推过来，悬浮窗问一句记作什么，确认后
+   looseRecord() 一步落账（鱼干池 + 周报投入都在里面）。时长粒度 = 采样间隔（默认 60 秒），
+   就是他说的"大概时间"。
 
    ⚠️ 判定"换了应用"用的是主进程的**前台窗口采样**（每 sampleSec 秒一次），**不是截图本身** ——
       截图默认 5 分钟一张，拿它判太粗；截图那条线照旧只负责存图。
-   ⚠️ 自动计时**不新建数据模型**：直接走已有的「松散计时」（scope:'loose'），
-      收尾时 commitStopwatchRecord 会把它写进 STATE.loose + 今天的鱼干池 + 周报投入。
-      这也是它能跟「删掉任务模块」解耦的原因 —— 全程不碰任何任务。
-   ⚠️ 只在他**没有手动计时**的时候才问：手动计时中 = 他自己知道在做什么，别插嘴。
-   ⚠️ 主进程在切到桌面/没窗口时会推一条 `{idle:true}` —— 这就是"自动停"的信号，
-      否则他去吃个饭，那段计时会一直跑。 */
+   ⚠️ 记账**不新建数据模型**：走已有的「松散计时」落点 looseRecord ——
+      写进 STATE.loose + 今天的鱼干池 + 周报投入，跟宠物「直接记一笔」同一条路，
+      跟任务模块（已删）依旧解耦。
+   ⚠️ 手动计时中**不问**：手动计时已经在记这段时间了，再问就是重复记账。 */
 
-var ASK = null;          /* 有值 = 右下角正显示询问卡 {proc,title,cat,name,known} */
+var ASK = null;          /* 有值 = 右下角正显示询问卡 {proc,title,cat,minutes,name,known}
+                            ⚠️ 2026-10-14 语义变了：问的是**上一段**（已经发生、切走了的那段），
+                            不是"你现在要开始做啥"。时长就是主进程采出来的 prevMinutes。 */
 var ASK_TIMER = null;    /* 没人理就自己收起来 */
 var ASK_MUTE = {};       /* proc → 静音到什么时候（他点过「这次不用」） */
 
@@ -1237,12 +1242,13 @@ function renderAsk(){
   if(!ASK){ el.className = 'askcard hidden'; el.innerHTML = ''; return; }
   el.className = 'askcard';
   el.innerHTML =
-    '<div class="ask-hd">👀 你在用 <b>' + esc(appLabel(ASK.proc)) + '</b></div>'
-    + '<div class="ask-q">这件事记作什么？</div>'
+    '<div class="ask-hd">👀 刚才在用 <b>' + esc(appLabel(ASK.proc)) + '</b>'
+    + ' · 约 ' + fmtMin(ASK.minutes) + '</div>'
+    + '<div class="ask-q">这段时间记作什么？</div>'
     + '<input id="askName" type="text" maxlength="20" value="' + esc(ASK.name) + '" placeholder="例如：写代码">'
-    + '<div class="ask-hint">' + (ASK.known ? '按你上次的叫法填好了，改一下也行' : '确认一次就记住，下次直接开始') + '</div>'
+    + '<div class="ask-hint">' + (ASK.known ? '按你上次的叫法填好了，改一下也行' : '确认一次就记住，下次直接用') + '</div>'
     + '<div class="ask-btns">'
-    +   '<button class="btn primary sm" data-act="askGo">开始计时</button>'
+    +   '<button class="btn primary sm" data-act="askGo">记下来</button>'
     +   '<button class="btn ghost sm" data-act="askSkip">这次不用</button>'
     + '</div>';
   var inp = $('askName');
@@ -1275,6 +1281,7 @@ function showAsk(inf){
   if(hasAskWin()){
     window.landing.ask.show({
       appLabel: appLabel(inf.proc),
+      minutes: inf.minutes || 0,
       name: inf.name,
       known: !!inf.known,
     });
@@ -1282,20 +1289,20 @@ function showAsk(inf){
   }
   renderAsk();
 }
-/* 真正开始这一段自动计时 —— 页内卡和悬浮窗走同一条路 */
+/* 把这一段补记进账。页内卡和悬浮窗走同一条路。
+   2026-10-14 改：**不再是"开始计时"** —— 这段已经过去了，主进程采出来的 prevMinutes
+   就是它的时长，确认后直接 looseRecord：自动进今天的鱼干池 + 周报投入，一步到位。 */
 function applyAsk(nm, inf){
   inf = inf || {};
   nm = String(nm || '').trim().slice(0, 20);
   if(!nm || !inf.proc) return;
+  var mins = Math.max(1, Math.round(Number(inf.minutes) || 0));
   STATE.appNames = STATE.appNames || {};
   STATE.appNames[inf.proc] = nm;      /* 记住他的叫法，下次直接用 */
-  save();
-  autoCommit();                        /* 保险：上一段自动计时先落账 */
+  looseRecord(nm, mins, actCatToPet(inf.cat));   /* 写 loose + 鱼干池 + 记忆 + save，全在里面 */
   ASK = null; if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
   renderAsk();
-  startStopwatch('loose', null, { name:nm, category:actCatToPet(inf.cat) });
-  if(STATE.timer){ STATE.timer.auto = true; STATE.timer.autoProc = inf.proc; save(); renderTimerBar(); }
-  addMemory('timer', '自动开始计时：「'+nm+'」（检测到在用 '+appLabel(inf.proc)+'）', ['计时']);
+  toast('记下了：「' + nm + '」约 ' + fmtMin(mins));
 }
 /* 悬浮窗那边的回答（主进程转发过来的） */
 function onAskResult(r){
@@ -1310,29 +1317,27 @@ function onAskResult(r){
 }
 function onAppChanged(inf){
   if(!inf) return;
-  /* 1) 切到桌面/没窗口 → 这段自动计时收尾（"自动停"），悬浮窗也收掉 */
-  if(inf.idle){
-    autoCommit();
-    ASK = null; if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
-    if(hasAskWin()) window.landing.ask.hide();
-    renderAsk();
-    return;
-  }
-  /* 2) 换到别的应用 → 上一段自动计时收尾，再问新的 */
-  if(STATE.timer && STATE.timer.auto && STATE.timer.autoProc !== inf.proc) autoCommit();
+  /* 主进程带的是「上一段」是谁、待了多久 —— 那是要问、要记账的对象。
+     没带 prevProc（老版本/异常）就当没发生。 */
+  var pp = inf.prevProc;
+  if(!pp){ return; }
 
-  /* 3) 手动计时中 / 关掉了询问 / 这个应用刚被拒绝过 → 不打扰 */
-  if(STATE.timer && !STATE.timer.finished && !STATE.timer.auto) return;
+  /* 不打扰的三种情况：
+     ① 手动计时中 —— 手动计时已经在记这段时间了，再问一遍就是重复记账；
+     ② 他关掉了自动询问；
+     ③ 这个应用刚被「这次不用」过（一小时静音）。 */
+  if(STATE.timer && !STATE.timer.finished) return;
   if(ACT && ACT.ask === false) return;
-  if(ASK_MUTE[inf.proc] && Date.now() < ASK_MUTE[inf.proc]) return;
+  if(ASK_MUTE[pp] && Date.now() < ASK_MUTE[pp]) return;
 
   if(ASK_TIMER) clearTimeout(ASK_TIMER);
-  showAsk({ proc:inf.proc, title:inf.title||'', cat:inf.cat||'other',
-            name:autoNameOf(inf.proc, inf.cat), known:!!((STATE.appNames||{})[inf.proc]) });
+  showAsk({ proc:pp, title:inf.prevTitle||'', cat:inf.prevCat||'other',
+            minutes:inf.prevMinutes||0,
+            name:autoNameOf(pp, inf.prevCat), known:!!((STATE.appNames||{})[pp]) });
   /* 桌面版的「没人理就收」由主进程的定时器负责；页内卡要自己管 */
   if(!hasAskWin()){
     ASK_TIMER = setTimeout(function(){
-      if(ASK && ASK.proc === inf.proc){ ASK = null; renderAsk(); }
+      if(ASK && ASK.proc === pp){ ASK = null; renderAsk(); }
     }, 3*60000);
   }
 }
@@ -1444,10 +1449,11 @@ function renderActivitySettings(){
     + '<div class="field"><label>截图保留（天）</label>'
     + '<input id="act_keep" type="number" min="1" max="365" value="' + ACT.keepDays + '">'
     + '<div class="hint" style="margin-top:6px">过期的整天目录会自动删掉（每 6 小时扫一次，不用你管）。</div></div>'
-    /* 换应用自动计时（2026-10-13）—— 这是「不用手点计时」的那条路，得在这儿显化 */
-    + '<div class="hint" style="margin-top:10px">换应用自动计时：<b>' + (ACT.ask ? '开着' : '关了') + '</b>'
-    + ' —— 发现你换了个程序，右下角问一句「这件事记作什么」，确认后自动开始；'
-    + '切走或回到桌面就自动收尾，按「临时记一笔」进今天的池子和周报。<b>不碰任何任务。</b></div>'
+    /* 换应用回问（2026-10-14 改语义）—— 不用手点计时：主进程一直在记，
+       切走时问一句「刚才那段记作什么」，确认后按大概时间直接落账 */
+    + '<div class="hint" style="margin-top:10px">换应用回问：<b>' + (ACT.ask ? '开着' : '关了') + '</b>'
+    + ' —— 一直在记；等你切到下一个程序（或回到桌面），右下角浮窗问一句「刚才那段时间记作什么」，'
+    + '确认后按大概时长直接记进今天的池子和周报。<b>不碰任何任务。</b></div>'
     + '<div class="field" style="margin-top:10px"><label>问过之后的最短静默（分钟）</label>'
     + '<input id="act_cool" type="number" min="3" max="240" value="' + (ACT.askCoolMin || 15) + '">'
     + '<div class="hint" style="margin-top:6px">刚问过又换应用，这段时间内不再问，免得烦。同一个应用被你点过「这次不用」也静默一小时。</div></div>'
@@ -3672,7 +3678,7 @@ var App = {
   actAskToggle:function(){
     if(!ACT || !window.landing || !window.landing.activity) return;
     window.landing.activity.setPref({ ask: !ACT.ask }).then(function(s){
-      ACT = s; render(); toast(s.ask ? '换应用时会问你一句' : '不再自动询问');
+      ACT = s; render(); toast(s.ask ? '切走后会问一句刚才那段记作什么' : '不再自动询问');
     });
   },
   actFolder:function(){

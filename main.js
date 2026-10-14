@@ -987,6 +987,8 @@ function actSnapshot() {
        byCat(条数) 留着兼容老渲染，新的都读 byCatMin */
     byCatMin: dur.byCatMin, byApp: dur.byApp, totalMin: dur.totalMin,
     last: _act.last, isGame: !!(_act.last && GAME_RE.test(_act.last.proc)),
+    /* 「现在这一段」记了多久 —— 界面拿它显示"正在记录"，机制要显化 */
+    curProc: _lastProc, curMin: _lastProcAt ? Math.max(0, Math.round((Date.now() - _lastProcAt) / 60000)) : 0,
     shots: _act.shots, bytes: _act.bytes, dir: ACTIVITY_DIR,
   };
 }
@@ -1002,6 +1004,9 @@ function actPush() {
 /* landing / electron 也算「自己」—— 他在着陆里点来点去的时候不该被问「你在做什么」 */
 const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|landing|electron|idle)$/i;
 let _lastProc = '';
+let _lastProcAt = 0;    /* 当前这个进程**从什么时候开始**在前台 —— 算"上一段待了多久" */
+let _lastTitle = '';
+let _lastCat = 'other';
 let _askAt = 0;
 function _sendAppChanged(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1010,26 +1015,50 @@ function _sendAppChanged(payload) {
 }
 /* ⚠️ fg 可能是 null（桌面上没窗口 / 只有系统壳窗口）。
    这时**也要发一条 idle 事件** —— 否则他切到桌面去吃饭，渲染进程那段自动计时会一直跑下去。 */
+/* 2026-10-14 改：master 要的是「**不需要自己点开计时**，一直在记，
+   等识别到切走的时候，再回头问"刚才那段记作什么"，然后系统按大概时间自己录入池子和周报」。
+   👉 所以事件里要带上**上一段**是谁、待了多久 —— 那才是要问的对象，也是要记账的时长。
+      时长按采样时刻算（粒度 = sampleSec，默认 60 秒），也就是他说的"大概时间"。 */
 function maybeAskApp(fg) {
   const proc = (fg && fg.proc) || 'idle';
+  const now = Date.now();
   const prev = _lastProc;
-  _lastProc = proc;
-  if (!prev || prev === proc) return;                 /* 第一次采样 / 没换应用，不发 */
 
-  if (PROC_SHELL.test(proc)) {
-    /* 切到桌面/系统壳：不发"问一句"，只发"停" —— 只在上一段是真实应用时才值得发 */
-    if (proc === 'idle' || !fg) _sendAppChanged({ proc: 'idle', idle: true, at: Date.now() });
+  if (!prev) {                                        /* 第一次采样：只记账，不发 */
+    _lastProc = proc; _lastProcAt = now;
+    _lastTitle = (fg && fg.title) || '';
+    _lastCat = fg ? classifyActivity(proc, fg.title) : 'other';
     return;
   }
+  if (prev === proc) return;                          /* 没换应用 */
+
+  /* 换了 → 把「上一段」结算出来 */
+  const prevMinutes = Math.max(0, Math.round((now - _lastProcAt) / 60000));
+  const prevTitle = _lastTitle, prevCat = _lastCat;
+  const prevWasReal = !PROC_SHELL.test(prev);
+  const isShell = PROC_SHELL.test(proc);
+
+  _lastProc = proc; _lastProcAt = now;
+  _lastTitle = (fg && fg.title) || '';
+  _lastCat = fg ? classifyActivity(proc, fg.title) : 'other';
+
+  if (!prevWasReal) return;                           /* 上一段本来就是桌面/系统壳，没什么可问的 */
+  if (prevMinutes < 1) return;                        /* 太短：采样本来就是分钟粒度，不值得记 */
+
+  const payload = {
+    proc: proc, idle: isShell,
+    title: String(_lastTitle).slice(0, 120), cat: _lastCat, at: now,
+    prevProc: prev,
+    prevTitle: String(prevTitle).slice(0, 120),
+    prevCat: prevCat,
+    prevMinutes: prevMinutes,
+  };
+  /* 切到桌面/系统壳也是"这一段结束了"（他干完走开了，回头一样要问）——
+     但询问偏好和冷却期对两种情况一视同仁，不然每次回桌面都会被打扰一次 */
   if (!actPrefs().ask) return;                        /* 他自己关掉了自动询问 */
-  if (Date.now() - _askAt < Math.max(3, actPrefs().askCoolMin) * 60000) return;
-  _askAt = Date.now();
-  _sendAppChanged({
-    proc: proc,
-    title: String(fg.title || '').slice(0, 120),
-    cat: classifyActivity(proc, fg.title),
-    at: Date.now(),
-  });
+  if (now - _askAt < Math.max(3, actPrefs().askCoolMin) * 60000) return;
+  _askAt = now;
+  _sendAppChanged(payload);
 }
 
 /* ---- 桌面悬浮询问窗（2026-10-14）----
