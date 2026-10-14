@@ -999,7 +999,8 @@ function actPush() {
 /* ---- 换应用 → 通知渲染进程（自动计时用，2026-10-13 加）----
    ⚠️ 跟截图没关系：真正知道"他在用哪个程序"的是 sampleForeground 这条线。
    只在**进程名真的变了**、且不在冷却期、且不是壳进程时才推 —— 免得切个输入法就被问一次。 */
-const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|idle)$/i;
+/* landing / electron 也算「自己」—— 他在着陆里点来点去的时候不该被问「你在做什么」 */
+const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|landing|electron|idle)$/i;
 let _lastProc = '';
 let _askAt = 0;
 function _sendAppChanged(payload) {
@@ -1030,6 +1031,92 @@ function maybeAskApp(fg) {
     at: Date.now(),
   });
 }
+
+/* ---- 桌面悬浮询问窗（2026-10-14）----
+   master 的原话：「我想要的弹窗搞错了……我指的右下角是，系统在后台时，弹到桌面的悬浮窗，
+   弹到应用里我怎么看得见，而且也不方便。」
+   👉 所以这必须是**独立的置顶小窗**，不是页面里的一张卡：着陆在托盘里、或者被别的程序盖住时，
+      只有浮在所有窗口之上的东西才看得见。页内那张卡留着当网页版的兜底。
+   ⚠️ showInactive()：**只显示、不抢焦点**。他多半正在打游戏或打字，抢焦点是最讨厌的行为。
+   ⚠️ skipTaskbar：不占任务栏；无条件置顶要用 'screen-saver' 这一档，否则压不住全屏程序。
+   ⚠️ 不写 setIgnoreMouseEvents：他要能点按钮、能改名。 */
+let askWin = null;
+let askHideTimer = null;
+let askPending = null;     /* 要问的内容 —— 窗口还没加载完就先存着，加载完再发 */
+let askReady = false;      /* ask.html 的脚本已经监听了？没监听的话发了也收不到（踩过） */
+const ASK_W = 348, ASK_H = 214;
+
+function askWinEnsure() {
+  if (askWin && !askWin.isDestroyed()) return askWin;
+  askWin = new BrowserWindow({
+    width: ASK_W, height: ASK_H,
+    frame: false, transparent: true, resizable: false,
+    alwaysOnTop: true, skipTaskbar: true, show: false, hasShadow: false,
+    fullscreenable: false, minimizable: false, maximizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'ask-preload.js'),
+      contextIsolation: true, nodeIntegration: false, spellcheck: false,
+      /* ⚠️ 别关后台节流：关掉之后 document.hidden 会失真（主应用踩过同一个坑），
+         而且这个窗口没什么要持续跑的。CSS 入场动画在每次 show 时会重播。 */
+      backgroundThrottling: true,
+    },
+  });
+  try { askWin.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { }
+  try { askWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch (e) { }
+  askWin.loadFile(path.join(__dirname, 'ask.html'));
+  askReady = false;
+  askWin.webContents.once('did-finish-load', () => {
+    askReady = true;
+    if (askPending) { try { askWin.webContents.send('ask:data', askPending); } catch (e) { } }
+  });
+  askWin.on('closed', () => { askWin = null; askReady = false; });
+  return askWin;
+}
+function askWinPlace() {
+  try {
+    /* 鼠标在哪块屏就弹哪块 —— 他多屏，固定弹主屏可能根本不在他眼前 */
+    const dsp = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()) || screen.getPrimaryDisplay();
+    const wa = dsp.workArea;
+    askWin.setBounds({
+      x: Math.round(wa.x + wa.width - ASK_W - 18),
+      y: Math.round(wa.y + wa.height - ASK_H - 18),
+      width: ASK_W, height: ASK_H,
+    });
+  } catch (e) { }
+}
+function askWinShow(payload) {
+  const w = askWinEnsure();
+  askWinPlace();
+  askPending = payload || {};
+  /* ⚠️ 第一次是「窗口刚建、页面还没加载完」——这时 send 出去的消息会石沉大海
+     （ask.html 的脚本还没跑到 onData 那行）。所以只在 askReady 时才直接发，
+     否则等 did-finish-load；另外 ask.html 自己还会发一次 ask:ready 兜底。 */
+  if (askReady) { try { w.webContents.send('ask:data', askPending); } catch (e) { } }
+  try { w.showInactive(); } catch (e) { try { w.show(); } catch (e2) { } }
+  try { w.setAlwaysOnTop(true, 'screen-saver'); } catch (e) { }
+  if (askHideTimer) clearTimeout(askHideTimer);
+  askHideTimer = setTimeout(() => askWinHide(), 3 * 60 * 1000);   /* 没人理就自己收 */
+}
+function askWinHide() {
+  if (askHideTimer) { clearTimeout(askHideTimer); askHideTimer = null; }
+  if (askWin && !askWin.isDestroyed() && askWin.isVisible()) askWin.hide();
+}
+/* 渲染进程决定「要不要问、叫什么名字」（状态都在它那儿），主进程只负责把这个窗显示出来。 */
+ipcMain.on('ask:show', (e, payload) => askWinShow(payload || {}));
+/* ask.html 脚本挂上监听之后主动喊一声 —— 双保险，免得第一条 ask:data 被吃掉 */
+ipcMain.on('ask:ready', () => {
+  askReady = true;
+  if (askPending && askWin && !askWin.isDestroyed()) {
+    try { askWin.webContents.send('ask:data', askPending); } catch (e) { }
+  }
+});
+ipcMain.on('ask:hide', () => askWinHide());
+ipcMain.on('ask:resolve', (e, r) => {
+  askWinHide();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.webContents.send('ask:result', r || {}); } catch (e2) { }
+  }
+});
 
 /* ---- 采样一次 ---- */
 async function actTick() {

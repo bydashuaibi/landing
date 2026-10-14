@@ -94,6 +94,14 @@ contextBridge.exposeInMainWorld('landing', {
     /* 换应用了（主进程按进程名变化判定）→ 渲染进程决定要不要弹「这是在做什么」并开始计时 */
     onAppChanged: (cb) => { ipcRenderer.on('activity:appChanged', (_e, inf) => { try { cb(inf); } catch (e) { } }); }
   },
+  /* 桌面悬浮询问窗（2026-10-14）：窗口本身在主进程（它得浮在所有程序之上，
+     页内弹卡他一转头就看不见）。渲染进程只决定「要不要问、预填什么名字」，
+     答案从 ask:result 回来 —— 状态仍然全部留在渲染进程这边。 */
+  ask: {
+    show: (payload) => ipcRenderer.send('ask:show', payload || {}),
+    hide: () => ipcRenderer.send('ask:hide'),
+    onResult: (cb) => { ipcRenderer.on('ask:result', (_e, r) => { try { cb(r); } catch (e) { } }); }
+  },
   /* 窗口可见性：以主进程为准（原因见 main.js）。
      winVisGet() 启动时同步查一次当前值；onWinVis(cb) 订阅 hide/show/minimize/restore 的变化 */
   winVisGet: () => ipcRenderer.sendSync('window:vis:get'),

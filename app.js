@@ -1177,6 +1177,8 @@ function initActivity(){
   ensureActWeek(addDays(weekKey(), -7));
   /* 换应用 → 右下角问一句「这是在做什么」（2026-10-13 自动计时） */
   if(window.landing.activity.onAppChanged) window.landing.activity.onAppChanged(onAppChanged);
+  /* 桌面悬浮窗那边的回答（主进程 ask:resolve → 这里） */
+  if(window.landing.ask && window.landing.ask.onResult) window.landing.ask.onResult(onAskResult);
 }
 
 /* ================= 换应用 → 问一句 + 自动计时（2026-10-13）=================
@@ -1262,12 +1264,57 @@ function autoCommit(){
     save(); renderTimerBar();
   }
 }
+/* 有没有「桌面悬浮窗」的能力。网页版没有这个桥 → 退回页内那张卡。 */
+function hasAskWin(){ return !!(window.landing && window.landing.ask && window.landing.ask.show); }
+
+/* 把这一问显示出去：
+   桌面版 → 主进程开的**独立置顶小窗**（浮在所有程序之上，他人在别的程序里也看得见）；
+   网页版 → 页内右下角那张卡。 */
+function showAsk(inf){
+  ASK = inf;
+  if(hasAskWin()){
+    window.landing.ask.show({
+      appLabel: appLabel(inf.proc),
+      name: inf.name,
+      known: !!inf.known,
+    });
+    return;
+  }
+  renderAsk();
+}
+/* 真正开始这一段自动计时 —— 页内卡和悬浮窗走同一条路 */
+function applyAsk(nm, inf){
+  inf = inf || {};
+  nm = String(nm || '').trim().slice(0, 20);
+  if(!nm || !inf.proc) return;
+  STATE.appNames = STATE.appNames || {};
+  STATE.appNames[inf.proc] = nm;      /* 记住他的叫法，下次直接用 */
+  save();
+  autoCommit();                        /* 保险：上一段自动计时先落账 */
+  ASK = null; if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
+  renderAsk();
+  startStopwatch('loose', null, { name:nm, category:actCatToPet(inf.cat) });
+  if(STATE.timer){ STATE.timer.auto = true; STATE.timer.autoProc = inf.proc; save(); renderTimerBar(); }
+  addMemory('timer', '自动开始计时：「'+nm+'」（检测到在用 '+appLabel(inf.proc)+'）', ['计时']);
+}
+/* 悬浮窗那边的回答（主进程转发过来的） */
+function onAskResult(r){
+  r = r || {};
+  if(r.skipped || !r.name){
+    var p = ASK && ASK.proc;
+    if(p) ASK_MUTE[p] = Date.now() + 60*60*1000;   /* 同一个应用一小时内不再问 */
+    ASK = null; renderAsk();
+    return;
+  }
+  applyAsk(String(r.name), ASK);
+}
 function onAppChanged(inf){
   if(!inf) return;
-  /* 1) 切到桌面/没窗口 → 这段自动计时收尾（"自动停"） */
+  /* 1) 切到桌面/没窗口 → 这段自动计时收尾（"自动停"），悬浮窗也收掉 */
   if(inf.idle){
     autoCommit();
     ASK = null; if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
+    if(hasAskWin()) window.landing.ask.hide();
     renderAsk();
     return;
   }
@@ -1279,10 +1326,15 @@ function onAppChanged(inf){
   if(ACT && ACT.ask === false) return;
   if(ASK_MUTE[inf.proc] && Date.now() < ASK_MUTE[inf.proc]) return;
 
-  ASK = { proc:inf.proc, title:inf.title||'', cat:inf.cat||'other',
-          name:autoNameOf(inf.proc, inf.cat), known:!!((STATE.appNames||{})[inf.proc]) };
-  renderAsk();
   if(ASK_TIMER) clearTimeout(ASK_TIMER);
+  showAsk({ proc:inf.proc, title:inf.title||'', cat:inf.cat||'other',
+            name:autoNameOf(inf.proc, inf.cat), known:!!((STATE.appNames||{})[inf.proc]) });
+  /* 桌面版的「没人理就收」由主进程的定时器负责；页内卡要自己管 */
+  if(!hasAskWin()){
+    ASK_TIMER = setTimeout(function(){
+      if(ASK && ASK.proc === inf.proc){ ASK = null; renderAsk(); }
+    }, 3*60000);
+  }
 }
 function askClose(extra){
   if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
@@ -3653,16 +3705,7 @@ var App = {
     var inp = $('askName');
     var nm = String((inp && inp.value) || ASK.name || '').trim().slice(0, 20);
     if(!nm){ toast('给它起个名字再开始'); if(inp) inp.focus(); return; }
-    var inf = ASK;
-    STATE.appNames = STATE.appNames || {};
-    STATE.appNames[inf.proc] = nm;      /* 记住他的叫法，下次直接用 */
-    save();
-    autoCommit();                        /* 保险：上一段自动计时先落账 */
-    askClose(function(){
-      startStopwatch('loose', null, { name:nm, category:actCatToPet(inf.cat) });
-      if(STATE.timer){ STATE.timer.auto = true; STATE.timer.autoProc = inf.proc; save(); renderTimerBar(); }
-      addMemory('timer', '自动开始计时：「'+nm+'」（检测到在用 '+appLabel(inf.proc)+'）', ['计时']);
-    });
+    applyAsk(nm, ASK);                   /* 跟悬浮窗那条路共用同一个函数 */
   },
   askSkip:function(){
     if(!ASK) return;
@@ -4326,6 +4369,9 @@ function init(){
   window.Landing = {
     state:function(){ return STATE; },
     save:save, render:render, toast:toast,
+    /* 模拟「检测到换了个应用」：走的是**真实那条路**（跟主进程推 activity:appChanged 同一条），
+       给自动化测试和 tools/sim-activity.cjs 那类模拟器用。传 {proc:'code.exe', cat:'work'} 即可。 */
+    appChanged:function(inf){ onAppChanged(inf || {}); },
     openSheet:openSheet, closeSheet:closeSheet,
     callAI:callAI,
     /* 伙伴（宠物）单独那套：没填就是主 AI。pet.js 用它决定走 AI 还是本地台词 */
