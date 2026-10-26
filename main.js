@@ -9,13 +9,14 @@
  *   · window.open / 页面内跳转一律拦截，外链交给系统浏览器
  *   · 渲染进程里的网络请求只允许它真正需要的域名（GitHub API + 用户自配的 AI 接口）
  */
-const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage, safeStorage } = require('electron');
+const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage, safeStorage, net } = require('electron');
 const { JwglClient } = require('./jwgl');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const http = require('http');
 const https = require('https');
+const digestNetwork = require('./digest-network.cjs');
 
 /* ---------- 单实例：第二次启动就把已有窗口顶到前面，别再开一个 ---------- */
 const gotLock = app.requestSingleInstanceLock();
@@ -23,7 +24,7 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    const win = BrowserWindow.getAllWindows()[0];
+    const win = mainWindow;
     if (win) {
       if (win.isMinimized()) win.restore();
       win.show();
@@ -45,6 +46,45 @@ const DATA_DIR = path.join(app.getPath('userData'), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'window-state.json');
 const FEED_FILE = path.join(DATA_DIR, 'feed.json');
 const BACKUP_DIR = path.join(app.getPath('documents'), '着陆备份');
+
+/* Digest credentials are scoped to a provider and its exact API base URL. */
+const DIGEST_CREDENTIALS = path.join(DATA_DIR, 'digest-credentials.json');
+function digestCredentials() {
+  try { return JSON.parse(fs.readFileSync(DIGEST_CREDENTIALS, 'utf8')); }
+  catch (e) { if (e.code === 'ENOENT') return {}; throw new Error('日报凭据文件无法读取，请恢复备份后重试'); }
+}
+function digestSender(event) {
+  if (!event.senderFrame || !event.senderFrame.url.startsWith('file://') || !/\/index\.html(?:[?#]|$)/.test(event.senderFrame.url)) throw new Error('不允许的日报请求来源');
+}
+ipcMain.handle('digest:configure', (event, config) => {
+  digestSender(event);
+  const src = digestNetwork.source(config || {});
+  const token = String(config.token || '').trim();
+  if (/[\r\n]/.test(token) || token.length > 4096) throw new Error('令牌格式不正确');
+  if (token && config.clearToken) throw new Error('请只选择填写新令牌或清除令牌中的一种操作');
+  if (token || config.clearToken) {
+    const credentials = digestCredentials();
+    if (token) {
+      if (!safeStorage.isEncryptionAvailable()) throw new Error('此系统暂时无法加密保存令牌');
+      credentials[src.key] = safeStorage.encryptString(token).toString('base64');
+    } else delete credentials[src.key];
+    ensureDataDir();
+    fs.writeFileSync(DIGEST_CREDENTIALS + '.next', JSON.stringify(credentials));
+    fs.renameSync(DIGEST_CREDENTIALS + '.next', DIGEST_CREDENTIALS);
+  }
+  return {base:src.base};
+});
+ipcMain.handle('digest:request', async (event, config) => {
+  digestSender(event);
+  const src = digestNetwork.source(config || {});
+  const encrypted = digestCredentials()[src.key];
+  let token = '';
+  if (encrypted) {
+    try { token = safeStorage.decryptString(Buffer.from(encrypted, 'base64')); }
+    catch (_) { throw new Error('无法解密此服务的令牌，请在定制中重新填写'); }
+  } else if (src.provider === 'github') token = String(config.publicToken || '').trim();
+  return digestNetwork.request(src, config.params || {}, token, (url, options) => net.fetch(url, options));
+});
 
 function ensureDataDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
@@ -588,7 +628,8 @@ function showAbout() {
     message: '着陆 · 把焦虑变成下一步',
     detail: '版本 ' + app.getVersion() + '\nElectron ' + process.versions.electron
       + ' / Chromium ' + process.versions.chrome
-      + '\n\n你的数据全部保存在这台电脑上，不上传：\n' + app.getPath('userData'),
+      + '\n\n存档保存在本机：\n' + app.getPath('userData')
+      + '\n\n主动使用 AI 时，相关文字会发送到你配置的接口；学习画面只在点击「识别画面」后发送。',
     buttons: ['好']
   });
 }
@@ -781,6 +822,7 @@ ipcMain.on('window:retract', () => {
 
 /* ---------- 建窗 ---------- */
 let mainWindow = null;
+let desktopPet = null;
 
 /* 当前窗口可见吗（最小化也算不可见）。
    **这是渲染进程判断可见性的唯一权威来源** —— 原因见 createWindow 里那段说明。 */
@@ -1189,6 +1231,44 @@ async function actShot() {
   } catch (e) { console.error('[activity] 截屏失败：', e.message); }
 }
 
+/* 手动学习断点：只响应主窗口按钮，不启用定时采集，也不在这里上传画面。 */
+let learningCaptureBusy = false;
+ipcMain.handle('learning:displays', (event) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return [];
+  return screen.getAllDisplays().map((d, i) => ({ id: String(d.id), name: d.label || ('屏幕 ' + (i + 1)), primary: d.id === screen.getPrimaryDisplay().id }));
+});
+ipcMain.handle('learning:capture', async (event, displayId) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) return { error: '只能在着陆主窗口截取学习画面' };
+  if (learningCaptureBusy) return { error: '正在截取画面，请稍等' };
+  const displays = screen.getAllDisplays();
+  const display = displayId == null ? screen.getDisplayMatching(mainWindow.getBounds()) : displays.find(d => String(d.id) === String(displayId));
+  if (!display) return { error: '这个屏幕已断开，请重新选择' };
+  learningCaptureBusy = true;
+  const visible = [mainWindow, askWin].concat(desktopPet ? desktopPet.getWindows() : []).filter(w => w && !w.isDestroyed() && w.isVisible());
+  try {
+    visible.forEach(w => w.hide());
+    await new Promise(resolve => setTimeout(resolve, 450));
+    const { desktopCapturer } = require('electron');
+    const frames = [];
+    for (let i = 0; i < 2; i++) {
+      if (i) await new Promise(resolve => setTimeout(resolve, 650));
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1920, height: 1080 } });
+      const source = sources.find(s => s.display_id === String(display.id)) || (displays.length === 1 ? sources[0] : null);
+      if (!source || source.thumbnail.isEmpty()) throw new Error('未能读取屏幕，请检查系统截屏权限');
+      const image = source.thumbnail, size = image.getSize();
+      const thumb = image.resize({ width: Math.min(480, size.width) });
+      frames.push({ image: 'data:image/jpeg;base64,' + image.toJPEG(78).toString('base64'), thumbnail: 'data:image/jpeg;base64,' + thumb.toJPEG(60).toString('base64'), at: Date.now(), width: size.width, height: size.height });
+    }
+    return { frames, displayId: String(display.id), displayName: display.label || '学习屏幕' };
+  } catch (error) {
+    return { error: error.message || '截屏失败，请重试' };
+  } finally {
+    learningCaptureBusy = false;
+    if (!isQuitting) visible.forEach(w => { if (!w.isDestroyed()) w.showInactive(); });
+    if (!isQuitting && mainWindow && !mainWindow.isDestroyed() && visible.includes(mainWindow)) mainWindow.focus();
+  }
+});
+
 /* ---- 清掉过期截图（默认两周）----
    ⚠️ 原来只在 startActivity 里跑一次 —— 他要的是"自动清"，所以再挂一个
    每 6 小时的定时扫描（独立的 setInterval，不放进 _actTimers，
@@ -1278,9 +1358,9 @@ function createWindow() {
     minWidth: 900,
     minHeight: 620,
     show: false,
-    backgroundColor: '#0d0b0a',  /* 深色主题：原来是奶白 #f3ece0，深色下启动会闪白 */
+    backgroundColor: '#111713',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
-    title: '着陆 · 把焦虑变成下一步',
+    title: '着陆 · 每天一点，慢慢做到',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1339,7 +1419,7 @@ function createWindow() {
     if (getCloseAction() === 'tray') { hideToTray(); return; }
     askCloseChoice();      /* 第一次（或他选了「每次问我」）→ 问一次 */
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => { mainWindow = null; if (isQuitting) app.quit(); });
 
   /* 外链一律丢给系统浏览器：应用内的窗口必须始终是我们的 UI */
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -1381,6 +1461,7 @@ app.whenReady().then(() => {
   buildMenu();
   createWindow();
   createTray();          /* 有托盘 = 关窗口只是藏起来，程序继续在后台跑 */
+  desktopPet = require('./desktop-pet.cjs')({ getMain: () => mainWindow, showMain: showMainWindow, readPrefs, writePrefs });
   try { startActivity(); } catch (err) { console.error('[activity] 启动失败：', err.message); }
 
   app.on('activate', () => {

@@ -75,6 +75,34 @@ tryLoadSprite('cat');
   'use strict';
 
   var instances = [];
+  var rigCache = new WeakMap();
+  function spriteRig(img) {
+    if (rigCache.has(img)) return rigCache.get(img);
+    rigCache.set(img, null);
+    // 默认角色分成头、身体、双臂与双腿；校验轮廓，避免误切用户替换的图片。
+    if (img.naturalWidth !== 280 || img.naturalHeight !== 534) return null;
+    function layer() { var c = document.createElement('canvas'); c.width = 280; c.height = 534; return c; }
+    var body = layer(), b = body.getContext('2d'); b.drawImage(img, 0, 0);
+    var pixels = b.getImageData(0, 0, 280, 534).data, hash = 2166136261;
+    for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) {
+      hash = Math.imul(hash ^ pixels[(Math.floor((y + 0.5) * 534 / 16) * 280 + Math.floor((x + 0.5) * 280 / 16)) * 4 + 3], 16777619) >>> 0;
+    }
+    if (hash !== 2670355244) return null;
+    var shapes = [
+      [[82,219],[97,224],[86,265],[69,303],[59,337],[60,347],[50,355],[39,353],[35,344],[39,328],[54,293],[67,255],[73,229]],
+      [[181,218],[194,221],[204,260],[217,299],[230,330],[237,343],[236,352],[224,359],[214,353],[209,335],[194,303],[182,267],[177,236]],
+      [[79,447],[116,449],[115,466],[125,505],[119,533],[90,534],[72,525],[73,488]],
+      [[146,449],[183,449],[188,486],[203,514],[195,534],[164,534],[148,516],[146,480]],
+      [[0,0],[280,0],[280,246],[205,246],[176,217],[160,211],[115,211],[93,228],[70,247],[0,247]]
+    ];
+    function polygon(ctx, points) { ctx.beginPath(); points.forEach(function (p, i) { if (!i) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); }); ctx.closePath(); }
+    var parts = shapes.map(function (shape) {
+      var c = layer(), a = c.getContext('2d'); a.save(); polygon(a, shape); a.clip(); a.drawImage(img, 0, 0); a.restore();
+      b.save(); b.globalCompositeOperation = 'destination-out'; polygon(b, shape); b.fill(); b.restore(); return c;
+    });
+    var rig = { body: body, parts: parts, pivots: [[87,232],[187,232],[99,450],[165,450],[140,216]] };
+    rigCache.set(img, rig); return rig;
+  }
 
   /* 三档配色：蔫=灰蓝，正常=青，精神=青绿+琥珀核心 */
   var PAL = {
@@ -109,6 +137,7 @@ tryLoadSprite('cat');
 
   function mount(el, opts) {
     if (!el) return null;
+    if (window.PetdexSprite) return window.PetdexSprite.mount(el, opts);
     opts = opts || {};
 
     var canvas = document.createElement('canvas');
@@ -165,13 +194,90 @@ tryLoadSprite('cat');
     /* ---------- 挂件模式：白色毛绒小猫（参考布偶手绘：绒毛边 + 闭眼笑 + 腮红 + 丝带） ---------- */
     /* 坐标以「脚底中心」为原点 (0,0)，向上为负，U 为缩放单位。 */
     var fx = { name: null, t0: 0, dur: 0 };          /* 一次性动作动画 */
-    var st = { sleeping: false, daze: false };       /* 持续状态 */
+    var st = { sleeping: false, daze: false, focus: false, gentle: false };       /* 持续状态 */
+    // 低分辨率舞台统一采样，再用最近邻放大；旋转、走路也保持方形像素。
+    var pixelStage = document.createElement('canvas'), pixelCtx = pixelStage.getContext('2d');
+    pixelStage.width = 112; pixelStage.height = 168;
 
     function playFx(name, dur) {
+      canvas.dataset.motion = name;
       fx.name = name; fx.dur = dur || 1.1;
       fx.t0 = (performance.now() - t0) / 1000;
       if (!running && !reduce) start();
-      if (reduce) { fx.name = null; drawOnce(); }
+      if (reduce || st.gentle) { fx.name = null; delete canvas.dataset.motion; drawOnce(); }
+    }
+
+    function spriteMotion(t) {
+      var still = reduce || st.gentle;
+      var motion = { x: 0, y: 0, rotate: 0, scale: 1, icon: '', effect: '', phase: 0,
+        armL: st.focus && !st.sleeping ? -0.8 : 0, armR: st.focus && !st.sleeping ? 0.8 : 0,
+        legL: 0, legR: 0, head: 0, torso: 0 };
+      if (!still && !st.sleeping && !st.daze) {
+        if (st.focus) { motion.head = Math.sin(t * 1.7) * 0.035; motion.y = Math.sin(t * 2) * H * 0.006; }
+        else {
+          var stride = Math.sin(t * 5);
+          motion.legL = stride * 0.24; motion.legR = -stride * 0.24;
+          motion.armL = -stride * 0.18; motion.armR = stride * 0.18;
+          motion.torso = Math.sin(t * 2.5) * 0.022; motion.head = -motion.torso * 0.65;
+          motion.x = Math.sin(t * 0.65) * W * 0.055;
+          motion.y = -Math.abs(Math.sin(t * 5)) * H * 0.014;
+        }
+      }
+      if (!fx.name) return motion;
+      var p = Math.max(0, (t - fx.t0) / fx.dur);
+      if (p >= 1) { fx.name = null; delete canvas.dataset.motion; return motion; }
+      var pulse = Math.sin(p * Math.PI), wiggle = Math.sin(p * Math.PI * 6) * pulse;
+      motion.phase = p;
+      if (fx.name === 'walk') { motion.legL = Math.sin(p * Math.PI * 12) * 0.4; motion.legR = -motion.legL; motion.armL = -motion.legL * 0.7; motion.armR = -motion.legR * 0.7; motion.x = Math.sin(p * Math.PI * 2) * W * 0.09; }
+      if (fx.name === 'hop' || fx.name === 'highfive') {
+        motion.y = -Math.abs(Math.sin(p * Math.PI * 2)) * H * 0.12;
+        motion.rotate = wiggle * 0.08; motion.icon = fx.name === 'highfive' ? '🙌' : '✨';
+      } else if (fx.name === 'lift') { motion.y = -pulse * H * 0.16; motion.rotate = wiggle * 0.08; }
+      else if (fx.name === 'spin') { motion.rotate = p * Math.PI * 2; motion.scale = 1 - pulse * 0.15; }
+      else if (fx.name === 'chin') { motion.rotate = wiggle * 0.06; motion.scale = 1 + pulse * 0.04; motion.icon = '♡'; }
+      else if (fx.name === 'wave' || fx.name === 'call') { motion.rotate = wiggle * 0.15; motion.x = wiggle * W * 0.03; motion.icon = '👋'; }
+      else if (fx.name === 'hug') { motion.scale = 1 + pulse * 0.12; motion.rotate = Math.sin(p * Math.PI * 2) * 0.06; motion.icon = '💗'; }
+      else if (fx.name === 'study') { motion.y = -pulse * H * 0.03; motion.icon = '📖'; }
+      var envelope = Math.min(1, p / 0.2, (1 - p) / 0.2);
+      if (fx.name === 'wave' || fx.name === 'call' || fx.name === 'encourage') {
+        motion.armR = (-1.6 + Math.sin(p * Math.PI * 12) * 0.32) * envelope;
+        motion.rotate = wiggle * 0.025; motion.icon = ''; motion.effect = 'spark';
+      } else if (fx.name === 'highfive' || fx.name === 'celebrate') {
+        motion.armL = 1.7 * envelope; motion.armR = -1.7 * envelope;
+        motion.effect = 'spark'; motion.icon = '';
+        if (fx.name === 'celebrate') motion.y = -Math.abs(Math.sin(p * Math.PI * 3)) * H * 0.04;
+      } else if (fx.name === 'hug') {
+        motion.armL = -0.9 * pulse; motion.armR = 0.9 * pulse; motion.effect = 'heart'; motion.icon = '';
+        motion.scale = 1 + pulse * 0.08; motion.head = -pulse * 0.09; motion.legL = -pulse * 0.08; motion.legR = pulse * 0.08;
+      } else if (fx.name === 'pat' || fx.name === 'chin') {
+        motion.rotate = Math.sin(p * Math.PI * 2) * 0.025; motion.y = pulse * H * 0.015;
+        motion.head = Math.sin(p * Math.PI * 4) * 0.09; motion.effect = 'heart'; motion.icon = '';
+      }
+      if (still) { motion.x = motion.y = motion.rotate = 0; motion.scale = 1; }
+      return motion;
+    }
+
+    function drawCompanionCue(t, motion) {
+      if (!motion.icon && !motion.effect && (!st.focus || st.sleeping)) return;
+      ctx.save();
+      if (st.focus && !st.sleeping) {
+        var bx = W * 0.49, by = H * 0.63, bw = W * 0.36, bh = H * 0.105;
+        ctx.fillStyle = '#efe5bd'; ctx.strokeStyle = '#627e56'; ctx.lineWidth = Math.max(1, W / 100);
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx-bw/2, by-bh*0.15); ctx.lineTo(bx-bw/2, by+bh); ctx.lineTo(bx, by+bh*1.15); ctx.lineTo(bx+bw/2, by+bh); ctx.lineTo(bx+bw/2, by-bh*0.15); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx,by);ctx.lineTo(bx,by+bh*1.15);ctx.stroke();
+        ctx.strokeStyle = '#b0b294';
+        for (var row=1;row<4;row++) { ctx.beginPath();ctx.moveTo(bx-bw*0.4,by+bh*row*0.22);ctx.lineTo(bx-bw*0.1,by+bh*(row*0.22+0.04));ctx.moveTo(bx+bw*0.1,by+bh*(row*0.22+0.04));ctx.lineTo(bx+bw*0.4,by+bh*row*0.22);ctx.stroke(); }
+      }
+      if (motion.effect) {
+        for (var i=0;i<4;i++) {
+          var age = (motion.phase + i*0.18) % 1, px = W*(0.17 + i*0.21), py = H*(0.34-age*0.23), size = Math.max(3,W*0.045)*(1-age*0.35);
+          ctx.globalAlpha = Math.max(0, Math.sin(Math.PI*motion.phase))*(1-age);
+          ctx.fillStyle = motion.effect === 'heart' ? '#efb6bc' : '#ead598'; ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = Math.max(1,W*0.009);
+          if (motion.effect === 'heart') { ctx.beginPath();ctx.moveTo(px,py+size);ctx.bezierCurveTo(px-size*2,py-size*0.2,px-size,py-size*1.7,px,py-size*0.6);ctx.bezierCurveTo(px+size,py-size*1.7,px+size*2,py-size*0.2,px,py+size);ctx.fill(); }
+          else { ctx.beginPath();ctx.moveTo(px-size,py);ctx.lineTo(px+size,py);ctx.moveTo(px,py-size);ctx.lineTo(px,py+size);ctx.stroke(); }
+        }
+      }
+      ctx.restore();
     }
 
     /* 毛绒边缘路径：用正弦抖动把椭圆变成一圈绒毛 */
@@ -222,6 +328,16 @@ tryLoadSprite('cat');
           } else if (fx.name === 'call') {
             frot = Math.sin(p * Math.PI * 6) * 0.05;
             fy = -Math.abs(Math.sin(p * Math.PI * 2)) * 5 * U;
+          } else if (fx.name === 'wave') {
+            frot = Math.sin(p * Math.PI * 6) * Math.sin(p * Math.PI) * 0.15;
+          } else if (fx.name === 'highfive') {
+            fy = -Math.sin(p * Math.PI) * 24 * U;
+            frot = Math.sin(p * Math.PI * 4) * 0.12;
+          } else if (fx.name === 'hug') {
+            fscaleY = 1 + Math.sin(p * Math.PI) * 0.12;
+            frot = Math.sin(p * Math.PI * 2) * 0.07;
+          } else if (fx.name === 'study') {
+            fy = -Math.sin(p * Math.PI) * 4 * U;
           }
         }
       }
@@ -574,6 +690,7 @@ tryLoadSprite('cat');
       }
 
       var img = rec.img;
+      var motion = spriteMotion(t);
       var iw = img.naturalWidth || img.width;
       var ih = img.naturalHeight || img.height;
       if (!iw || !ih) return false;
@@ -590,7 +707,7 @@ tryLoadSprite('cat');
         var sy = ih * 0.015;
         dh = H; dw = W; dx = 0; dy = 0;
         ctx.save();
-        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingEnabled = false;
         if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, sx, sy, cropW, cropH, dx, dy, dw, dh);
         ctx.restore();
@@ -598,14 +715,13 @@ tryLoadSprite('cat');
       }
 
       /* contain + 留 4% 边距 */
-      var pad = 0.04;
-      var k = Math.min((W * (1 - pad * 2)) / iw, (H * (1 - pad * 2)) / ih);
+      var k = Math.min(W * 0.72 / iw, H * 0.84 / ih);
       dw = iw * k; dh = ih * k;
       dx = (W - dw) / 2;
-      dy = (H - dh) / 2;
+      dy = H - dh - H * 0.065;
 
       /* 呼吸：整张图轻微缩放，比逐帧重画便宜，也不破坏原图 */
-      var br = 1 + Math.sin(t * (tier === 'low' ? 0.9 : 1.5)) * 0.012;
+      var br = reduce || st.gentle ? 1 : 1 + Math.sin(t * (tier === 'low' ? 0.9 : 1.5)) * 0.006;
 
       /* 地面阴影 */
       ctx.save();
@@ -616,15 +732,33 @@ tryLoadSprite('cat');
       ctx.fill();
       ctx.restore();
 
-      ctx.save();
-      ctx.translate(W / 2, dy + dh / 2);
-      ctx.scale(br, br);
-      ctx.translate(-W / 2, -(dy + dh / 2));
-      /* 贴图是照片/插画，放大时用高质量插值，别出现锯齿 */
-      ctx.imageSmoothingEnabled = true;
-      if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, dx, dy + hopY, dw, dh);
-      ctx.restore();
+      var pw = Math.max(32, Math.round(W / 2)), ph = Math.max(32, Math.round(H / 2));
+      if (pixelStage.width !== pw || pixelStage.height !== ph) { pixelStage.width = pw; pixelStage.height = ph; }
+      else { pixelCtx.setTransform(1, 0, 0, 1, 0, 0); pixelCtx.clearRect(0, 0, pw, ph); }
+      var pc = pixelCtx; pc.setTransform(pixelStage.width / W, 0, 0, pixelStage.height / H, 0, 0);
+      pc.imageSmoothingEnabled = false;
+      pc.translate(W / 2 + motion.x, dy + dh / 2 + motion.y);
+      pc.rotate(motion.rotate); pc.scale(br * motion.scale, br * motion.scale);
+      pc.translate(-W / 2, -(dy + dh / 2));
+      var rig = spriteRig(img);
+      canvas.dataset.rig = rig ? 'pixel-body' : 'pixel-image';
+      canvas.dataset.pose = st.sleeping ? 'sleep' : st.focus ? 'reading' : fx.name || 'walk';
+      if (rig) {
+        var bodyX = dx + 140 * k, bodyY = dy + 300 * k;
+        function part(layer, pivot, angle) {
+          var px = dx + pivot[0] * k, py = dy + hopY + pivot[1] * k;
+          pc.save(); pc.translate(px, py); pc.rotate(angle); pc.translate(-px, -py);
+          pc.drawImage(layer, dx, dy + hopY, dw, dh); pc.restore();
+        }
+        // 腿在裙摆后方，手臂独立摆动；头部以颈部为轴，身体轻微反向摆动。
+        part(rig.parts[2], rig.pivots[2], motion.legL); part(rig.parts[3], rig.pivots[3], motion.legR);
+        pc.save(); pc.translate(bodyX, bodyY); pc.rotate(motion.torso); pc.translate(-bodyX, -bodyY);
+        pc.drawImage(rig.body, dx, dy + hopY, dw, dh); pc.restore();
+        part(rig.parts[4], rig.pivots[4], motion.head);
+        part(rig.parts[0], rig.pivots[0], motion.armL); part(rig.parts[1], rig.pivots[1], motion.armR);
+      } else pc.drawImage(img, dx, dy + hopY, dw, dh);
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pixelStage, 0, 0, W, H); ctx.restore();
+      drawCompanionCue(t, motion);
 
       /* 睡觉时补 Z，饿的时候补个提示点，保持"它在回应你"的感觉 */
       if (st.sleeping) {
@@ -646,7 +780,9 @@ tryLoadSprite('cat');
       if (bare) {
         /* 有贴图就用贴图，没有才回落到程序化画的猫 */
         if (drawSprite(t)) return;
+        var cue = spriteMotion(t);
         drawCute(t);
+        drawCompanionCue(t, cue);
         return;
       }
       var P = PAL[tier];
@@ -987,7 +1123,7 @@ tryLoadSprite('cat');
     }
 
     function start() {
-      if (running || disposed || reduce) return;
+      if (running || disposed || reduce || st.gentle || !visible || !pageVisible) return;
       running = true;
       raf = requestAnimationFrame(frame);
     }
@@ -998,6 +1134,7 @@ tryLoadSprite('cat');
 
     /* 点击回应：弹一下 */
     function poke() {
+      if (reduce || st.gentle) return;
       hopV = -3.4;
       glitchUntil = (performance.now() - t0) / 1000 + 0.1;
     }
@@ -1012,7 +1149,12 @@ tryLoadSprite('cat');
     var ro = new ResizeObserver(resize);
     ro.observe(el);
     var io = new IntersectionObserver(function (entries) {
-      visible = entries[0].isIntersecting;
+      var entry = entries[entries.length - 1], rect = el.getBoundingClientRect();
+      // 首页重绘会短暂移走挂件；丢弃移走时排队的零尺寸通知，重新观察新位置。
+      if (!entry.isIntersecting && !entry.boundingClientRect.width && el.isConnected && rect.width) {
+        io.unobserve(el); io.observe(el); return;
+      }
+      visible = entry.isIntersecting;
       if (visible && pageVisible) start(); else stop();
     }, { threshold: 0 });
     io.observe(el);
@@ -1021,12 +1163,28 @@ tryLoadSprite('cat');
       if (pageVisible && visible) start(); else stop();
     };
     document.addEventListener('visibilitychange', onVis);
+    var motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function onMotionPreference(e) {
+      reduce = e.matches;
+      canvas.dataset.gentle = reduce || st.gentle ? 'true' : 'false';
+      if (reduce) { stop(); fx.name = null; hopY = hopV = 0; delete canvas.dataset.motion; }
+      else start();
+      drawOnce();
+    }
+    motionMedia.addEventListener('change', onMotionPreference);
 
     resize();
     if (!reduce) start();
 
     var inst = {
       el: el,
+      syncVisibility: function () {
+        var r = el.getBoundingClientRect();
+        visible = el.isConnected && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+        pageVisible = !document.hidden;
+        io.unobserve(el); io.observe(el);
+        if (visible && pageVisible) start(); else stop();
+      },
       poke: poke,
       setVitality: function (val) {
         vitality = Math.max(0, Math.min(100, val));
@@ -1042,6 +1200,11 @@ tryLoadSprite('cat');
       setState: function (o) {
         if (o && o.sleeping !== undefined) st.sleeping = !!o.sleeping;
         if (o && o.daze !== undefined) st.daze = !!o.daze;
+        if (o && o.focus !== undefined) st.focus = !!o.focus;
+        if (o && o.gentle !== undefined) st.gentle = !!o.gentle;
+        canvas.dataset.focus = st.focus ? 'true' : 'false';
+        canvas.dataset.gentle = reduce || st.gentle ? 'true' : 'false';
+        if (reduce || st.gentle) { stop(); fx.name = null; hopY = hopV = 0; delete canvas.dataset.motion; }
         if (!running && !reduce) start();
         drawOnce();
       },
@@ -1051,7 +1214,9 @@ tryLoadSprite('cat');
         try { ro.disconnect(); } catch (e) {}
         try { io.disconnect(); } catch (e) {}
         document.removeEventListener('visibilitychange', onVis);
+        motionMedia.removeEventListener('change', onMotionPreference);
         if (canvas.parentNode === el) el.removeChild(canvas);
+        var at = instances.indexOf(inst); if (at >= 0) instances.splice(at, 1);
       }
     };
     instances.push(inst);
@@ -1059,7 +1224,8 @@ tryLoadSprite('cat');
   }
 
   function disposeAll() {
-    instances.forEach(function (i) { try { i.dispose(); } catch (e) {} });
+    if (window.PetdexSprite) window.PetdexSprite.disposeAll();
+    instances.slice().forEach(function (i) { try { i.dispose(); } catch (e) {} });
     instances = [];
   }
 

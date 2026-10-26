@@ -13,6 +13,7 @@
   var L = null;                 /* app.js 桥，boot() 时才可用 */
   var booted = false;
   var cat = null;               /* CyberCat 实例 */
+  var widgetRoot = null, lastMotion = null;
   var sayTimer = null, idleTimer = null, lastSay = null;
   /* 挂件气泡的「输入态」：true = 现在是输入框，false = 纯文字气泡。
      对话坞已拆掉，这两个就是它唯一的开关（见 renderBubble）。 */
@@ -65,7 +66,7 @@
   function dimTier(d, v) { return d.tiers[dimTierIdx(d, v)].t; }
 
   /* 互动涨心情：不同动作给的不一样，三个按钮才算真的有了差别 */
-  var MOOD_GAIN = { pat: 5, chat: 3, play: 8, lift: 5, chin: 6, call: 2, daze: 6, feed: 4, roll: 8, recite: 6 };
+  var MOOD_GAIN = { pat: 5, chat: 3, play: 8, lift: 5, chin: 6, call: 2, daze: 6, feed: 4, roll: 8, recite: 6, wave: 2, highfive: 5, hug: 6 };
   function touch(kind) {
     var p = ensure();
     p.mood = clamp(Math.round((p.mood + (MOOD_GAIN[kind] || 2)) * 10) / 10, 0, 100);
@@ -355,6 +356,11 @@
      回答就得在**他眼前**冒出来 —— 面板盖住挂件、滚动到页面下半截看不见大猫，都算看不见。
      两处是纯文字（旁边本来就有输入框，不需要「⋯」），挂件那个才有输入态。 */
   function paintSay(txt, ms, typing) {
+    var homeText = !typing && lastSay && lastSay.full ? lastSay.full : txt;
+    if (window.StudyBuddy) StudyBuddy.say(homeText, ms, typing);
+    if (window.DesktopPetBridge) DesktopPetBridge.say(typing ? '它在认真想怎么回答你…' : homeText, ms);
+    var response = $('ds-pet-response');
+    if (response) response.textContent = typing ? '它在想怎么回答你…' : homeText;
     /* 面板里 / 伙伴页说说话卡里：就近冒泡 */
     ['ppBub', 'pgSay'].forEach(function (id) {
       var el = $(id);
@@ -396,7 +402,7 @@
     var short = bubbleText(full);
     /* 不传 ms 时按字数算停留：一句话至少 3.6s，长一点多给点，但不超过 12s */
     var dur = ms || Math.min(12000, 3600 + short.length * 130);
-    lastSay = { text: short, until: Date.now() + dur };
+    lastSay = { text: short, full: full.slice(0, 220), until: Date.now() + dur };
     paintSay(short, dur);
     /* 说话时戳一下猫，让它有反应 —— 光冒字没有动作，代入感出不来 */
     try { if (pageCat && pageCat.poke) pageCat.poke(); } catch (e) {}
@@ -540,7 +546,7 @@
 
   function pat() {
     var p = ensure(), now = Date.now();
-    if (now - p.lastPatAt < 90000) { say(pick(LINES.patCool), 3200); pokeCat(); return; }
+    if (now - p.lastPatAt < 90000) { say(pick(LINES.patCool), 3200); playMotion('pat', 1.5); return; }
     p.lastPatAt = now;
     var gain = 1 + (p.toys.indexOf('toy_wand') >= 0 ? 1 : 0);
     p.stats.patted += 1;
@@ -550,13 +556,19 @@
     L.save();
     say(pick(LINES.pat), 3600);
     floatText('💗 +' + gain);
-    pokeCat();
+    playMotion('pat', 1.8);
     refresh(); renderPanel();
   }
 
   /* ================= 更多互动 ================= */
   /* 全部「只加不减」，冷却只是防止连点，不是惩罚 */
-  var CD = { play: 25000, lift: 15000, chin: 45000, call: 6000, recite: 60000, roll: 30000 };
+  var CD = { play: 25000, lift: 15000, chin: 45000, call: 6000, recite: 60000, roll: 30000, wave: 3000, highfive: 15000, hug: 25000 };
+  function playMotion(name, duration) {
+    lastMotion = { name: name, duration: duration, at: Date.now() };
+    if (cat) cat.play(name, duration);
+    if (pageCat) pageCat.play(name, duration);
+    if (window.DesktopPetBridge) DesktopPetBridge.motion(name);
+  }
 
   function cdLeft(k) {
     var p = ensure(); p.cd = p.cd || {};
@@ -575,51 +587,71 @@
 
   function interact(name) {
     var p = ensure();
+    if (['play','lift','chin','call','recite','roll','sleep','daze','wave','highfive','hug','study'].indexOf(name) < 0) return;
+    if (name === 'study') {
+      p.studyMode = !p.studyMode; L.save();
+      say(p.studyMode ? '书翻开啦，我陪着你。先看懂眼前这个例子。' : '好，合上书歇一会儿。', 4600);
+      playMotion('study', 1.6); refresh();
+      if ($('petPage')) L.render();
+      return;
+    }
     if (name === 'sleep') { toggleSleep(); return; }
     if (name === 'daze') { startDaze(); return; }
     /* 小动作要解锁才能用（B 档的养成反馈） */
     if (name === 'recite' && p.unlocked.indexOf('recite') < 0) { L.toast('灵性到 50，它才会念诗'); return; }
     if (name === 'roll' && p.unlocked.indexOf('roll') < 0) { L.toast('心情到 80，它才肯跟你打滚'); return; }
     var left = cdLeft(name);
-    if (left > 0) { L.toast('等一下下，' + Math.ceil(left / 1000) + ' 秒后再来'); return; }
+    if (left > 0) {
+      var repeats = { wave: '我还在呢，看到你啦。', highfive: '再击个掌！刚才的鼓励已经收到了。', hug: '可以多抱一会儿。', play: '再陪你动一下。', lift: '再举一下就好。', chin: '嗯，舒服。', call: '听到啦。' };
+      say(repeats[name] || '我在这里。', 3200);
+      playMotion(name === 'play' ? 'hop' : name, name === 'hug' ? 2 : 1.5);
+      return;
+    }
     wake();
     startCd(name);
 
-    if (name === 'play') {
+    if (name === 'wave' || name === 'highfive' || name === 'hug') {
+      var lines = { wave: '我在！今天也一起慢慢来。', highfive: '啪！肯开始这一小步，就值得击掌。', hug: '抱一下。累了可以歇会儿，我还在这里。' };
+      var titles = { wave: '和它挥了挥手', highfive: '和它击了个掌', hug: '轻轻抱了它一下' };
+      touch(name); addIntimacy(1);
+      L.addMemory('pet', titles[name] + '（亲密 +1）', ['互动']);
+      say(lines[name], 4200); floatText(name === 'hug' ? '💗' : '✨');
+      playMotion(name, name === 'hug' ? 2.2 : 1.6);
+    } else if (name === 'play') {
       var bonus = p.toys.indexOf('toy_wand') >= 0 ? 1 : 0;
       addIntimacy(2 + bonus); touch('play');
       L.addMemory('pet', '陪它玩了一会儿（亲密 +' + (2 + bonus) + '）', ['互动']);
       say(pick(LINES.play), 3600);
       floatText('💗 +' + (2 + bonus));
-      if (cat) cat.play('hop', 1.5);
+      playMotion('hop', 1.5);
     } else if (name === 'lift') {
       addIntimacy(1); touch('lift');
       L.addMemory('pet', '把它举高高了（亲密 +1）', ['互动']);
       say(pick(LINES.lift), 3600);
       floatText('💗 +1');
-      if (cat) cat.play('lift', 1.5);
+      playMotion('lift', 1.5);
     } else if (name === 'chin') {
       addIntimacy(2); touch('chin');
       L.addMemory('pet', '挠了挠它的下巴（亲密 +2）', ['互动']);
       say(pick(LINES.chin), 3600);
       floatText('💗 +2');
-      if (cat) cat.play('chin', 1.6);
+      playMotion('chin', 1.6);
     } else if (name === 'call') {
       touch('call');
       say(pick(LINES.call), 2600);
-      if (cat) cat.play('call', 0.9);
+      playMotion('call', 0.9);
     } else if (name === 'recite') {
       touch('recite'); addIntimacy(1);
       L.addMemory('pet', '让它念了句诗（心情 +' + MOOD_GAIN.recite + '）', ['互动']);
       say(pick(LINES.recite), 5200);
       floatText('✨');
-      if (cat) cat.play('call', 1.2);
+      playMotion('call', 1.2);
     } else if (name === 'roll') {
       touch('roll'); addIntimacy(1);
       L.addMemory('pet', '和它一起打了个滚（心情 +' + MOOD_GAIN.roll + '）', ['互动']);
       say(pick(LINES.roll), 3600);
       floatText('💛 +' + MOOD_GAIN.roll);
-      if (cat) cat.play('hop', 1.6);
+      playMotion('spin', 1.6);
     }
     L.save();
     refresh(); renderPanel();
@@ -672,6 +704,7 @@
       if ($('petPage')) L.render(); else renderPanel();
       return;
     }
+    applyPos();
     updatePills(p);
     if ($('petPage')) {
       var el = document.getElementById('pgDaze');
@@ -1007,6 +1040,10 @@
     p.energy = clamp(p.energy + 4, 0, 100);
     p.lastInteractAt = Date.now();
     L.save();
+    if (ST().timer && ST().timer.discipline) {
+      playMotion('celebrate', 2.2);
+      say('刚才的 ' + minutes + ' 分钟，是真的往前走了。记下断点，就放心休息吧。', 6500);
+    }
   }
 
   function shopHTML() {
@@ -1242,6 +1279,7 @@
     if ($('petWidget')) return;
 
     var root = document.createElement('div');
+    widgetRoot = root;
     root.id = 'petWidget';
     root.className = 'pw-root';
     root.innerHTML =
@@ -1293,8 +1331,11 @@
   var SIZES = { S: 0.86, M: 1, L: 1.18 };
 
   function applyPos() {
-    var p = ensure(), root = $('petWidget');
+    var p = ensure(), root = $('petWidget') || widgetRoot, host = $('ds-pet-host');
     if (!root) return;
+    if (host) { if (root.parentNode !== host) host.appendChild(root); }
+    else if (root.parentNode !== document.body) document.body.appendChild(root);
+    if (cat && cat.syncVisibility) cat.syncVisibility();
     var isCollapsed = !!p.widget.collapsed;
     root.classList.toggle('collapsed', isCollapsed);
     root.classList.toggle('hidden', !!p.widget.hidden);
@@ -1334,6 +1375,7 @@
   }
 
   function onDown(e) {
+    if (e.target.closest('#ds-pet-host')) return;
     var t = e.target;
     /* 气泡（尤其输入态）也要排除：不然点气泡空白处会被当成拖挂件，松手还会顺手开面板 */
     if (t.closest('button') || t.closest('input') || t.closest('.pw-bubble')) return;
@@ -1491,6 +1533,10 @@
       + '<button class="btn ghost sm" data-pact="act" data-id="chin">🤏 挠下巴</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="lift">🙌 举高高</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="call">📣 喊它</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="wave">👋 挥手</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="highfive">🙌 击掌</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="hug">🫶 抱抱</button>'
+      + '<button class="btn ghost sm" data-pact="act" data-id="study">📖 陪读 / 休息</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="daze">☁️ 一起发呆</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="sleep">' + (p.sleeping ? '☀️ 叫醒' : '💤 让它睡') + '</button>'
       + (p.unlocked.indexOf('recite') >= 0 ? '<button class="btn ghost sm" data-pact="act" data-id="recite">🪶 念诗</button>' : '')
@@ -1717,6 +1763,10 @@
       + '<div class="hint">怎么点都行，只加不减，没有惩罚。冷却只是防连点。</div>'
       + '<div class="pg-grid">'
       + ibtn('play', '🪄', '逗它玩', '亲密 +2（有逗猫棒 +3）')
+      + ibtn('wave', '👋', '挥挥手', '摇摆着回应你 · 亲密 +1')
+      + ibtn('highfive', '🙌', '击个掌', '跳起来击掌 · 亲密 +1')
+      + ibtn('hug', '🫶', '抱一下', '靠近你，冒出小爱心 · 亲密 +1')
+      + ibtn('study', '📖', '陪我读书', '再点一次结束陪读；专注时自动陪伴')
       + ibtn('lift', '🙌', '举高高', '亲密 +1')
       + ibtn('chin', '🤏', '挠下巴', '亲密 +2')
       + ibtn('call', '📣', '喊它一声', '它会应你，不加也不减')
@@ -1836,6 +1886,8 @@
     var cb = $('pgCat');
     if (cb && window.CyberCat) {
       pageCat = CyberCat.mount(cb, { vitality: v, bare: true, hungry: p.hunger < 30, gear: p.gear });
+      pageCat.setState({ sleeping: !!p.sleeping, focus: !!p.studyMode || !!(ST().timer && ST().timer.discipline && !ST().timer.paused && !ST().timer.finished), gentle: !!p.gentleMotion });
+      if (lastMotion && Date.now() - lastMotion.at < lastMotion.duration * 1000) pageCat.play(lastMotion.name, Math.max(0.2, lastMotion.duration - (Date.now() - lastMotion.at) / 1000));
     }
     restoreSay();   /* 整页重绘会冲掉气泡，补回来（包括「正在想…」） */
 
@@ -1984,7 +2036,9 @@
     p.lastGreet = t;
     L.addMemory('daily', '新的一天，小陆说：' + dailyLine(), ['每日']);
     L.save();
-    setTimeout(function () { say(dailyLine(), 5200); }, booted ? 900 : 1200);
+    if (!p.widget.quiet) setTimeout(function () {
+      if (!ensure().widget.quiet && !(ST().timer && ST().timer.discipline && !ST().timer.paused)) say(dailyLine(), 5200);
+    }, booted ? 900 : 1200);
   }
 
   function scheduleIdle() {
@@ -1995,7 +2049,7 @@
     idleTimer = setTimeout(function () {
       var pp = ensure();
       if (pp.widget.quiet) return;
-      if (!document.hidden && !isPanelOpen()) {
+      if (!document.hidden && !isPanelOpen() && !(ST().timer && ST().timer.discipline && !ST().timer.paused && !ST().timer.finished)) {
         if (Date.now() - lastAct > 1200000) say(pick(LINES.late), 4600);
         else say(idleLine(pp), 4200);
       }
@@ -2036,22 +2090,24 @@
     var p = ensure();
     decay();
     settleGrowth();
+    if (pageCat && !$('petPage')) { pageCat.dispose(); pageCat = null; }
+    applyPos();
     var v = L.vitality();
     if (cat) {
       cat.setVitality(v);
       cat.setGear(p.gear);
       cat.setHungry(p.hunger < 30);
       /* 恢复持续状态：睡觉 / 发呆（应用关掉再打开也要接上） */
-      cat.setState({ sleeping: !!p.sleeping, daze: !!(p.dazeUntil && p.dazeUntil > Date.now()) });
+      cat.setState({ sleeping: !!p.sleeping, daze: !!(p.dazeUntil && p.dazeUntil > Date.now()), focus: !!p.studyMode || !!(ST().timer && ST().timer.discipline && !ST().timer.paused && !ST().timer.finished), gentle: !!p.gentleMotion });
     }
     if (p.dazeUntil && p.dazeUntil > Date.now() && !dazeTimer) dazeTimer = setInterval(dazeTick, 1000);
     else if (p.dazeUntil && p.dazeUntil <= Date.now()) { p.dazeUntil = 0; L.save(); }
     updatePills(p);
     dailyGreet(p);
     scheduleIdle();
-    applyPos();
     renderBubble();
     if (isPanelOpen()) renderPanel();
+    if (window.StudyBuddy) StudyBuddy.refresh();
   }
 
   function onFish(n, reason) {
@@ -2164,6 +2220,9 @@
 
   /* ================= 对外 API ================= */
   window.Pet = {
+    gesture: playMotion,
+    cooldown: cdLeft,
+    interact: interact,
     refresh: refresh,
     say: say,
     pat: pat,

@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>着陆 · 把焦虑变成下一步</title>
+<title>着陆 · 每天一点，慢慢做到</title>
+<link rel="stylesheet" href="digest.css?v=1">
 <style>
 /* ===== 自带字体（本地 woff2，断网也在）=====
    原来这两个字体是从 Google Fonts / OnlineWebFonts 现拉的：没网就掉字体，
@@ -934,11 +935,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <symbol id="i-shop" viewBox="0 0 24 24"><path fill="currentColor" d="M8 7a4 4 0 0 1 8 0h-2a2 2 0 0 0-4 0zM5 8h14a1 1 0 0 1 1 1.05l-1 10.9A1 1 0 0 1 18 21H6a1 1 0 0 1-1-.95L4 9.05A1 1 0 0 1 5 8z"/></symbol>
 </svg>
 
+<link rel="stylesheet" href="discipline.css">
+<link rel="stylesheet" href="study-buddy.css">
 <div id="app">
   <aside class="sidebar">
     <div class="brand">
       <div class="logo"><svg class="icon" style="color:#fff" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 9-9 9 9 0 0 0-9-9zm0 4 5 5-5 5-5-5z"/></svg></div>
-      <div><div class="name">着陆</div><div class="sub">把焦虑变成下一步</div></div>
+      <div><div class="name">着陆</div><div class="sub">每天一点，慢慢做到</div></div>
     </div>
     <button class="nav-item active" data-tab="today"><svg class="icon"><use href="#i-home"/></svg>今日</button>
     <button class="nav-item" data-tab="weekly"><svg class="icon"><use href="#i-chart"/></svg>周报</button>
@@ -953,7 +956,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     <header class="topbar">
       <h1 id="viewTitle">今日</h1>
       <div class="actions">
-        <button class="btn ghost sm" id="topNew"><svg class="icon sm"><use href="#i-plus"/></svg>新建</button>
+        <button class="btn ghost sm" id="topNew"><svg class="icon sm"><use href="#i-plus"/></svg>添加计划</button>
         <button class="btn ghost sm" id="topSettings"><svg class="icon sm"><use href="#i-cog"/></svg>设置</button>
       </div>
     </header>
@@ -977,9 +980,15 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 <script src="gradient-waves.js?v=2"></script>
 <script src="warp-text.js?v=2"></script>
-<script src="cyber-cat.js?v=6"></script>
-<script src="pet.js?v=45"></script>
-<script src="app.js?v=61"></script>
-<script src="click-feedback.js?v=2"></script>
+<script src="petdex-sprite.js?v=1"></script>
+<script src="cyber-cat.js?v=8"></script>
+<script src="study-buddy.js?v=2"></script>
+<script src="pet.js?v=47"></script>
+<script src="learning-checkpoint.js?v=1"></script>
+<script src="discipline.js?v=3"></script>
+<script src="digest.js?v=1"></script>
+<script src="desktop-pet-bridge.js?v=1"></script>
+<script src="app.js?v=65"></script>
+<script src="click-feedback.js?v=3"></script>
 </body>
 </html>

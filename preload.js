@@ -23,6 +23,21 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('landing', {
   isDesktop: true,
+  desktopPet: {
+    reveal: () => ipcRenderer.invoke('petdesk:reveal'),
+    status: () => ipcRenderer.invoke('petdesk:status'),
+    configure: (p) => ipcRenderer.invoke('petdesk:configure', p),
+    publish: (p) => ipcRenderer.send('petdesk:publish', p),
+    onCommand: (cb) => ipcRenderer.on('petdesk:command', (_e,p) => cb(p))
+  },
+  digest: {
+    request: (payload) => ipcRenderer.invoke('digest:request', payload),
+    configure: (payload) => ipcRenderer.invoke('digest:configure', payload)
+  },
+  learning: {
+    displays: () => ipcRenderer.invoke('learning:displays'),
+    capture: (displayId) => ipcRenderer.invoke('learning:capture', displayId)
+  },
 
   feed: {
     list: () => ipcRenderer.invoke('feed:list'),

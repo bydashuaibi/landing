@@ -11,7 +11,7 @@
 
 /* ================= 配置 & 分类体系 ================= */
 var APP_CONFIG = {
-  version: '2.0.0',
+  version: '2.4.0',
   storageKey: 'landing.v2',
   repo: 'https://github.com/bydashuaibi/landing',
   communityApi: ''
@@ -51,17 +51,6 @@ function guessCategory(name, oldKey){
   return CATEGORIES.some(function(c){ return c.key === oldKey; }) ? oldKey : 'work';
 }
 
-/* GitHub 日报领域（按主题拉取热门开源项目） */
-var DIGEST_TOPICS = [
-  {topic:'AI',           label:'AI 应用',     q:'artificial-intelligence OR machine-learning OR LLM OR agent'},
-  {topic:'productivity', label:'效率工具',     q:'productivity-tool OR CLI OR developer-tools'},
-  {topic:'frontend',     label:'前端开发',     q:'frontend OR react OR vue OR nextjs'},
-  {topic:'data-viz',     label:'数据可视化',   q:'data-visualization OR dashboard OR chart'},
-  {topic:'devops',       label:'DevOps 运维',  q:'devops OR kubernetes OR docker OR CI-CD'},
-  {topic:'security',     label:'安全',         q:'security OR cybersecurity OR penetration-testing'},
-  {topic:'mobile',       label:'移动端',       q:'mobile OR flutter OR react-native OR iOS OR android'},
-  {topic:'hardware',     label:'开源硬件/IoT',  q:'IoT OR embedded OR raspberry-pi OR arduino OR ESP32'}
-];
 
 /* ================= 工具函数 ================= */
 function ymd(d){ d=d||new Date(); var z=function(n){return ('0'+n).slice(-2);}; return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
@@ -135,7 +124,6 @@ function catColor(key){
 /* ================= 数据模型 ================= */
 var STATE = null;
 var CUR_TAB = 'today';
-var _digestFilter = '全部';  /* 日报分类筛选（瞬态，不持久化） */
 
 function blankState(){
   return {
@@ -272,114 +260,9 @@ function save(){
   catch(e){ toast('保存失败：存储可能已满'); }
 }
 
-/* ================= GitHub 日报 ================= */
-function fetchDigest(force){
-  force = force || false;
-  var token = (STATE.settings.githubToken || '').trim();
-
-  var dt = today();
-  if(!force && STATE.digest[dt] && STATE.digest[dt].fetchedAt){
-    return Promise.resolve(STATE.digest[dt]);
-  }
-
-  var results = {};
-  /* 无 token 也能拉取（GitHub 未认证限速 60 次/小时，日报一天一次够用）；配了 token 限速更高更稳 */
-  var headers = {'Accept':'application/vnd.github+json'};
-  if(token) headers['Authorization'] = 'Bearer '+token;
-  var promises = DIGEST_TOPICS.map(function(tp){
-    var q = tp.q+' created:>='+addDays(dt,-3)+' stars:>50 sort:stars';
-    var url = 'https://api.github.com/search/repositories?q='+encodeURIComponent(q)+'&per_page=3';
-    return fetch(url,{headers:headers})
-      .then(function(r){ return r.ok ? r.json() : {items:[]}; })
-      .then(function(j){
-        var items = (j.items||[]).map(function(item){
-          return {name:item.full_name, desc:(item.description||'').slice(0,120), stars:item.stargazers_count, url:item.html_url, lang:item.language||''};
-        });
-        results[tp.label] = items;
-      })
-      .catch(function(){ results[tp.label] = []; });
-  });
-
-  return Promise.all(promises).then(function(){
-    /* 保存上次快照（用于计算增长） */
-    var prevSnapshot = {};
-    if(STATE.digest[dt] && STATE.digest[dt].categories){
-      Object.keys(STATE.digest[dt].categories).forEach(function(lbl){
-        (STATE.digest[dt].categories[lbl]||[]).forEach(function(r){
-          prevSnapshot[r.name] = r.stars||0;
-        });
-      });
-    }
-    STATE.digest[dt] = {fetchedAt:Date.now(), categories:results, _prev:prevSnapshot};
-    save();
-    return STATE.digest[dt];
-  });
-}
-
-function renderDigestView(){
-  var dt = today();
-  var dg = STATE.digest[dt];
-  var h = '<div class="mod-head"><div class="kicker">Module 04 · Digest</div><div class="warp-head" data-warp><h2>日报</h2></div>'
-    + '<p>每天首次打开，自动用 GitHub 搜索拉取近几天各品类开源热度项目，帮你跟上技术时代。按领域主题分类。</p></div>';
-
-  /* 工具栏：标题 + 刷新 */
-  h += '<div class="digest-toolbar"><div class="digest-toolbar-left"><h2>'+icon('trending')+' 技术日报 · '+dt+'</h2>'
-    +'<span class="hint">每天自动拉取近 3 天各领域热门项目</span></div>'
-    +'<button class="btn primary sm" data-act="refreshDigest">'+icon('refresh')+' 刷新</button></div>';
-
-  if(!dg || !dg.categories){
-    h += '<div class="empty">暂无数据。点「刷新」拉取（无需 Token，自动获取 GitHub 热门开源项目）。</div>';
-    return h;
-  }
-
-  var catLabels = Object.keys(dg.categories);
-  var activeCat = _digestFilter || '全部';
-
-  /* 分类筛选 pill 行 */
-  h += '<div class="digest-filters">';
-  var allPill = (activeCat==='全部') ? 'dg-pill on' : 'dg-pill';
-  h += '<button class="'+allPill+'" data-act="filterDigest" data-cat="全部">全部</button>';
-  catLabels.forEach(function(lbl){
-    var cls = (activeCat===lbl) ? 'dg-pill on' : 'dg-pill';
-    h += '<button class="'+cls+'" data-act="filterDigest" data-cat="'+esc(lbl)+'">'+esc(lbl)+'</button>';
-  });
-  h += '</div>';
-
-  /* 项目列表（按筛选条件） */
-  var catsToShow = (activeCat==='全部') ? catLabels : [activeCat];
-  catsToShow.forEach(function(catLabel){
-    var repos = dg.categories[catLabel];
-    if(!repos || !repos.length) return;
-
-    h += '<div class="digest-section" data-dg-cat="'+esc(catLabel)+'">';
-    h += '<div class="digest-section-head"><span class="dsh-title">'+icon('spark')+' '+esc(catLabel)+'</span>'
-      + '<span class="dsh-trend">近 3 天热度上升</span></div>';
-
-    repos.forEach(function(r){
-      /* 增长计算：如果有上次快照则算差值 */
-      var growth = '';
-      var growthVal = 0;
-      if(dg._prev && dg._prev[r.name]){
-        growthVal = (r.stars||0) - dg._prev[r.name];
-        if(growthVal > 0) growth = '<span class="dg-growth">⭐ 近3天 +' + fmtNum(growthVal) + '</span>';
-        else if(growthVal < 0) growth = '<span class="dg-growth neg">⭐ 近3天 ' + fmtNum(growthVal) + '</span>';
-        else growth = '<span class="dg-growth flat">⭐ 近3天 持平</span>';
-      }
-
-      h += '<div class="dg-card">'
-        + '<div class="dg-card-top"><a class="dg-name" href="'+r.url+'" target="_blank">'+esc(r.name)+'</a>'
-        + '<span class="dg-stars">★ '+fmtNum(r.stars||0)+'</span></div>'
-        + (r.desc ? '<div class="dg-desc">'+esc(r.desc)+'</div>' : '')
-        + '<div class="dg-meta">' + (growth ? growth : '<span class="muted">首次收录</span>')
-        + (r.lang ? '<span class="tag do dg-lang">'+esc(r.lang)+'</span>' : '')
-        + '</div></div>';
-    });
-    h += '</div>'; /* end digest-section */
-  });
-
-  h += '<div class="card hint" style="font-size:12px;margin-top:16px">数据来源：GitHub Search API · 缓存时间 '+new Date(dg.fetchedAt).toLocaleTimeString()+'</div>';
-  return h;
-}
+/* ================= 个性化技术日报 ================= */
+function fetchDigest(force){ return window.Digest.refresh(!!force); }
+function renderDigestView(){ return window.Digest.render(); }
 
 /* 格式化数字：52.3k / 980 / 1.2k */
 function fmtNum(n){
@@ -634,9 +517,10 @@ function timerBarEl(){
 var _trayHint = null, _trayActive = false;
 function pushBackgroundState(){
   var t = STATE.timer, active = !!(t && !t.finished);
-  if(active !== _trayActive){
-    _trayActive = active;
-    if(window.landing && window.landing.timerActive) window.landing.timerActive(active);
+  var backgroundNeeded = active || !!(window.Discipline && Discipline.needsBackground());
+  if(backgroundNeeded !== _trayActive){
+    _trayActive = backgroundNeeded;
+    if(window.landing && window.landing.timerActive) window.landing.timerActive(backgroundNeeded);
   }
   var hint = '在后台待着';
   if(active){
@@ -718,6 +602,7 @@ function armRetract(){
 }
 
 function renderTimerBar(){
+  if(window.Discipline) Discipline.update();
   var el = timerBarEl(), t = STATE.timer;
   pushBackgroundState();
   if(!t || t.finished){ el.classList.add('hidden'); el.innerHTML=''; return; }
@@ -793,7 +678,8 @@ function onTimerEnd(){
   notify('⏰ 时间到', (timerTask()?timerTask().name:'专注')+' '+t.plannedMin+' 分钟完成，来记录一下');
   if(window.Pet && Pet.say) Pet.say('时间到啦！你做了 ' + t.plannedMin + ' 分钟，去记一笔吧。');
   renderTimerBar();
-  openTimerFinishSheet(false);
+  if(t.discipline) render();
+  if(!(window.LearningCheckpoint && LearningCheckpoint.isOpen())) openTimerFinishSheet(false);
 }
 /* 结束（未到期）*/
 function finishTimerEarly(){
@@ -804,6 +690,7 @@ function finishTimerEarly(){
 /* 收尾弹窗：已完成 / 完成部分 */
 function openTimerFinishSheet(early){
   var t=STATE.timer; if(!t) return;
+  if(t.discipline && window.Discipline){ Discipline.settle(); return; }
   var name = '专注';   /* 任务模块删掉后（2026-10-13）倒计时只剩这一种 */
   var passed = Math.max(1, Math.round(timerElapsedMs()/60000));
   openSheet('<h2>'+(early?'结束本次专注？':'⏰ 时间到！')+'</h2>'
@@ -815,6 +702,7 @@ function openTimerFinishSheet(early){
     +'</div>');
 
   $('tf_done').onclick=function(){
+    looseRecord(t.name||'专注', early ? Math.floor(timerElapsedMs()/60000) : t.plannedMin, t.category||'work');
     STATE.timer=null; save(); closeSheet(); render(); renderTimerBar();
   };
   $('tf_part').onclick=function(){
@@ -828,6 +716,7 @@ function openTimerFinishSheet(early){
     $('tf_save').onclick=function(){
       var m=parseInt($('tf_min').value,10);
       if(!m||m<=0){ toast('填个分钟数'); return; }
+      looseRecord(t.name||'专注', m, t.category||'work');
       STATE.timer=null; save(); closeSheet(); render();
     };
   };
@@ -857,6 +746,7 @@ function scopeList(){ return []; }
 function scopeName(){ return "临时记一笔"; }
 
 function startStopwatch(scope, id, opts){
+  if(STATE.timer && STATE.timer.discipline && window.Discipline){ Discipline.settle(); return; }
   opts = opts || {};
   var task = null;
   if(scope === 'loose'){
@@ -1170,7 +1060,7 @@ function initActivity(){
   if(!window.landing || !window.landing.activity) return;   /* 网页版没有这套 */
   window.landing.activity.get().then(function(s){ ACT = s; render(); }).catch(function(){});
   if(window.landing.activity.onUpdate){
-    window.landing.activity.onUpdate(function(s){ ACT = s; render(); });
+    window.landing.activity.onUpdate(function(s){ ACT = s; if(window.Discipline) Discipline.onActivity(s); render(); });
   }
   /* 本周 + 上周都要：宠物回答「我上周干了什么」时也算上周的松紧 */
   ensureActWeek(weekKey());
@@ -1558,15 +1448,15 @@ function poolProgress(){
 function looseToday(){
   return (STATE.loose||[]).filter(function(r){ return r.date === today(); });
 }
-function looseRecord(name, minutes, category){
+function looseRecord(name, minutes, category, recordDate){
   name = String(name||'').trim().slice(0, 30);
   var m = Math.max(0, Math.round(Number(minutes)||0));
   if(!name || m <= 0) return null;
-  var rec = {id:uid('ls'), date:today(), name:name, minutes:m,
+  var rec = {id:uid('ls'), date:recordDate||today(), name:name, minutes:m,
              category:(PET_CATS.indexOf(category)>=0 ? category : 'life'), ts:Date.now()};
   STATE.loose = STATE.loose || [];
   STATE.loose.push(rec);
-  awardFish(m, rec.name);        /* 进今天的池子，满了发鱼（跟正常打卡同一条路） */
+  if(rec.date===today()) awardFish(m, rec.name);
   addMemory('loose', '记了 '+m+' 分钟：'+rec.name, [catName(rec.category)]);
   save();
   return rec;
@@ -2334,6 +2224,12 @@ function jwglPanelHTML(status){
 
 /* ================= 视图：今日 ================= */
 function viewToday(){
+  if(window.Discipline){
+    return Discipline.render() + renderMustCard()
+      + '<details class="ds-extra"><summary>今天的课表</summary>' + renderTodayCourses() + '</details>'
+      + '<details class="ds-extra"><summary>情绪、倾倒与生活记录</summary>'
+      + renderMoodCard() + renderDumpCard() + renderFunCard() + renderActivityCard() + '</details>';
+  }
   var h = '';
 
   /* 首页主视觉（结构化蓝图：主张 + 标题） */
@@ -2390,11 +2286,11 @@ function viewToday(){
   if(emotionFirst) h += mustCard + schedCard;
 
   /* 推送区：日报摘要卡片（参考 landing-prototype） */
-  var dg = STATE.digest[today()];
+  var dg = window.Digest ? Digest.snapshot() : STATE.digest[today()];
   if(dg && dg.categories){
     var cats = Object.keys(dg.categories).filter(function(k){ return dg.categories[k].length>0; });
     var top2 = cats.slice(0,2).map(function(k){ return k.replace(' /','').replace('/IoT',''); }).join(' / ');
-    var trendText = top2 ? top2 + ' · 近 3 天热度上升' : '各领域热门项目已就绪';
+    var trendText = top2 ? top2 + ' · 按你的兴趣发现项目' : '日报已更新，可调整兴趣发现更多项目';
     h+='<div class="push">'
       +'<div class="pulse"></div><div class="push-body">'
       +'<div class="ptitle">📡 今日技术日报已送达</div>'
@@ -2405,7 +2301,7 @@ function viewToday(){
     h+='<div class="push">'
       +'<div class="pulse"></div><div class="push-body">'
       +'<div class="ptitle">📡 技术日报待拉取</div>'
-      +'<div class="pbody">每天自动获取 GitHub 各领域热门开源项目，帮你跟上时代进度。</div>'
+      +'<div class="pbody">按你设置的兴趣和数据源发现项目，也可连接私有服务。</div>'
       +'</div>'
       +'<div class="push-actions"><button class="btn primary sm" data-act="refreshDigest">刷新</button></div></div>';
   }
@@ -2954,6 +2850,7 @@ function callAI(messages, which, opts){
   /* 本地小模型经常"自言自语停不下来"（1.5B 尤其），给输出封顶，
      顺便把最坏耗时钉住。云端不封顶（周报点评要写几百字）。 */
   if(local) payload.max_tokens = 220;
+  if(Number.isFinite(opts.max_tokens)) payload.max_tokens = Math.max(100, Math.min(4096, Math.floor(opts.max_tokens)));
   /* 🔴 超时必须自己设：fetch 默认无限等。对方接了连接却不回话（Ollama 的 runner 崩了、
      云端卡住）时，没超时就会**永远停在「它正在想…」** —— 2026-09-24 他遇到的就是这个。 */
   var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -3264,7 +3161,7 @@ function viewMe(){
 
 
 /* ================= 渲染入口 ================= */
-var TAB_TITLE = {today:'今日',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',shop:'商城',me:'我的'};
+var TAB_TITLE = {today:'今日行动',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',shop:'商城',me:'我的'};
 
 /* 出错兜底：单个视图抛异常不应该让整个应用白屏，其它模块仍然能用 */
 function renderErrorView(tab, err){
@@ -3323,6 +3220,8 @@ function bindShopActions(){
 }
 
 function render(){
+  var focused = document.activeElement;
+  var reviewFocus = focused && /^ds-(win|obstacle)$/.test(focused.id) ? {id:focused.id,start:focused.selectionStart,end:focused.selectionEnd} : null;
   var views = {today:viewToday,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
 
@@ -3334,6 +3233,10 @@ function render(){
     html = renderErrorView(CUR_TAB, err);
   }
   $('view').innerHTML = html;
+  if(reviewFocus && $(reviewFocus.id)){
+    $(reviewFocus.id).focus({preventScroll:true});
+    $(reviewFocus.id).setSelectionRange(reviewFocus.start,reviewFocus.end);
+  }
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
 
   /* 伙伴页内容由 pet.js 填（要赶在入场动画之前） */
@@ -3453,6 +3356,7 @@ var App = {
       + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="o_save">定下</button></div>');
     $('o_save').addEventListener('click',function(){
       var v=$('o_text').value.trim(); if(!v){toast('写点什么');return;}
+      if(window.Discipline && !Discipline.captureOne(v)) return;
       STATE.oneThing={date:today(),text:v,done:false}; save(); closeSheet(); render(); toast('今天就这一件');
     });
   },
@@ -3534,6 +3438,7 @@ var App = {
     var inp=$('ds_text'); if(inp) inp.focus();
     $('ds_save').addEventListener('click',function(){
       var v=($('ds_text').value||'').trim(); if(!v){ toast('写一件小的'); return; }
+      if(window.Discipline && !Discipline.captureOne(v,d.id)) return;
       STATE.oneThing={date:today(),text:v,done:false,dumpId:d.id};
       if(!d.kind) d.kind='do';
       addMemory('daily', '把「'+d.text.slice(0,30)+'」缩成了今天一件：「'+v+'」', ['今天一件']);
@@ -3777,13 +3682,7 @@ var App = {
     App.newOne();
   },
   softLandShowAll:function(){ STATE.softLandOff = today(); save(); render(); },
-  refreshDigest:function(){
-    toast('正在拉取最新数据…');
-    fetchDigest(true).then(function(){
-      render();
-      toast('日报已更新');
-    });
-  },
+  refreshDigest:function(){ return fetchDigest(true); },
 
   /* --- AI 陪伴 --- */
   sendAI:function(){
@@ -3920,7 +3819,9 @@ var App = {
       var keep = STATE;
       Object.keys(keep).forEach(function(k){ delete keep[k]; });
       Object.keys(obj).forEach(function(k){ keep[k] = obj[k]; });
-      migrate(); save(); closeSheet(); render(); toast('已导回备份');
+      migrate(); save(); closeSheet(); render();
+      if(STATE.timer && !STATE.timer.finished) ensureTimerTick();
+      toast('已导回备份');
     };
 
     if(window.landing && window.landing.data){
@@ -4345,7 +4246,6 @@ document.addEventListener('click',function(e){
   /* 日报 */
   else if(act==='goDigest') App.goDigest();
   else if(act==='refreshDigest') App.refreshDigest();
-  else if(act==='filterDigest'){ var cat=el.dataset.cat||'全部'; _digestFilter=cat; render(); }
   else if(act==='filterTask'){ _taskFilter = el.dataset.cat || ''; render(); }
 
   /* 活动记录 */
@@ -4394,6 +4294,9 @@ document.addEventListener('click',function(e){
 /* ================= 启动 ================= */
 function init(){
   load();
+  if(window.Discipline) Discipline.init({state:function(){return STATE;},save:save,render:render,toast:toast,
+    openSheet:openSheet,closeSheet:closeSheet,today:today,addDays:addDays,esc:esc,uid:uid,
+    remaining:timerRemainMs,elapsed:timerElapsedMs,pause:toggleTimer,tick:ensureTimerTick,record:looseRecord,notify:notify,courses:coursesOn});
   initWinVisibility();   /* 窗口可见性以主进程为准（原因见 _winVisible 那段的说明） */
   initActivity();        /* 活动感知：订阅主进程推来的快照 */
 
@@ -4440,6 +4343,9 @@ function init(){
     tab:function(t){ CUR_TAB=t; render(); }
   };
 
+  if(window.Digest) Digest.init(window.Landing);
+  if(window.DesktopPetBridge) DesktopPetBridge.init(window.Landing);
+
   /* 上课时间结算：把今天的课表分钟倒进小鱼干池（幂等，只倒增量）。
      ⚠️ 刻意放 try/catch —— 这是 init() 早期，任何一步抛错都会把 window.App/Landing 带走、整页白屏
      （2026-09-20 在这段里踩过一次，见上面里程碑那段的注释）。 */
@@ -4466,8 +4372,8 @@ function init(){
   });
 
   /* 任务模块删掉后，「新建」只剩"定今天那一件"这一个去处 */
-  $('topNew').addEventListener('click',function(){ App.newOne(); });
-  $('fabNew').addEventListener('click',function(){ App.newOne(); });
+  $('topNew').addEventListener('click',function(){ if(window.Discipline) Discipline.newTask(); else App.newOne(); });
+  $('fabNew').addEventListener('click',function(){ if(window.Discipline) Discipline.newTask(); else App.newOne(); });
   $('topSettings').addEventListener('click',function(){ App.openSettings(); });
 
   /* 视差（2026-10-14，审美研究 ⑩）：背景比内容慢半拍，才有多层深度。
@@ -4496,7 +4402,7 @@ function init(){
   /* 计时恢复：应用没开着的这段时间里到期了 → 补一个结算入口 */
   var tr = STATE.timer;
   render();
-  if(tr && !tr.finished && tr.endsAt <= Date.now()){
+  if(tr && tr.mode!=='stopwatch' && !tr.paused && !tr.finished && tr.endsAt <= Date.now()){
     tr.finished = true;
     save();
     setTimeout(function(){
@@ -4507,10 +4413,8 @@ function init(){
     ensureTimerTick();
   }
 
-  /* 自动拉取日报（今天还没拉过就静默拉取；无 token 也能拉，未认证限速 60 次/小时足够日报用） */
-  if(!STATE.digest[today()]){
-    fetchDigest(false).then(function(){ /* 静默拉取，不弹提示 */ });
-  }
+  /* 自动更新遵循用户的数据源和自动获取偏好。 */
+  if(window.Digest) Digest.auto();
 
   /* 今日天气：启动拉一次，之后每 30 分钟检查（内部有新鲜度判断，不会真去重复请求） */
   ensureWx(false);

@@ -198,7 +198,8 @@
     }
 
     window.addEventListener('pointerdown', function (e) {
-      if (e.target && e.target.closest && e.target.closest('.click-fx')) return;
+      if (e.target && e.target.closest && e.target.closest('.click-fx, #buddy-card, #petWidget, #petPage, #petPanel, #buddy-settings-form')) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || window.Pet && Pet.state().gentleMotion) return;
       var x = e.clientX / window.innerWidth;
       var y = 1 - e.clientY / window.innerHeight;
       clicks.push({ x: x, y: y, time: (performance.now() - startTime) / 1000 });

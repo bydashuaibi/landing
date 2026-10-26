@@ -1,7 +1,7 @@
 {
   "name": "landing",
-  "version": "2.1.0",
-  "description": "着陆 · 把焦虑变成下一步 —— 一个帮你从「有想法不干事」里着陆的 AI 陪伴工具",
+  "version": "2.5.0",
+  "description": "着陆 · 每天一点，慢慢做到 —— 课后自学、学习断点与专注行动",
   "author": "bydashuaibi",
   "license": "MIT",
   "main": "main.js",
@@ -25,22 +25,44 @@
     "files": [
       "index.html",
       "app.js",
+      "digest.js",
+      "digest.css",
+      "digest-network.cjs",
+      "discipline.js",
+      "discipline.css",
+      "learning-checkpoint.js",
       "pet.js",
+      "study-buddy.js",
+      "study-buddy.css",
       "cyber-cat.js",
       "warp-text.js",
       "click-feedback.js",
       "gradient-waves.js",
       "main.js",
       "preload.js",
+      "jwgl.js",
+      "ask.html",
+      "ask.js",
+      "ask-preload.js",
       "package.json",
       "assets/icon.ico",
-      "assets/fonts/**/*"
+      "assets/pet/**/*",
+      "assets/fonts/**/*",
+      "petdex-sprite.js",
+      "desktop-pet.cjs",
+      "desktop-pet-preload.js",
+      "desktop-pet.html",
+      "desktop-pet.css",
+      "desktop-pet-ui.js",
+      "desktop-pet-bridge.js"
     ],
     "win": {
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico",
