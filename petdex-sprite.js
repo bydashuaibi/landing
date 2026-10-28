@@ -42,13 +42,71 @@
       // Keep the accessories already owned in the original save, above the untouched atlas.
       if (skin.id==='uika' && [0,3,6,8].indexOf(row)>=0 && gear) {
         ctx.save();ctx.translate(Math.round((canvas.width-w)/2),canvas.height-h);ctx.scale(scale,scale);
-        if(gear.head==='crown'){ctx.fillStyle='#e9bd53';ctx.strokeStyle='#715736';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(76,16);ctx.lineTo(73,3);ctx.lineTo(85,9);ctx.lineTo(96,0);ctx.lineTo(106,9);ctx.lineTo(118,3);ctx.lineTo(115,16);ctx.closePath();ctx.fill();ctx.stroke();}
-        if(gear.face==='glasses'){ctx.fillStyle='#2c2939';ctx.fillRect(73,67,19,11);ctx.fillRect(98,67,19,11);ctx.fillRect(91,70,8,3);ctx.fillStyle='#8fa9bc';ctx.fillRect(76,69,7,2);ctx.fillRect(101,69,7,2);}
-        if(gear.neck==='scarf'){ctx.fillStyle='#bd6a63';ctx.fillRect(81,99,29,7);ctx.fillRect(101,105,7,22);ctx.fillStyle='#e3aaa0';ctx.fillRect(82,100,27,2);}
-        if(gear.head==='ribbon'){ctx.fillStyle='#a75269';ctx.fillRect(108,25,12,13);ctx.fillRect(124,24,12,13);ctx.fillRect(118,28,9,9);ctx.fillStyle='#e7a3b0';ctx.fillRect(111,27,5,7);ctx.fillRect(128,27,5,6);}
-        if(gear.head==='beret'){ctx.fillStyle='#765c55';ctx.fillRect(67,18,62,10);ctx.fillRect(74,11,49,9);ctx.fillRect(88,7,25,6);ctx.fillRect(99,3,5,5);ctx.fillStyle='#b18e78';ctx.fillRect(78,14,27,3);}
-        if(gear.head==='headphones'){ctx.strokeStyle='#6d6a5b';ctx.lineWidth=5;ctx.beginPath();ctx.arc(96,54,36,Math.PI,0);ctx.stroke();ctx.fillStyle='#efe4bd';ctx.fillRect(57,49,13,26);ctx.fillRect(123,49,13,26);ctx.fillStyle='#9e9477';ctx.fillRect(60,52,4,20);ctx.fillRect(129,52,4,20);}
-        if(gear.head==='starclip'){ctx.fillStyle='#9b763c';ctx.fillRect(118,35,17,5);ctx.fillStyle='#f6cf69';ctx.fillRect(124,27,5,21);ctx.fillRect(116,35,21,5);ctx.fillRect(120,31,13,13);ctx.fillStyle='#fff2bd';ctx.fillRect(123,33,5,5);}
+        // One native pixel per cell: a dark contour, shaded fabric and a small seam highlight.
+        function pixels(rows,x,y,palette){rows.forEach(function(line,dy){for(var dx=0;dx<line.length;dx++){var color=palette[line[dx]];if(color){ctx.fillStyle=color;ctx.fillRect(x+dx,y+dy,1,1);}}});}
+        var fabric={o:'#694353',d:'#98516a',m:'#c77c91',h:'#efb5bd',w:'#f8d7ce'};
+        if(gear.head==='ribbon')pixels([
+          '.oooo..........oooo.',
+          'oddddo........oddddo',
+          'odhhmdo......odmh hdo'.replace(' ',''),
+          'odhwmmdoooooodmmhhdo',
+          'odmmmdodmhhmdodmmmdo',
+          '.odmmdodmhhmdodmmdo.',
+          '..oddoodmmmmdooddo..',
+          '...oo..oddmdo..oo...',
+          '.....oddmooddo......',
+          '.....odmdo.dmdo.....',
+          '....odmmdo.dmmdo....',
+          '....odmdo...dmdo....',
+          '....oddo.....ddo....',
+          '.....oo.......o.....'
+        ],115,29,fabric);
+        if(gear.head==='crown')pixels([
+          '.................oo.................',
+          '....oo..........ohho..........oo....',
+          '...ohho........ohhhho........ohho...',
+          '...ohhho......ohhhhhho......ohhho...',
+          '...odhhho....ohhhwhhhho....ohhhdo...',
+          '....odhhho..ohhhwwwhhhho..ohhhdo....',
+          '....odhhhhoodhhhwwwhhhdoodhhhdo....',
+          '....odhhhhddhhhhhhhhhhhddhhhhdo....',
+          '.....odhhhhhhhhhhhhhhhhhhhhdo.....',
+          '.....odhhhhhhhhhpphhhhhhhhhdo.....',
+          '.....odhhhhhhhhpppphhhhhhhhdo.....',
+          '.....odhhhhhhhhhpphhhhhhhhhdo.....',
+          '.....oddddddddddddddddddddddo.....',
+          '......ooooooooooooooooooooo.......'
+        ],78,1,{o:'#725a3d',d:'#b88d46',h:'#e9c86b',w:'#fff1b5',p:'#b66e79'});
+        if(gear.face==='glasses'){
+          ctx.fillStyle='#39343d';ctx.fillRect(72,66,20,2);ctx.fillRect(98,66,20,2);ctx.fillRect(72,68,2,9);ctx.fillRect(90,68,2,9);ctx.fillRect(98,68,2,9);ctx.fillRect(116,68,2,9);ctx.fillRect(74,77,16,2);ctx.fillRect(100,77,16,2);ctx.fillRect(92,69,6,2);
+          ctx.fillStyle='#505c67';ctx.fillRect(74,68,16,9);ctx.fillRect(100,68,16,9);ctx.fillStyle='#b6c6c1';ctx.fillRect(77,69,5,1);ctx.fillRect(103,69,5,1);ctx.fillStyle='#7b8a92';ctx.fillRect(75,71,2,4);ctx.fillRect(101,71,2,4);
+        }
+        if(gear.neck==='scarf'){
+          ctx.fillStyle='#724751';ctx.fillRect(81,98,28,2);ctx.fillRect(79,100,32,5);ctx.fillRect(82,105,27,2);ctx.fillRect(100,106,9,21);
+          ctx.fillStyle='#c27d80';ctx.fillRect(81,100,28,4);ctx.fillRect(102,107,5,18);ctx.fillStyle='#efb7ad';ctx.fillRect(84,100,20,1);ctx.fillRect(102,108,1,14);ctx.fillStyle='#9b606e';[111,117,123].forEach(function(y){ctx.fillRect(102,y,5,1);});ctx.fillStyle='#d69b97';[101,104,107].forEach(function(x){ctx.fillRect(x,126,1,3);});
+        }
+        if(gear.head==='beret'){
+          ctx.fillStyle='#584c4e';ctx.fillRect(80,12,39,2);ctx.fillRect(73,14,52,3);ctx.fillRect(68,17,62,7);ctx.fillRect(72,24,54,3);ctx.fillRect(98,7,3,5);
+          ctx.fillStyle='#997c72';ctx.fillRect(77,15,44,2);ctx.fillRect(71,18,56,5);ctx.fillStyle='#b99a80';ctx.fillRect(83,16,22,2);ctx.fillRect(75,18,9,2);ctx.fillStyle='#705e5b';ctx.fillRect(74,24,50,1);ctx.fillStyle='#d5b486';ctx.fillRect(116,20,3,3);
+        }
+        if(gear.head==='headphones'){
+          ctx.strokeStyle='#656054';ctx.lineWidth=3;ctx.beginPath();ctx.arc(96,54,35,Math.PI,0);ctx.stroke();ctx.strokeStyle='#e9dfbb';ctx.lineWidth=2;ctx.beginPath();ctx.arc(96,54,32,Math.PI,0);ctx.stroke();
+          [59,124].forEach(function(x){ctx.fillStyle='#676052';ctx.fillRect(x,52,10,21);ctx.fillRect(x-1,55,12,15);ctx.fillStyle='#e9dfbd';ctx.fillRect(x+1,53,7,19);ctx.fillStyle='#c9b993';ctx.fillRect(x+2,55,5,15);ctx.fillStyle='#f8edcf';ctx.fillRect(x+2,55,1,12);ctx.fillStyle='#9e947a';ctx.fillRect(x+8,57,1,11);});
+        }
+        if(gear.head==='starclip')pixels([
+          '.......oo.......',
+          '......ohho......',
+          '......ohho......',
+          '..ooooohhooooo..',
+          '.odhhhhhhhhhhdo.',
+          '..odhhwwhhhdo...',
+          '...odhw hhd o...'.replace(/ /g,''),
+          '....ohhhhhh o...'.replace(' ',''),
+          '...ohhhddhhho...',
+          '...ohhdo odhho..'.replace(' ',''),
+          '..ohdo....odho..',
+          '..ooo......ooo..'
+        ],119,30,{o:'#846337',d:'#b49248',h:'#eed178',w:'#fff3b9'});
         ctx.restore();
       }
       if(fx){ctx.save();ctx.translate(Math.round((canvas.width-w)/2),canvas.height-h);ctx.scale(scale,scale);var bob=tick%3*2;

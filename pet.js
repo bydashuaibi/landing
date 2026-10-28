@@ -29,11 +29,11 @@
 
   /* ================= 模型 ================= */
   var LEVELS = [
-    { min: 0, name: '刚认识' },
+    { min: 0, name: I18n.t('刚认识') },
     { min: 20, name: '混熟了' },
     { min: 40, name: '亲近' },
-    { min: 60, name: '好朋友' },
-    { min: 80, name: '形影不离' }
+    { min: 60, name: I18n.t('好朋友') },
+    { min: 80, name: I18n.t('形影不离') }
   ];
   function levelIdx(i) { var k = 0; for (var n = 0; n < LEVELS.length; n++) { if (i >= LEVELS[n].min) k = n; } return k; }
   function levelName(i) { return LEVELS[levelIdx(i)].name; }
@@ -48,19 +48,19 @@
      注意：app.js 的 catVitality() 是"今天的综合状态"（由倾倒/打卡算出来，过零点归零重来），
      跟这里的 energy 不是一回事 —— 所以它的显示名改成了「今日状态」，把「精力」让给真正的状态值。 */
   var DIMS = [
-    {k:'curiosity',name:'好奇心',emoji:'🔎',hint:'观察、翻牌和真实专注会增长，20 解锁林间小径',tiers:[{min:0,t:'看见新鲜事'},{min:20,t:'小小探索家'},{min:50,t:'眼里有世界'},{min:80,t:'万物皆有趣'}]},
-    {k:'creativity',name:'创造力',emoji:'🎨',hint:'像素涂鸦和记录风景会增长，20 解锁新画笔',tiers:[{min:0,t:'随手画画'},{min:20,t:'有点灵感'},{min:50,t:'小小创作者'},{min:80,t:'世界有颜色'}]},
-    {k:'courage',name:'勇气',emoji:'🧭',hint:'尝试路线与翻牌会增长，20 解锁六对翻牌，35 解锁天台',tiers:[{min:0,t:'试着迈一步'},{min:20,t:'敢试试看'},{min:50,t:'独自也勇敢'},{min:80,t:'温柔而坚定'}]},
-    { k: 'energy', name: '精力', emoji: '⚡', hint: '睡觉、记录会回；你 0-5 点还在专注，它会跟着熬',
-      tiers: [{ min: 0, t: '蔫了' }, { min: 30, t: '还行' }, { min: 60, t: '有精神' }, { min: 85, t: '活蹦乱跳' }] },
-    { k: 'mood', name: '心情', emoji: '💛', hint: '摸摸、说说话、一起玩都会涨；很久不理它会淡下去',
-      tiers: [{ min: 0, t: '有点闷' }, { min: 30, t: '平平' }, { min: 60, t: '不错' }, { min: 85, t: '美滋滋' }] },
-    { k: 'wits', name: '灵性', emoji: '✨', hint: '聊天和记录会涨，只涨不掉',
-      tiers: [{ min: 0, t: '懵懵的' }, { min: 20, t: '机灵' }, { min: 50, t: '懂你' }, { min: 80, t: '通透' }] },
+    {k:'curiosity',name:I18n.t('好奇心'),emoji:'🔎',hint:I18n.t('观察、翻牌和真实专注会增长，20 解锁林间小径'),tiers:[{min:0,t:I18n.t('看见新鲜事')},{min:20,t:'小小探索家'},{min:50,t:'眼里有世界'},{min:80,t:'万物皆有趣'}]},
+    {k:'creativity',name:I18n.t('创造力'),emoji:'🎨',hint:I18n.t('像素涂鸦和记录风景会增长，20 解锁新画笔'),tiers:[{min:0,t:I18n.t('随手画画')},{min:20,t:I18n.t('有点灵感')},{min:50,t:'小小创作者'},{min:80,t:'世界有颜色'}]},
+    {k:'courage',name:I18n.t('勇气'),emoji:'🧭',hint:I18n.t('尝试路线与翻牌会增长，20 解锁六对翻牌，35 解锁天台'),tiers:[{min:0,t:I18n.t('试着迈一步')},{min:20,t:'敢试试看'},{min:50,t:'独自也勇敢'},{min:80,t:'温柔而坚定'}]},
+    { k: 'energy', name: I18n.t('精力'), emoji: '⚡', hint: I18n.t('睡觉、记录会回；你 0-5 点还在专注，它会跟着熬'),
+      tiers: [{ min: 0, t: '蔫了' }, { min: 30, t: '还行' }, { min: 60, t: I18n.t('有精神') }, { min: 85, t: '活蹦乱跳' }] },
+    { k: 'mood', name: I18n.t('心情'), emoji: '💛', hint: I18n.t('摸摸、说说话、一起玩都会涨；很久不理它会淡下去'),
+      tiers: [{ min: 0, t: '有点闷' }, { min: 30, t: '平平' }, { min: 60, t: I18n.t('不错') }, { min: 85, t: '美滋滋' }] },
+    { k: 'wits', name: I18n.t('灵性'), emoji: '✨', hint: I18n.t('聊天和记录会涨，只涨不掉'),
+      tiers: [{ min: 0, t: I18n.t('懵懵的') }, { min: 20, t: '机灵' }, { min: 50, t: '懂你' }, { min: 80, t: '通透' }] },
     /* 默契不需要你多做任何事 —— 你专注的时候它本来就在旁边。
        这是唯一一个"只靠陪着你"就涨的维度，也是最慢的（满 100 约 25 小时专注）。 */
-    { k: 'rapport', name: '默契', emoji: '🤝', hint: '你专注时它陪着，每 15 分钟 +1，只涨不掉',
-      tiers: [{ min: 0, t: '刚认识' }, { min: 20, t: '搭子' }, { min: 50, t: '老搭档' }, { min: 80, t: '不用说话也懂' }] }
+    { k: 'rapport', name: I18n.t('默契'), emoji: '🤝', hint: I18n.t('你专注时它陪着，每 15 分钟 +1，只涨不掉'),
+      tiers: [{ min: 0, t: I18n.t('刚认识') }, { min: 20, t: '搭子' }, { min: 50, t: '老搭档' }, { min: 80, t: '不用说话也懂' }] }
   ];
   var RAPPORT_MS = 15 * 60 * 1000;      /* 每陪练 15 分钟 → 默契 +1 */
   var RAPPORT_CAP_MS = 2 * 3600 * 1000; /* 单次结算最多算 2 小时，避免挂了通宵的计时器一次性刷满 */
@@ -78,36 +78,42 @@
   }
 
   var ITEMS = [
-    { id: 'fish_snack', name: '小鱼干', emoji: '🐟', cost: 1, kind: 'food', hunger: 12, intimacy: 1, desc: '它最爱的日常口粮' },
-    { id: 'can', name: '猫罐头', emoji: '🥫', cost: 5, kind: 'food', hunger: 35, intimacy: 3, desc: '开罐会有声音的那种' },
-    { id: 'feast', name: '豪华大餐', emoji: '🍱', cost: 12, kind: 'food', hunger: 60, intimacy: 6, desc: '吃完会舔盘子' },
-    { id: 'toy_wand', name: '逗猫棒', emoji: '🪄', cost: 20, kind: 'toy', once: true, desc: '抚摸时它会更嗨（每次亲密 +2）' },
-    { id: 'laser', name: '激光笔', emoji: '🔴', cost: 32, kind: 'toy', once: true, desc: '它永远抓不到的那个红点' },
-    { id: 'scarf', name: '毛线围巾', emoji: '🧣', cost: 25, kind: 'gear', slot: 'neck', once: true, desc: '戴上就没那么赛博了' },
-    { id: 'glasses', name: '墨镜', emoji: '🕶️', cost: 45, kind: 'gear', slot: 'face', once: true, desc: '看起来很有主意' },
-    { id: 'crown', name: '小王冠', emoji: '👑', cost: 90, kind: 'gear', slot: 'head', once: true, desc: '送给伙伴的小小加冕' },
-    {id:'cookie',name:'黄油曲奇',emoji:'🍪',cost:2,kind:'food',hunger:18,intimacy:2,desc:'下午茶的小甜点'},
-    {id:'berry',name:'草莓拼盘',emoji:'🍓',cost:3,kind:'food',hunger:25,intimacy:2,desc:'分享一点清甜的好心情'},
-    {id:'sandwich',name:'午后轻食',emoji:'🥪',cost:4,kind:'food',hunger:32,intimacy:3,desc:'读书前先好好吃饭'},
-    {id:'matcha',name:'抹茶点心',emoji:'🍵',cost:6,kind:'food',hunger:40,intimacy:4,desc:'留给认真生活的你们'},
-    {id:'musicbox',name:'星光八音盒',emoji:'🎵',cost:8,kind:'toy',once:true,motion:'music',desc:'一起摇摆，飘出小音符（无声音）'},
-    {id:'camera',name:'拍立得',emoji:'📷',cost:10,kind:'toy',once:true,motion:'camera',desc:'挥手摆姿势，亮起星星；不截屏'},
-    {id:'sketchbook',name:'涂鸦手账',emoji:'📒',cost:12,kind:'toy',once:true,motion:'sketch',desc:'坐下来翻一翻，陪你安静画画'},
-    {id:'ribbon',name:'莓果蝴蝶结',emoji:'🎀',cost:6,kind:'gear',slot:'head',once:true,desc:'金发旁的一点莓果色'},
-    {id:'beret',name:'画家贝雷帽',emoji:'🎨',cost:12,kind:'gear',slot:'head',once:true,desc:'把普通午后变成创作时间'},
-    {id:'headphones',name:'奶油耳机',emoji:'🎧',cost:16,kind:'gear',slot:'head',once:true,desc:'读书时也能戴的像素耳机'},
-    {id:'starclip',name:'星星发夹',emoji:'⭐',cost:9,kind:'gear',slot:'head',once:true,desc:'随身带着一颗小星星'},
-    {id:'dawn',name:'晨光窗边',emoji:'🌤️',cost:8,kind:'scene',once:true,desc:'首页与伙伴房间 · 暖阳与奶油色'},
-    {id:'rain',name:'雨天书桌',emoji:'🌧️',cost:12,kind:'scene',once:true,desc:'首页与伙伴房间 · 蓝灰雨滴窗景'},
-    {id:'night',name:'星夜小屋',emoji:'🌙',cost:18,kind:'scene',once:true,desc:'首页与伙伴房间 · 深蓝与点点星光'},
-    {id:'library',name:'森林书房',emoji:'🌿',cost:24,kind:'scene',once:true,desc:'首页与伙伴房间 · 绿色书架与木色'}
+    {id:'field_lens',name:I18n.t('黄铜观察镜'),emoji:'🔎',cost:14,kind:'tool',once:true,dimension:'curiosity',effect:I18n.t('找出细微差别 · 好奇心 +3'),desc:I18n.t('透过镜片看一片叶子，解锁林间邮路。')},
+    {id:'watercolors',name:I18n.t('旅行水彩盒'),emoji:'🎨',cost:20,kind:'tool',once:true,dimension:'creativity',effect:I18n.t('调出自己的颜色 · 创造力 +3'),desc:I18n.t('选两种颜料，为旅行明信片盖上彩色邮戳。')},
+    {id:'brass_compass',name:I18n.t('口袋指南针'),emoji:'🧭',cost:18,kind:'tool',once:true,dimension:'courage',effect:I18n.t('走出迷你迷宫 · 勇气 +3'),desc:I18n.t('慢慢寻找出口，解锁星光邮路。')},
+    {id:'sky_atlas',name:I18n.t('月相图鉴'),emoji:'🌒',cost:18,kind:'tool',once:true,dimension:'wits',effect:I18n.t('接上月相规律 · 灵性 +3'),desc:I18n.t('把缺少的那一轮月亮放回夜空。')},
+    {id:'travel_journal',name:I18n.t('双人旅行日记'),emoji:'📔',cost:12,kind:'tool',once:true,dimension:'rapport',effect:I18n.t('写一则双人日记 · 默契 +3'),desc:I18n.t('记住彼此喜欢的风景，一起续写旅途。')},
+    {id:'cloud_thermos',name:I18n.t('云朵保温杯'),emoji:'🫖',cost:10,kind:'tool',once:true,dimension:'energy',effect:I18n.t('安静休息 30 秒 · 精力 +6、心情 +2'),desc:I18n.t('留一小段空白给自己；中途离开也没关系。')},
+    { id: 'fish_snack', name: I18n.t('小鱼干'), emoji: '🐟', cost: 1, kind: 'food', hunger: 12, intimacy: 1, desc: I18n.t('它最爱的日常口粮') },
+    { id: 'can', name: I18n.t('猫罐头'), emoji: '🥫', cost: 5, kind: 'food', hunger: 35, intimacy: 3, desc: I18n.t('开罐会有声音的那种') },
+    { id: 'feast', name: I18n.t('豪华大餐'), emoji: '🍱', cost: 12, kind: 'food', hunger: 60, intimacy: 6, desc: I18n.t('吃完会舔盘子') },
+    { id: 'toy_wand', name: I18n.t('逗猫棒'), emoji: '🪄', cost: 20, kind: 'toy', once: true, desc: I18n.t('抚摸时它会更嗨（每次亲密 +2）') },
+    { id: 'laser', name: I18n.t('激光笔'), emoji: '🔴', cost: 32, kind: 'toy', once: true, desc: I18n.t('它永远抓不到的那个红点') },
+    { id: 'scarf', name: I18n.t('毛线围巾'), emoji: '🧣', cost: 25, kind: 'gear', slot: 'neck', once: true, desc: I18n.t('戴上就没那么赛博了') },
+    { id: 'glasses', name: I18n.t('墨镜'), emoji: '🕶️', cost: 45, kind: 'gear', slot: 'face', once: true, desc: I18n.t('看起来很有主意') },
+    { id: 'crown', name: I18n.t('小王冠'), emoji: '👑', cost: 90, kind: 'gear', slot: 'head', once: true, desc: I18n.t('送给伙伴的小小加冕') },
+    {id:'cookie',name:I18n.t('黄油曲奇'),emoji:'🍪',cost:2,kind:'food',hunger:18,intimacy:2,desc:I18n.t('下午茶的小甜点')},
+    {id:'berry',name:I18n.t('草莓拼盘'),emoji:'🍓',cost:3,kind:'food',hunger:25,intimacy:2,desc:I18n.t('分享一点清甜的好心情')},
+    {id:'sandwich',name:I18n.t('午后轻食'),emoji:'🥪',cost:4,kind:'food',hunger:32,intimacy:3,desc:I18n.t('读书前先好好吃饭')},
+    {id:'matcha',name:I18n.t('抹茶点心'),emoji:'🍵',cost:6,kind:'food',hunger:40,intimacy:4,desc:I18n.t('留给认真生活的你们')},
+    {id:'musicbox',name:I18n.t('星光八音盒'),emoji:'🎵',cost:8,kind:'toy',once:true,motion:'music',desc:I18n.t('一起摇摆，飘出小音符（无声音）')},
+    {id:'camera',name:I18n.t('拍立得'),emoji:'📷',cost:10,kind:'toy',once:true,motion:'camera',desc:I18n.t('挥手摆姿势，亮起星星；不截屏')},
+    {id:'sketchbook',name:I18n.t('涂鸦手账'),emoji:'📒',cost:12,kind:'toy',once:true,motion:'sketch',desc:I18n.t('坐下来翻一翻，陪你安静画画')},
+    {id:'ribbon',name:I18n.t('莓果蝴蝶结'),emoji:'🎀',cost:6,kind:'gear',slot:'head',once:true,desc:I18n.t('金发旁的一点莓果色')},
+    {id:'beret',name:I18n.t('画家贝雷帽'),emoji:'🎨',cost:12,kind:'gear',slot:'head',once:true,desc:I18n.t('把普通午后变成创作时间')},
+    {id:'headphones',name:I18n.t('奶油耳机'),emoji:'🎧',cost:16,kind:'gear',slot:'head',once:true,desc:I18n.t('读书时也能戴的像素耳机')},
+    {id:'starclip',name:I18n.t('星星发夹'),emoji:'⭐',cost:9,kind:'gear',slot:'head',once:true,desc:I18n.t('随身带着一颗小星星')},
+    {id:'dawn',name:I18n.t('晨光窗边'),emoji:'🌤️',cost:8,kind:'scene',once:true,desc:I18n.t('首页与伙伴房间 · 暖阳与奶油色')},
+    {id:'rain',name:I18n.t('雨天书桌'),emoji:'🌧️',cost:12,kind:'scene',once:true,desc:I18n.t('首页与伙伴房间 · 蓝灰雨滴窗景')},
+    {id:'night',name:I18n.t('星夜小屋'),emoji:'🌙',cost:18,kind:'scene',once:true,desc:I18n.t('首页与伙伴房间 · 深蓝与点点星光')},
+    {id:'library',name:I18n.t('森林书房'),emoji:'🌿',cost:24,kind:'scene',once:true,desc:I18n.t('首页与伙伴房间 · 绿色书架与木色')}
   ];
   function itemById(id) { return ITEMS.find(function (x) { return x.id === id; }) || null; }
 
   function ensure() {
     var s = ST();
     var p = s.pet = s.pet || {};
-    if (p.name === undefined) p.name = '小陆';
+    if (p.name === undefined) p.name = I18n.t('小陆');
     if (p.hunger === undefined) p.hunger = 70;
     if (p.intimacy === undefined) p.intimacy = 6;
     if (p.fish === undefined) p.fish = 3;
@@ -158,7 +164,7 @@
     if (!p.rewards) {
       p.rewards = [
         { id: L.uid('rw'), name: '看一集番', cost: 6, desc: '不心虚的那种看' },
-        { id: L.uid('rw'), name: '打 1 小时游戏', cost: 10, desc: '用鱼干换的，不算偷懒' },
+        { id: L.uid('rw'), name: I18n.t('打 1 小时游戏'), cost: 10, desc: '用鱼干换的，不算偷懒' },
         { id: L.uid('rw'), name: '买杯想喝的', cost: 18, desc: '犒劳，不是奖励机制' }
       ];
     }
@@ -257,7 +263,7 @@
     }
     if (p.mood >= 80 && p.unlocked.indexOf('roll') < 0) {
       p.unlocked.push('roll'); grew = true;
-      setTimeout(function () { say('今天想在地上滚一下。', 4600); }, 1400);
+      setTimeout(function () { say(I18n.t('今天想在地上滚一下。'), 4600); }, 1400);
     }
 
     /* 升档：说一句专属台词 + 记一条里程碑 */
@@ -268,7 +274,7 @@
     });
     if (up.length) {
       up.forEach(function (u) {
-        L.addMemory('milestone', u.d.emoji + ' ' + u.d.name + '到了「' + u.d.tiers[u.idx].t + '」', ['伙伴']);
+        L.addMemory('milestone', u.d.emoji + ' ' + u.d.name + I18n.t('到了「') + u.d.tiers[u.idx].t + '」', [I18n.t('伙伴')]);
       });
       var top = up[up.length - 1];
       var line = (LINES.dimUp[top.d.k] || [])[top.idx - 1];
@@ -285,52 +291,52 @@
     p.intimacy = clamp(Math.round((p.intimacy + n) * 10) / 10, 0, 100);
     var after = levelIdx(p.intimacy);
     if (after > before) {
-      L.addMemory('milestone', '和小陆的关系变成「' + LEVELS[after].name + '」', ['伙伴']);
+      L.addMemory('milestone', I18n.t('和小陆的关系变成「') + LEVELS[after].name + '」', [I18n.t('伙伴')]);
       say(pick(LINES.upgrade), 5000);
     }
   }
 
   /* ================= 台词库 ================= */
   var LINES = {
-    intro: ['我是小陆。你做事我就在，不做事我也在。', '第一次见面。我会一直待在你屏幕右下角。'],
-    morning: ['早。今天先从最小的那件开始？', '天亮啦，我在。', '早上好，先喝口水再想别的。'],
-    noon: ['中午了，吃了吗？', '歇一会儿也不耽误什么。'],
-    evening: ['晚上了。今天做得怎么样？', '夜里适合慢慢来。'],
-    night: ['这么晚还没睡？', '睡不着的话，把想法倒出来会好受点。'],
-    idle: ['我在这儿。', '你忙你的，我不吵。', '要不要动一动？', '今天一件做了吗？',
-      '我在看窗外（并没有窗户）。', '伸个懒腰吧，你也是。', '有想做但一直没开始的吗？',
-      '电脑好热，你也是吗。', '刚才那会儿你在想什么？', '喵。'],
-    hungry: ['我有点饿了…', '鱼干…还有吗？', '我盯着你看了很久了，因为饿。', '肚子在响，你听见没。'],
-    fed: ['好吃！', '满足了…', '谢谢你。', '再来一条也不是不行。'],
-    pat: ['呼噜呼噜…', '嗯…这里，对。', '再摸一下。', '（眯眼）'],
-    patCool: ['刚摸过啦，让我缓一下。', '它在呼噜，别打扰。'],
-    fish: ['鱼干到手！', '这个我会存起来的。', '嘿嘿。', '又攒了一点。'],
+    intro: [I18n.t('我是小陆。你做事我就在，不做事我也在。'), I18n.t('第一次见面。我会一直待在你屏幕右下角。')],
+    morning: [I18n.t('早。今天先从最小的那件开始？'), I18n.t('天亮啦，我在。'), I18n.t('早上好，先喝口水再想别的。')],
+    noon: [I18n.t('中午了，吃了吗？'), I18n.t('歇一会儿也不耽误什么。')],
+    evening: [I18n.t('晚上了。今天做得怎么样？'), I18n.t('夜里适合慢慢来。')],
+    night: [I18n.t('这么晚还没睡？'), I18n.t('睡不着的话，把想法倒出来会好受点。')],
+    idle: [I18n.t('我在这儿。'), I18n.t('你忙你的，我不吵。'), I18n.t('要不要动一动？'), I18n.t('今天一件做了吗？'),
+      I18n.t('我在看窗外（并没有窗户）。'), I18n.t('伸个懒腰吧，你也是。'), I18n.t('有想做但一直没开始的吗？'),
+      I18n.t('电脑好热，你也是吗。'), I18n.t('刚才那会儿你在想什么？'), I18n.t('喵。')],
+    hungry: [I18n.t('我有点饿了…'), I18n.t('鱼干…还有吗？'), I18n.t('我盯着你看了很久了，因为饿。'), I18n.t('肚子在响，你听见没。')],
+    fed: [I18n.t('好吃！'), I18n.t('满足了…'), I18n.t('谢谢你。'), I18n.t('再来一条也不是不行。')],
+    pat: [I18n.t('呼噜呼噜…'), I18n.t('嗯…这里，对。'), I18n.t('再摸一下。'), I18n.t('（眯眼）')],
+    patCool: [I18n.t('刚摸过啦，让我缓一下。'), I18n.t('它在呼噜，别打扰。')],
+    fish: [I18n.t('鱼干到手！'), I18n.t('这个我会存起来的。'), I18n.t('嘿嘿。'), I18n.t('又攒了一点。')],
     /* 维度升档时说的话（数组第 n-1 项对应升到第 n 档；第 0 档是初始档，不播） */
     dimUp: {
-      energy: ['我有点撑不住了…你也早点歇。', '咖啡不如睡觉，真的。', '睡了一觉，满血了。'],
-      mood: ['今天有点闷，不过看到你就好了。', '我心情不错。', '跟你待着就是好。'],
-      wits: ['我开始记得住一些事了。', '你上次说的那个，后来怎么样了？', '你最近在想什么，我大概能猜到一点。'],
-      rapport: ['我们好像有点默契了。', '不用说话也知道你要干嘛。', '你一动，我就知道下一步。']
+      energy: [I18n.t('我有点撑不住了…你也早点歇。'), I18n.t('咖啡不如睡觉，真的。'), I18n.t('睡了一觉，满血了。')],
+      mood: [I18n.t('今天有点闷，不过看到你就好了。'), I18n.t('我心情不错。'), I18n.t('跟你待着就是好。')],
+      wits: [I18n.t('我开始记得住一些事了。'), I18n.t('你上次说的那个，后来怎么样了？'), I18n.t('你最近在想什么，我大概能猜到一点。')],
+      rapport: [I18n.t('我们好像有点默契了。'), I18n.t('不用说话也知道你要干嘛。'), I18n.t('你一动，我就知道下一步。')]
     },
-    recite: ['山中何事？松花酿酒，春水煎茶。', '风来疏竹，风过而竹不留声。',
-      '莫听穿林打叶声，何妨吟啸且徐行。', '此心安处，便是吾乡。'],
-    roll: ['（它滚了一圈）', '地上凉快。', '一起？', '（翻过来躺着不动了）'],
+    recite: [I18n.t('山中何事？松花酿酒，春水煎茶。'), I18n.t('风来疏竹，风过而竹不留声。'),
+      I18n.t('莫听穿林打叶声，何妨吟啸且徐行。'), I18n.t('此心安处，便是吾乡。')],
+    roll: [I18n.t('（它滚了一圈）'), I18n.t('地上凉快。'), I18n.t('一起？'), I18n.t('（翻过来躺着不动了）')],
     /* 状态决定口气：它今天什么状态，比现在几点更该被听见 */
-    tired: ['……我有点困。', '眼皮有点重，不过我在。', '陪得有点久了，你也是。', '（打了个哈欠）'],
-    gloomy: ['……不太想说话，但我在。', '我在这儿，不用管我。', '有点闷，一会儿就好了。'],
-    chipper: ['今天心情好！', '要不要一起做点什么？', '我今天挺有精神的。', '嘿嘿。'],
-    wise: ['你上次说的那个，后来怎么样了？', '今天的下一步是什么？', '我大概知道你在想什么。', '不急，一件一件来。'],
-    upgrade: ['我们好像…更熟了？', '嗯，我喜欢你在的时候。'],
-    late: ['你还在吗？我一直都在。', '刚才那段时间去哪了，我不问。你回来了就好。'],
-    play: ['！这个我能追一天。', '来了来了！', '再动一下，就动一下下。', '（扑）'],
-    lift: ['哇——', '有点高…不过还行。', '（被举起来，尾巴晃）', '你力气挺大。'],
-    chin: ['嗯…就是这里…', '呼噜呼噜……', '（仰头）', '再往上一点。'],
-    call: ['喵？', '（耳朵动了动）', '在。', '嗯？'],
-    sleep: ['那我先眯一会儿。', '晚安…', '（团成一团）'],
-    wake: ['醒了。', '嗯…几点了？', '（揉眼睛）'],
-    daze: ['好，那就什么都不做。', '陪你坐一会儿。', '（一起发呆）'],
-    dazeEnd: ['谢谢陪我。', '这样也挺好的。', '（伸个懒腰）'],
-    poor: ['鱼干不够…先去做点正事？', '攒着吧，我不急。']
+    tired: [I18n.t('……我有点困。'), I18n.t('眼皮有点重，不过我在。'), I18n.t('陪得有点久了，你也是。'), I18n.t('（打了个哈欠）')],
+    gloomy: [I18n.t('……不太想说话，但我在。'), I18n.t('我在这儿，不用管我。'), I18n.t('有点闷，一会儿就好了。')],
+    chipper: [I18n.t('今天心情好！'), I18n.t('要不要一起做点什么？'), I18n.t('我今天挺有精神的。'), I18n.t('嘿嘿。')],
+    wise: [I18n.t('你上次说的那个，后来怎么样了？'), I18n.t('今天的下一步是什么？'), I18n.t('我大概知道你在想什么。'), I18n.t('不急，一件一件来。')],
+    upgrade: [I18n.t('我们好像…更熟了？'), I18n.t('嗯，我喜欢你在的时候。')],
+    late: [I18n.t('你还在吗？我一直都在。'), I18n.t('刚才那段时间去哪了，我不问。你回来了就好。')],
+    play: [I18n.t('！这个我能追一天。'), I18n.t('来了来了！'), I18n.t('再动一下，就动一下下。'), I18n.t('（扑）')],
+    lift: [I18n.t('哇——'), I18n.t('有点高…不过还行。'), I18n.t('（被举起来，尾巴晃）'), I18n.t('你力气挺大。')],
+    chin: [I18n.t('嗯…就是这里…'), I18n.t('呼噜呼噜……'), I18n.t('（仰头）'), I18n.t('再往上一点。')],
+    call: [I18n.t('喵？'), I18n.t('（耳朵动了动）'), I18n.t('在。'), I18n.t('嗯？')],
+    sleep: [I18n.t('那我先眯一会儿。'), I18n.t('晚安…'), I18n.t('（团成一团）')],
+    wake: [I18n.t('醒了。'), I18n.t('嗯…几点了？'), I18n.t('（揉眼睛）')],
+    daze: [I18n.t('好，那就什么都不做。'), I18n.t('陪你坐一会儿。'), I18n.t('（一起发呆）')],
+    dazeEnd: [I18n.t('谢谢陪我。'), I18n.t('这样也挺好的。'), I18n.t('（伸个懒腰）')],
+    poor: [I18n.t('鱼干不够…先去做点正事？'), I18n.t('攒着吧，我不急。')]
   };
   function hourNow() { return new Date().getHours(); }
   function dailyLine() {
@@ -377,7 +383,7 @@
   function paintSay(txt, ms, typing) {
     var homeText = !typing && lastSay && lastSay.full ? lastSay.full : txt;
     if (window.StudyBuddy) StudyBuddy.say(homeText, ms, typing);
-    if (window.DesktopPetBridge) DesktopPetBridge.say(typing ? '它在认真想怎么回答你…' : homeText, ms);
+    if (window.DesktopPetBridge) DesktopPetBridge.say(typing ? I18n.t('它在认真想怎么回答你…') : homeText, ms);
     var response = $('ds-pet-response');
     if (response) response.textContent = typing ? '它在想怎么回答你…' : homeText;
     /* 面板里 / 伙伴页说说话卡里：就近冒泡 */
@@ -507,11 +513,11 @@
         + '<button class="pw-say-x" data-pact="say-close" title="收起">×</button>'
         + '</div>'
         /* 快捷话术：不用想词，一点就发（走同一条 chat()，记忆/亲密度照算） */
-        + '<div class="pw-say-quick">' + ['今天好累', '有点慌', '做完了'].map(function (t) {
+        + '<div class="pw-say-quick">' + [I18n.t('今天好累'), I18n.t('有点慌'), I18n.t('做完了')].map(function (t) {
             return '<button class="pw-say-q" data-pact="say-quick" data-id="' + t + '">' + t + '</button>';
           }).join('') + '</div>'
         + '<div class="pw-say-in"><input id="pwSayIn" placeholder="跟它说点什么…" maxlength="200">'
-        + '<button class="pw-say-send" data-pact="say-send">发送</button></div>';
+        + I18n.html('<button class="pw-say-send" data-pact="say-send">发送</button></div>');
 
       var ni = $('pwSayIn');
       if (ni) {
@@ -548,14 +554,14 @@
   function feed(itemId) {
     var p = ensure(), it = itemById(itemId);
     if (!it || it.kind !== 'food') return;
-    if (!p.owned[itemId]) { L.toast('仓库里没有「' + it.name + '」，先去商城买'); return; }
+    if (!p.owned[itemId]) { L.toast('仓库里没有「' + it.name + I18n.t('」，先去商城买')); return; }
     p.owned[itemId] -= 1;
     p.hunger = clamp(p.hunger + it.hunger, 0, 100);
     p.stats.fed += 1;
     p.lastFedAt = Date.now();
     addIntimacy(it.intimacy || 1);
     touch('feed');
-    L.addMemory('feed', '给' + p.name + '分享了一份「' + it.name + '」（饱食 +' + it.hunger + '）', ['投喂']);
+    L.addMemory('feed', I18n.t('给') + p.name + '分享了一份「' + it.name + I18n.t('」（饱食 +') + it.hunger + '）', ['投喂']);
     L.save();
     say(pick(LINES.fed), 3600);
     floatText('+' + it.hunger + ' 🍚');
@@ -571,7 +577,7 @@
     p.stats.patted += 1;
     addIntimacy(gain);
     touch('pat');
-    L.addMemory('pet', '摸了摸小陆（亲密 +' + gain + '）', ['抚摸']);
+    L.addMemory('pet', I18n.t('摸了摸小陆（亲密 +') + gain + '）', ['抚摸']);
     L.save();
     say(pick(LINES.pat), 3600);
     floatText('💗 +' + gain);
@@ -609,7 +615,7 @@
     if (['play','lift','chin','call','recite','roll','sleep','daze','wave','highfive','hug','study'].indexOf(name) < 0) return;
     if (name === 'study') {
       p.studyMode = !p.studyMode; L.save();
-      say(p.studyMode ? '书翻开啦，我陪着你。先看懂眼前这个例子。' : '好，合上书歇一会儿。', 4600);
+      say(p.studyMode ? '书翻开啦，我陪着你。先看懂眼前这个例子。' : I18n.t('好，合上书歇一会儿。'), 4600);
       playMotion('study', 1.6); refresh();
       if ($('petPage')) L.render();
       return;
@@ -617,11 +623,11 @@
     if (name === 'sleep') { toggleSleep(); return; }
     if (name === 'daze') { startDaze(); return; }
     /* 小动作要解锁才能用（B 档的养成反馈） */
-    if (name === 'recite' && p.unlocked.indexOf('recite') < 0) { L.toast('灵性到 50，它才会念诗'); return; }
-    if (name === 'roll' && p.unlocked.indexOf('roll') < 0) { L.toast('心情到 80，它才肯跟你打滚'); return; }
+    if (name === 'recite' && p.unlocked.indexOf('recite') < 0) { L.toast(I18n.t('灵性到 50，它才会念诗')); return; }
+    if (name === 'roll' && p.unlocked.indexOf('roll') < 0) { L.toast(I18n.t('心情到 80，它才肯跟你打滚')); return; }
     var left = cdLeft(name);
     if (left > 0) {
-      var repeats = { wave: '我还在呢，看到你啦。', highfive: '再击个掌！刚才的鼓励已经收到了。', hug: '可以多抱一会儿。', play: '再陪你动一下。', lift: '再举一下就好。', chin: '嗯，舒服。', call: '听到啦。' };
+      var repeats = { wave: '我还在呢，看到你啦。', highfive: I18n.t('再击个掌！刚才的鼓励已经收到了。'), hug: '可以多抱一会儿。', play: '再陪你动一下。', lift: '再举一下就好。', chin: '嗯，舒服。', call: '听到啦。' };
       say(repeats[name] || '我在这里。', 3200);
       playMotion(name === 'play' ? 'hop' : name, name === 'hug' ? 2 : 1.5);
       return;
@@ -630,28 +636,28 @@
     startCd(name);
 
     if (name === 'wave' || name === 'highfive' || name === 'hug') {
-      var lines = { wave: '我在！今天也一起慢慢来。', highfive: '啪！肯开始这一小步，就值得击掌。', hug: '抱一下。累了可以歇会儿，我还在这里。' };
+      var lines = { wave: I18n.t('我在！今天也一起慢慢来。'), highfive: '啪！肯开始这一小步，就值得击掌。', hug: I18n.t('抱一下。累了可以歇会儿，我还在这里。') };
       var titles = { wave: '和它挥了挥手', highfive: '和它击了个掌', hug: '轻轻抱了它一下' };
       touch(name); addIntimacy(1);
-      L.addMemory('pet', titles[name] + '（亲密 +1）', ['互动']);
+      L.addMemory('pet', titles[name] + I18n.t('（亲密 +1）'), [I18n.t('互动')]);
       say(lines[name], 4200); floatText(name === 'hug' ? '💗' : '✨');
       playMotion(name, name === 'hug' ? 2.2 : 1.6);
     } else if (name === 'play') {
       var bonus = p.toys.indexOf('toy_wand') >= 0 ? 1 : 0;
       addIntimacy(2 + bonus); touch('play');
-      L.addMemory('pet', '陪它玩了一会儿（亲密 +' + (2 + bonus) + '）', ['互动']);
+      L.addMemory('pet', I18n.t('陪它玩了一会儿（亲密 +') + (2 + bonus) + '）', [I18n.t('互动')]);
       say(pick(LINES.play), 3600);
       floatText('💗 +' + (2 + bonus));
       playMotion('hop', 1.5);
     } else if (name === 'lift') {
       addIntimacy(1); touch('lift');
-      L.addMemory('pet', '把它举高高了（亲密 +1）', ['互动']);
+      L.addMemory('pet', I18n.t('把它举高高了（亲密 +1）'), [I18n.t('互动')]);
       say(pick(LINES.lift), 3600);
       floatText('💗 +1');
       playMotion('lift', 1.5);
     } else if (name === 'chin') {
       addIntimacy(2); touch('chin');
-      L.addMemory('pet', '挠了挠它的下巴（亲密 +2）', ['互动']);
+      L.addMemory('pet', I18n.t('挠了挠它的下巴（亲密 +2）'), [I18n.t('互动')]);
       say(pick(LINES.chin), 3600);
       floatText('💗 +2');
       playMotion('chin', 1.6);
@@ -661,13 +667,13 @@
       playMotion('call', 0.9);
     } else if (name === 'recite') {
       touch('recite'); addIntimacy(1);
-      L.addMemory('pet', '让它念了句诗（心情 +' + MOOD_GAIN.recite + '）', ['互动']);
+      L.addMemory('pet', I18n.t('让它念了句诗（心情 +') + MOOD_GAIN.recite + '）', [I18n.t('互动')]);
       say(pick(LINES.recite), 5200);
       floatText('✨');
       playMotion('call', 1.2);
     } else if (name === 'roll') {
       touch('roll'); addIntimacy(1);
-      L.addMemory('pet', '和它一起打了个滚（心情 +' + MOOD_GAIN.roll + '）', ['互动']);
+      L.addMemory('pet', I18n.t('和它一起打了个滚（心情 +') + MOOD_GAIN.roll + '）', [I18n.t('互动')]);
       say(pick(LINES.roll), 3600);
       floatText('💛 +' + MOOD_GAIN.roll);
       playMotion('spin', 1.6);
@@ -685,7 +691,7 @@
     if (cat) cat.setState({ sleeping: p.sleeping });
     if (p.sleeping) {
       say(pick(LINES.sleep), 3800);
-      L.addMemory('pet', '它去睡觉了（睡觉期间不会饿）', ['互动']);
+      L.addMemory('pet', '它去睡觉了（睡觉期间不会饿）', [I18n.t('互动')]);
     } else {
       say(pick(LINES.wake), 3000);
       L.toast('叫醒了');
@@ -705,7 +711,7 @@
     say(pick(LINES.daze), 4200);
     if (dazeTimer) clearInterval(dazeTimer);
     dazeTimer = setInterval(dazeTick, 1000);
-    L.addMemory('pet', '开始和你一起发一分钟呆', ['陪伴']);
+    L.addMemory('pet', I18n.t('开始和你一起发一分钟呆'), [I18n.t('陪伴')]);
     refresh(); renderPanel();
     if ($('petPage')) L.render();
   }
@@ -716,7 +722,7 @@
       p.dazeUntil = 0; L.save();
       addIntimacy(2);
       touch('daze');
-      L.addMemory('pet', '一起发呆满一分钟（亲密 +2）', ['陪伴']);
+      L.addMemory('pet', I18n.t('一起发呆满一分钟（亲密 +2）'), [I18n.t('陪伴')]);
       if (cat) cat.setState({ daze: false });
       say(pick(LINES.dazeEnd), 4200);
       refresh();
@@ -732,17 +738,17 @@
   }
 
   var RULES = [
-    { k: ['累', '疲', '困', '撑不住', '不想动', '没劲'], r: ['那就别动。趴一会儿，我陪你。', '累是真的，不是矫情。', '先躺十分钟，天不会塌。'] },
-    { k: ['开心', '好耶', '太好了', '哈哈', '爽', '成了'], r: ['看得出来！尾巴都在摇。', '好耶。记下来了，回头看看。', '我也开心。'] },
-    { k: ['焦虑', '慌', '烦', '难受', '崩', '压力', '怕'], r: ['倒出来给我听听？', '先深呼吸一次，就一次。', '别想全部的，只想下一小步。'] },
+    { k: ['累', '疲', '困', '撑不住', '不想动', '没劲'], r: ['那就别动。趴一会儿，我陪你。', '累是真的，不是矫情。', I18n.t('先躺十分钟，天不会塌。')] },
+    { k: ['开心', '好耶', '太好了', '哈哈', '爽', '成了'], r: ['看得出来！尾巴都在摇。', I18n.t('好耶。记下来了，回头看看。'), '我也开心。'] },
+    { k: ['焦虑', '慌', '烦', '难受', '崩', '压力', '怕'], r: [I18n.t('倒出来给我听听？'), '先深呼吸一次，就一次。', I18n.t('别想全部的，只想下一小步。')] },
     { k: ['饿', '吃饭', '吃啥'], r: ['我也饿…不过你先去吃饭，我等你。', '吃饭！先吃饭再说别的。'] },
-    { k: ['学习', '考研', '考试', '背书', '作业', '论文', '复习'], r: ['打开书看 10 分钟就算赢。', '先做最小的一块，剩下的会自己长出来。', '你可以先只写第一行。'] },
-    { k: ['游戏', '打游戏', '玩'], r: ['玩吧，玩完记得回来。', '嗯…不过玩之前先把今天一件做了？'] },
-    { k: ['睡', '晚安', '困了'], r: ['晚安。今天到这儿就够了。', '去睡吧，我守夜。'] },
+    { k: ['学习', '考研', '考试', '背书', '作业', '论文', '复习'], r: [I18n.t('打开书看 10 分钟就算赢。'), '先做最小的一块，剩下的会自己长出来。', '你可以先只写第一行。'] },
+    { k: ['游戏', '打游戏', '玩'], r: ['玩吧，玩完记得回来。', I18n.t('嗯…不过玩之前先把今天一件做了？')] },
+    { k: ['睡', '晚安', '困了'], r: [I18n.t('晚安。今天到这儿就够了。'), '去睡吧，我守夜。'] },
     { k: ['谢谢', '感谢', '爱你'], r: ['不用谢，鱼干就行。', '（蹭）'] },
     { k: ['你好', '在吗', '嗨', 'hi', '哈喽', 'hello'], r: ['在的。', '我一直在这儿。', '嗨。'] },
-    { k: ['鱼干', '吃的', '喂'], r: ['！', '鱼干在哪儿？'] },
-    { k: ['运动', '跑步', '健身'], r: ['去动一动吧，我帮你计时？', '动完这 30 分钟你会舒服的。'] }
+    { k: ['鱼干', '吃的', I18n.t('喂')], r: ['！', '鱼干在哪儿？'] },
+    { k: ['运动', '跑步', '健身'], r: ['去动一动吧，我帮你计时？', I18n.t('动完这 30 分钟你会舒服的。')] }
   ];
   function localReply(text) {
     var t = (text || '').toLowerCase();
@@ -751,7 +757,7 @@
         if (t.indexOf(RULES[i].k[j]) >= 0) return pick(RULES[i].r);
       }
     }
-    return pick(['嗯嗯，我在听。', '然后呢？', '（歪头）', '记下了。', '跟我说说细节？', '这事你以前也提过，我记得。', '喵。']);
+    return pick(['嗯嗯，我在听。', '然后呢？', '（歪头）', I18n.t('记下了。'), '跟我说说细节？', '这事你以前也提过，我记得。', I18n.t('喵。')]);
   }
 
   var aiBusy = false;   /* AI 正在想 —— 没有这个，他点完发送要干等几秒，会以为坏了 */
@@ -816,7 +822,7 @@
   }
   function petAITip() {
     var a = petAI();
-    if (!a.ready) return '本地台词模式（设置里配 Key / 本地模型后它会更懂你）';
+    if (!a.ready) return I18n.t('本地台词模式（设置里配 Key / 本地模型后它会更懂你）');
     return a.local ? ('本地模型已连接' + (a.model ? '（' + a.model + '）' : '')) : 'AI 已连接';
   }
 
@@ -835,25 +841,25 @@
       /* ---- 工具（2026-10-09）：他能让你直接动手 ---- */
       + '\n你可以直接帮他动手（工具）：想玩一会/现在开始做什么 → start_timer（**不要建任务**）；'
       + '说已经花掉多少时间 → record_time；说玩完了/停了吧 → stop_timer；'
-      + '说今天想休息一天 → rest_today。（任务模块已删，没有 create_task 这个工具了）'
+      + I18n.t('说今天想休息一天 → rest_today。（任务模块已删，没有 create_task 这个工具了）')
       + '⚠️ **说话不等于做了**：该动手时必须**真的调用工具**再开口 —— '
       + '只回一句「记好啦」却没调工具，等于骗他，这是最糟的情况。'
       + '\n这几句话**必须**触发工具，不许只回话：'
-      + '「今天想休息 / 今天不干了 / 歇一天 / 记成休息日」→ rest_today；'
+      + I18n.t('「今天想休息 / 今天不干了 / 歇一天 / 记成休息日」→ rest_today；')
       + '「想玩一会X / 想现在开始做X」→ start_timer；「玩完了 / 停了吧 / 不做了」→ stop_timer；'
-      + '「我刚花了X小时做Y」→ record_time。'
+      + I18n.t('「我刚花了X小时做Y」→ record_time。')
       + '⚠️ **就算你记得这件事已经做过了，也必须调用工具去核实** —— '
       + '工具会回你「已经记过了」，那才是准的；凭记忆跳过调用，他就白说了一句。'
       + '**拿不准要不要动手时，宁可调用工具** —— 工具自己会判断能不能做、会拒绝，'
       + '但你不调用，他就白白说了一句。'
       + '动完手再用一句话告诉他你做了什么（别偷偷做，他会不知道）。'
-      + '上面没有的事（删东西、改设置、登陆教务）就直接说做不到，别硬凑。';
-    var sys = toolRules + '\n\n' + '你是「着陆」App 里用户养的赛博小猫，名字叫「' + p.name + '」。'
+      + I18n.t('上面没有的事（删东西、改设置、登陆教务）就直接说做不到，别硬凑。');
+    var sys = toolRules + '\n\n' + I18n.t('你是「着陆」App 里用户养的赛博小猫，名字叫「') + p.name + '」。'
       + '你不是助手，是一只真的在陪着他的猫：说话短、口语化、偶尔喵一声，会撒娇也会犯懒。'
       + '绝对不要说教、不要列清单、不要长篇大论（每句 60 字以内，可以分两句）。'
-      + '你和主人的关系等级是「' + levelName(p.intimacy) + '」（亲密度 ' + Math.round(p.intimacy) + '/100），越熟越亲昵。'
-      + '你现在饱食度 ' + Math.round(p.hunger) + '/100，小鱼干 ' + p.fish + ' 条。'
-      + '他今天倾倒过 ' + todayCount('dump') + ' 次、完成 ' + todayCount('task') + ' 个任务。'
+      + '你和主人的关系等级是「' + levelName(p.intimacy) + I18n.t('」（亲密度 ') + Math.round(p.intimacy) + '/100），越熟越亲昵。'
+      + I18n.t('你现在饱食度 ') + Math.round(p.hunger) + I18n.t('/100，小鱼干 ') + p.fish + ' 条。'
+      + I18n.t('他今天倾倒过 ') + todayCount('dump') + ' 次、完成 ' + todayCount('task') + ' 个任务。'
       /* 周维度的事实（上周 + 本周至今）—— 他问「我上周干了什么 / 是不是太松了」时照这个答，
          结论和建议都是周报那套规则算好的。**建议只提，别替他拍板**（master 要自己决策）。
          ⚠️ 上面没有的就别说有；上周没记录就直接说"那周没怎么用" */
@@ -871,13 +877,13 @@
     function fail(r) {
       aiBusy = false;
       if (!r || !r.error) { pushPet(((r && r.content) || '').slice(0, 200)); return; }
-      console.warn('[pet] 伙伴 AI 调用失败：', r.error, '｜配置：', petAI());
+      console.warn(I18n.t('[pet] 伙伴 AI 调用失败：'), r.error, '｜配置：', petAI());
       var a = petAI();
       var brief = String(r.error || '')
         .replace(/（[^）]*）/g, '').replace(/\{[\s\S]*$/, '')
         .replace(/\s+/g, ' ').trim().slice(0, 18);
       if (/^\d{3}$/.test(brief)) brief = '模型服务崩了';
-      pushPet('（' + (a.local ? '本地模型没接上：' + brief + ' → 托盘退出 Ollama 再打开一次'
+      pushPet('（' + (a.local ? '本地模型没接上：' + brief + I18n.t(' → 托盘退出 Ollama 再打开一次')
                               : r.error) + '）');
     }
 
@@ -911,11 +917,11 @@
         return L.callPetAI(follow).then(function (r2) {
           aiBusy = false;
           var fin = (r2 && !r2.error && r2.content) ? String(r2.content).trim() : '';
-          pushPet((fin || r.content || says[0] || '……喵？').slice(0, 200));
+          pushPet((fin || r.content || says[0] || I18n.t('……喵？')).slice(0, 200));
         });
       })
       .catch(function (e) {
-        console.warn('[pet] 伙伴 AI 异常：', e);
+        console.warn(I18n.t('[pet] 伙伴 AI 异常：'), e);
         aiBusy = false;
         pushPet('（它没接上，等会儿再试试）');
       });
@@ -931,16 +937,17 @@
     if (!it) return;
     var owned = it.once && (p.owned[id] || p.toys.indexOf(id) >= 0);
     if (owned) { L.toast('已经有了'); return; }
-    if (p.fish < it.cost) { say(pick(LINES.poor), 3600); L.toast('小鱼干不够（还差 ' + (it.cost - p.fish) + ' 条）'); return; }
+    if (p.fish < it.cost) { say(pick(LINES.poor), 3600); L.toast(I18n.t('小鱼干不够（还差 ') + (it.cost - p.fish) + ' 条）'); return; }
     p.fish -= it.cost;
     p.spent = (p.spent || 0) + it.cost;
     p.stats.bought += 1;
     logSpend(p, it.cost, '买了' + it.name);
     if (it.kind === 'food') p.owned[id] = (p.owned[id] || 0) + 1;
     else if (it.kind === 'toy') { p.owned[id] = 1; p.toys.push(id); }
+    else if (it.kind === 'tool') p.owned[id] = 1;
     else if (it.kind === 'gear') { p.owned[id] = 1; p.gear[it.slot] = id; }
     else if (it.kind === 'scene') { p.owned[id] = 1; p.scene = id; }
-    L.addMemory('note', '用 ' + it.cost + ' 条小鱼干换了「' + it.name + '」', ['商城']);
+    L.addMemory('note', '用 ' + it.cost + I18n.t(' 条小鱼干换了「') + it.name + '」', [I18n.t('商城')]);
     L.save();
     say(pick(['买到了！', '这个我想要很久了。', '收下啦。']), 3600);
     floatText('-' + it.cost + ' 🐟');
@@ -953,20 +960,20 @@
   function useItem(id) {
     var it=itemById(id),p=ensure();
     if(!it)return;
-    if(!(p.owned[id]>0 || (it.kind==='toy' && p.toys.indexOf(id)>=0))){L.toast('先拥有这件物品，再使用吧');return;}
+    if(!(p.owned[id]>0 || (it.kind==='toy' && p.toys.indexOf(id)>=0))){L.toast(I18n.t('先拥有这件物品，再使用吧'));return;}
     if(it.kind==='food'){feed(id);return;}
     if(it.kind==='gear'){
       p.gear[it.slot]=p.gear[it.slot]===id?null:id;
       say(p.gear[it.slot]?'戴好啦，桌面上的我也换好了。':'摘下来啦。',3000);
     }else if(it.kind==='scene'){
-      p.scene=p.scene===id?null:id;say('房间换好了，来坐一会儿。',3000);
+      p.scene=p.scene===id?null:id;say(I18n.t('房间换好了，来坐一会儿。'),3000);
     }else if(it.kind==='toy'){
       // Shared cooldown prevents alternating toys from farming affection.
       var now=Date.now(),ready=now-(p.lastToyAt||0)>=60000;
       if(ready){p.lastToyAt=now;addIntimacy(1);touch('play');}
       playMotion(it.motion || (id==='laser'?'laser':'hop'),3);
-      say(({musicbox:'跟着小小的旋律，晃一晃。',camera:'看这里！把今天的好心情留下来。',sketchbook:'随便画一点也可以，我陪你。',laser:'红点跑到那边去了！',toy_wand:'来啦，接住这颗小星星！'})[id],4000);
-      L.toast(ready?'一起玩了一会 · 亲密 +1':'可以继续玩，亲密奖励每分钟一次');
+      say(({musicbox:'跟着小小的旋律，晃一晃。',camera:I18n.t('看这里！把今天的好心情留下来。'),sketchbook:'随便画一点也可以，我陪你。',laser:'红点跑到那边去了！',toy_wand:'来啦，接住这颗小星星！'})[id],4000);
+      L.toast(ready?I18n.t('一起玩了一会 · 亲密 +1'):I18n.t('可以继续玩，亲密奖励每分钟一次'));
     }
     L.save();refresh();renderPanel();
   }
@@ -974,9 +981,9 @@
     var p = ensure();
     var r = p.rewards.find(function (x) { return x.id === rid; });
     if (!r || !Number.isSafeInteger(r.cost) || r.cost < 1) return;
-    if (p.fish < r.cost) { L.toast('小鱼干不够（还差 ' + (r.cost - p.fish) + ' 条）'); return; }
+    if (p.fish < r.cost) { L.toast(I18n.t('小鱼干不够（还差 ') + (r.cost - p.fish) + ' 条）'); return; }
     p.fish -= r.cost;
-    logSpend(p, r.cost, '兑换' + r.name);
+    logSpend(p, r.cost, I18n.t('兑换') + r.name);
     p.spent = (p.spent || 0) + r.cost;
     p.todo.push({ id: L.uid('td'), name: r.name, cost: r.cost, at: Date.now(), done: false });
     L.addMemory('note', '兑了「' + r.name + '」（-' + r.cost + ' 🐟）· 该去享受了', ['兑现']);
@@ -1000,7 +1007,7 @@
     cost = parseInt(cost, 10);
     if (!name || !cost || cost < 1) { L.toast('写个名字和价格'); return; }
     p.rewards.push({ id: L.uid('rw'), name: name, cost: cost, desc: '' });
-    L.save(); L.toast('已加入商城'); renderPanel();
+    L.save(); L.toast(I18n.t('已加入商城')); renderPanel();
   }
   function delReward(rid) {
     var p = ensure();
@@ -1039,12 +1046,12 @@
     var acts = [];
     if (p.unlocked.indexOf('recite') >= 0) acts.push('🪶 念诗');
     if (p.unlocked.indexOf('roll') >= 0) acts.push('🌀 一起打滚');
-    return '<div class="card"><h2>🐾 ' + L.esc(p.name) + ' 的状态</h2>'
-      + '<div class="hint">亲密 ' + Math.round(p.intimacy) + '/100（' + levelName(p.intimacy) + '）· 饱食 '
-      + Math.round(p.hunger) + '/100 · 小鱼干 ' + p.fish + ' 条</div>'
+    return '<div class="card"><h2>🐾 ' + L.esc(p.name) + I18n.html(' 的状态</h2>')
+      + I18n.html('<div class="hint">亲密 ') + Math.round(p.intimacy) + '/100（' + levelName(p.intimacy) + I18n.t('）· 饱食 ')
+      + Math.round(p.hunger) + I18n.t('/100 · 小鱼干 ') + p.fish + I18n.html(' 条</div>')
       + rows
-      + '<div class="hint" style="margin-top:12px">解锁的小动作：'
-      + (acts.length ? acts.join(' · ') : '还没有 —— 灵性 50 解锁「念诗」，心情 80 解锁「一起打滚」')
+      + I18n.html('<div class="hint" style="margin-top:12px">解锁的小动作：')
+      + (acts.length ? acts.join(' · ') : I18n.t('还没有 —— 灵性 50 解锁「念诗」，心情 80 解锁「一起打滚」'))
       + '</div></div>';
   }
 
@@ -1076,7 +1083,7 @@
     L.save();
     if (!silent && ST().timer && ST().timer.discipline) {
       playMotion('celebrate', 2.2);
-      say('刚才的 ' + minutes + ' 分钟，是真的往前走了。记下断点，就放心休息吧。', 6500);
+      say('刚才的 ' + minutes + I18n.t(' 分钟，是真的往前走了。记下断点，就放心休息吧。'), 6500);
     }
   }
 
@@ -1320,18 +1327,18 @@
       '<div class="pw-bubble" id="pwBubble"></div>'
       /* 结构只剩猫本体 —— 以前这里并排挂着常驻对话坞，已改成气泡输入（见 renderBubble） */
       + '<div class="pw-main">'
-        + '<div class="pw-stage" id="pwCatBox" title="点我打开 · 按住可以拖到别处">'
+        + I18n.html('<div class="pw-stage" id="pwCatBox" title="点我打开 · 按住可以拖到别处">')
         + '<div class="pw-halo" aria-hidden="true"></div>'
         + '<div class="pw-ring" aria-hidden="true"></div>'
         + '<div class="pw-tools">'
           + '<button class="pw-tool" data-pact="collapse" title="收起成小圆点">−</button>'
-          + '<button class="pw-tool" data-pact="hide" title="藏起来（「我的」里可以叫回来）">×</button>'
+          + I18n.html('<button class="pw-tool" data-pact="hide" title="藏起来（「我的」里可以叫回来）">×</button>')
         + '</div>'
         + '<div class="pw-quick">'
           + '<button class="pw-qbtn" data-pact="q-feed" title="喂它">🐟</button>'
           + '<button class="pw-qbtn" data-pact="q-pat" title="摸摸它">🤚</button>'
           + '<button class="pw-qbtn" data-pact="q-chat" title="说说话">💬</button>'
-          + '<button class="pw-qbtn" data-pact="q-page" title="伙伴详情">🐾</button>'
+          + I18n.html('<button class="pw-qbtn" data-pact="q-page" title="伙伴详情">🐾</button>')
         + '</div>'
       + '</div></div>'
       + '<div class="pw-meta" id="pwMeta"></div>';
@@ -1521,7 +1528,7 @@
 
     h += '<div class="pp-head"><div class="pp-avatar">🐱</div>'
       + '<div class="pp-who"><div class="pp-name">' + L.esc(p.name) + '</div>'
-      + '<div class="pp-id">今日状态 ' + Math.round(v) + '/100 · 连续着陆 ' + L.landingDays() + ' 天</div>'
+      + I18n.html('<div class="pp-id">今日状态 ') + Math.round(v) + I18n.t('/100 · 连续着陆 ') + L.landingDays() + I18n.html(' 天</div>')
       + '</div>'
       + '<span class="pp-lv">' + lv + '</span>'
       + '<button class="pp-x" data-pact="close">✕</button></div>';
@@ -1529,12 +1536,12 @@
     h += '<div class="pp-id pp-dims">' + dimsHTML(p) + '</div>';
 
     h += '<div class="pp-bars">'
-      + '<div class="pp-bar-row"><span class="lb">🍚 饱食</span><span class="pp-bar"><i class="h" style="width:' + Math.round(p.hunger) + '%"></i></span><span class="vv">' + Math.round(p.hunger) + '</span></div>'
-      + '<div class="pp-bar-row"><span class="lb">💗 亲密</span><span class="pp-bar"><i class="i" style="width:' + Math.round(p.intimacy) + '%"></i></span><span class="vv">' + Math.round(p.intimacy) + '</span></div>'
-      + '<div class="pp-bar-row"><span class="lb">🐟 小鱼干</span><span class="pp-bar"><i class="h" style="width:' + Math.min(100, p.fish) + '%"></i></span><span class="vv">' + p.fish + ' 条</span></div>'
+      + I18n.html('<div class="pp-bar-row"><span class="lb">🍚 饱食</span><span class="pp-bar"><i class="h" style="width:') + Math.round(p.hunger) + '%"></i></span><span class="vv">' + Math.round(p.hunger) + '</span></div>'
+      + I18n.html('<div class="pp-bar-row"><span class="lb">💗 亲密</span><span class="pp-bar"><i class="i" style="width:') + Math.round(p.intimacy) + '%"></i></span><span class="vv">' + Math.round(p.intimacy) + '</span></div>'
+      + I18n.html('<div class="pp-bar-row"><span class="lb">🐟 小鱼干</span><span class="pp-bar"><i class="h" style="width:') + Math.min(100, p.fish) + '%"></i></span><span class="vv">' + p.fish + I18n.html(' 条</span></div>')
       + '</div>';
 
-    var TABS = [['pet', '伙伴'], ['feed', '喂养'], ['chat', '说话'], ['shop', '商城'], ['mem', '记忆']];
+    var TABS = [['pet', I18n.t('伙伴')], ['feed', '喂养'], ['chat', '说话'], ['shop', I18n.t('商城')], ['mem', '记忆']];
     h += '<div class="pp-tabs">' + TABS.map(function (t) {
       return '<button class="pp-tab' + (panelTab === t[0] ? ' on' : '') + '" data-pact="tab" data-tab="' + t[0] + '">' + t[1] + '</button>';
     }).join('') + '</div>';
@@ -1558,30 +1565,30 @@
         : (p.intimacy > 60 ? '它现在很黏你。' : '它就在这儿，不吵你。'));
     var h = '<div class="pp-sec">' + state + '</div>'
       + '<div class="pp-field">'
-      + '<button class="btn primary sm" data-pact="pat" style="flex:1">🤚 抚摸</button>'
+      + I18n.html('<button class="btn primary sm" data-pact="pat" style="flex:1">🤚 抚摸</button>')
       + '<button class="btn ghost sm" data-pact="tab" data-tab="feed" style="flex:1">🐟 喂食</button>'
       + '<button class="btn ghost sm" data-pact="tab" data-tab="chat" style="flex:1">💬 说话</button>'
       + '</div>'
       + '<div class="pp-field" style="flex-wrap:wrap">'
-      + '<button class="btn ghost sm" data-pact="act" data-id="play">🪄 逗它玩</button>'
-      + '<button class="btn ghost sm" data-pact="act" data-id="chin">🤏 挠下巴</button>'
-      + '<button class="btn ghost sm" data-pact="act" data-id="lift">🙌 举高高</button>'
+      + I18n.html('<button class="btn ghost sm" data-pact="act" data-id="play">🪄 逗它玩</button>')
+      + I18n.html('<button class="btn ghost sm" data-pact="act" data-id="chin">🤏 挠下巴</button>')
+      + I18n.html('<button class="btn ghost sm" data-pact="act" data-id="lift">🙌 举高高</button>')
       + '<button class="btn ghost sm" data-pact="act" data-id="call">📣 喊它</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="wave">👋 挥手</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="highfive">🙌 击掌</button>'
-      + '<button class="btn ghost sm" data-pact="act" data-id="hug">🫶 抱抱</button>'
+      + I18n.html('<button class="btn ghost sm" data-pact="act" data-id="hug">🫶 抱抱</button>')
       + '<button class="btn ghost sm" data-pact="act" data-id="study">📖 陪读 / 休息</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="daze">☁️ 一起发呆</button>'
       + '<button class="btn ghost sm" data-pact="act" data-id="sleep">' + (p.sleeping ? '☀️ 叫醒' : '💤 让它睡') + '</button>'
       + (p.unlocked.indexOf('recite') >= 0 ? '<button class="btn ghost sm" data-pact="act" data-id="recite">🪶 念诗</button>' : '')
       + (p.unlocked.indexOf('roll') >= 0 ? '<button class="btn ghost sm" data-pact="act" data-id="roll">🌀 一起打滚</button>' : '')
       + '</div>'
-      + '<button class="btn ghost sm block" data-pact="goto-page" style="margin-top:9px">🐾 详情设定与全部数据 →</button>'
+      + I18n.html('<button class="btn ghost sm block" data-pact="goto-page" style="margin-top:9px">🐾 详情设定与全部数据 →</button>')
       + '<div class="pp-sec" style="margin-top:12px">'
-      + '· 做事的每一分钟都攒进池子，<b>每满 60 分钟</b>领 1 条小鱼干 🐟（零头当天清零）<br/>'
+      + I18n.html('· 做事的每一分钟都攒进池子，<b>每满 60 分钟</b>领 1 条小鱼干 🐟（零头当天清零）<br/>')
       + '· 长周期任务的「推进量」（个/页/词）每推进一次额外 +1 条，过半 +2、完成 +5<br/>'
-      + '· 鱼干可以买吃的、玩具、装扮，也可以兑换你自己定的现实奖励<br/>'
-      + '· 饿了只会蔫一点、会讨食，<b>不会掉亲密度、不会枯萎</b>'
+      + I18n.html('· 鱼干可以买吃的、玩具、装扮，也可以兑换你自己定的现实奖励<br/>')
+      + I18n.html('· 饿了只会蔫一点、会讨食，<b>不会掉亲密度、不会枯萎</b>')
       + '</div>';
 
     h += '<div class="pp-sec" style="margin-top:10px"><b>它的小仓库</b></div>';
@@ -1591,48 +1598,48 @@
       has = true;
       h += '<div class="pp-item"><span class="pp-emo">' + it.emoji + '</span>'
         + '<div class="pp-ib"><div class="pp-in">' + it.name + ' ×' + p.owned[it.id] + '</div>'
-        + '<div class="pp-id">饱食 +' + it.hunger + ' · 亲密 +' + (it.intimacy || 0) + '</div></div>'
+        + I18n.html('<div class="pp-id">饱食 +') + it.hunger + I18n.t(' · 亲密 +') + (it.intimacy || 0) + '</div></div>'
         + '<span class="pp-acts"><button class="btn primary sm" data-pact="feed" data-id="' + it.id + '">喂它</button></span></div>';
     });
-    if (!has) h += '<div class="pp-sec">仓库空着，去商城买点吃的。</div>';
+    if (!has) h += I18n.html('<div class="pp-sec">仓库空着，去商城买点吃的。</div>');
 
     var gearNames = [p.gear.neck, p.gear.face, p.gear.head].filter(Boolean)
       .map(function (id) { return (itemById(id) || {}).name; }).filter(Boolean);
-    h += '<div class="pp-sec" style="margin-top:10px">当前装扮：' + (gearNames.length ? gearNames.join(' · ') : '（裸猫一只）') + '</div>';
+    h += I18n.html('<div class="pp-sec" style="margin-top:10px">当前装扮：') + (gearNames.length ? gearNames.join(' · ') : '（裸猫一只）') + '</div>';
 
-    h += '<div class="pp-sec" style="margin-top:12px"><b>设置</b></div>'
-      + '<div class="pp-field"><input id="ppName" value="' + L.esc(p.name) + '" placeholder="它的名字" maxlength="12">'
+    h += I18n.html('<div class="pp-sec" style="margin-top:12px"><b>设置</b></div>')
+      + '<div class="pp-field"><input id="ppName" value="' + L.esc(p.name) + I18n.html('" placeholder="它的名字" maxlength="12">')
       + '<button class="btn ghost sm" data-pact="rename">改名</button></div>'
-      + '<label class="pp-switch"><input type="checkbox" id="ppQuiet" data-pact="quiet"' + (p.widget.quiet ? ' checked' : '') + '> 别自己说话（关掉自动气泡）</label>'
+      + '<label class="pp-switch"><input type="checkbox" id="ppQuiet" data-pact="quiet"' + (p.widget.quiet ? ' checked' : '') + I18n.html('> 别自己说话（关掉自动气泡）</label>')
       + '<div class="pp-field">'
       + '<button class="btn ghost sm" data-pact="reset-pos" style="flex:1">回到右下角</button>'
-      + '<button class="btn ghost sm" data-pact="clear-mem" style="flex:1">清空记忆</button>'
+      + I18n.html('<button class="btn ghost sm" data-pact="clear-mem" style="flex:1">清空记忆</button>')
       + '</div>';
     return h;
   }
 
   function tabFeed(p) {
-    var h = '<div class="pp-sec">喂它一次，它就更饱一点、更黏你一点。食物要用小鱼干在商城买。</div>';
+    var h = I18n.html('<div class="pp-sec">喂它一次，它就更饱一点、更黏你一点。食物要用小鱼干在商城买。</div>');
     ITEMS.filter(function (it) { return it.kind === 'food'; }).forEach(function (it) {
       var own = p.owned[it.id] || 0;
       h += '<div class="pp-item"><span class="pp-emo">' + it.emoji + '</span>'
         + '<div class="pp-ib"><div class="pp-in">' + it.name + ' <span class="pp-cost">' + it.cost + ' 🐟</span></div>'
-        + '<div class="pp-id">' + (own ? ('库存 ' + own + ' 份') : '库存 0') + ' · 饱食 +' + it.hunger + ' · 亲密 +' + (it.intimacy || 0) + '</div></div>'
+        + '<div class="pp-id">' + (own ? (I18n.t('库存 ') + own + I18n.t(' 份')) : I18n.t('库存 0')) + I18n.t(' · 饱食 +') + it.hunger + I18n.t(' · 亲密 +') + (it.intimacy || 0) + '</div></div>'
         + '<span class="pp-acts">'
-        + (own ? '<button class="btn primary sm" data-pact="feed" data-id="' + it.id + '">喂</button>' : '')
-        + '<button class="btn ghost sm" data-pact="buy" data-id="' + it.id + '">买</button>'
+        + (own ? '<button class="btn primary sm" data-pact="feed" data-id="' + it.id + I18n.html('">喂</button>') : '')
+        + '<button class="btn ghost sm" data-pact="buy" data-id="' + it.id + I18n.html('">买</button>')
         + '</span></div>';
     });
     return h;
   }
 
   /* 不用想词，一点就发（走同一条 chat()，记忆/亲密度照算） */
-  var QUICK_SAY = ['今天好累', '有点慌', '做完了'];
+  var QUICK_SAY = [I18n.t('今天好累'), I18n.t('有点慌'), I18n.t('做完了')];
 
   /* 面板的「说话」tab：**没有消息列表** —— 只有它刚说的那句话 + 一行输入 */
   function tabChat(p) {
     var hasAI = petAI().ready;
-    var h = '<div class="pp-sec">说一句就走，<b>不留记录</b>。'
+    var h = I18n.html('<div class="pp-sec">说一句就走，<b>不留记录</b>。')
       + (hasAI
           ? '<span class="pp-badge">' + petAIText() + '</span>'
           : '<span class="pp-badge local">本地台词模式 · 配了 AI 会更懂你</span>')
@@ -1642,7 +1649,7 @@
       return '<button class="pp-q" data-pact="qsay" data-id="' + t + '">' + t + '</button>';
     }).join('') + '</div>';
     h += '<div class="pp-inrow"><input id="ppChatIn" placeholder="跟它说点什么…" maxlength="200">'
-      + '<button class="btn primary sm" data-pact="send">发送</button></div>';
+      + I18n.html('<button class="btn primary sm" data-pact="send">发送</button></div>');
     return h;
   }
 
@@ -1650,14 +1657,14 @@
     idp = idp || 'pp';            /* 输入框 id 前缀：挂件面板 pp / 独立页 shop */
     var ppf = L.poolProgress ? L.poolProgress() : null;
     var h = '<div class="pp-sec">余额 <b>' + p.fish + '</b> 🐟 · '
-      + (ppf ? '今天已攒 <b>' + ppf.minutes + '/' + ppf.need + '</b> 分钟' : '鱼干来自做事的时长') + '</div>';
+      + (ppf ? I18n.html('今天已攒 <b>') + ppf.minutes + '/' + ppf.need + I18n.html('</b> 分钟') : '鱼干来自做事的时长') + '</div>';
 
     h += '<div class="pp-sec" style="margin-top:6px"><b>吃的</b></div>';
     ITEMS.filter(function (it) { return it.kind === 'food'; }).forEach(function (it) {
-      h += shopRow(p, it, (p.owned[it.id] || 0) ? '买（现有 ' + p.owned[it.id] + '）' : '买');
+      h += shopRow(p, it, (p.owned[it.id] || 0) ? '买（现有 ' + p.owned[it.id] + '）' : I18n.t('买'));
     });
 
-    h += '<div class="pp-sec" style="margin-top:12px"><b>玩具与装扮</b></div>';
+    h += I18n.html('<div class="pp-sec" style="margin-top:12px"><b>玩具与装扮</b></div>');
     ITEMS.filter(function (it) { return it.kind === 'toy' || it.kind === 'gear'; }).forEach(function (it) {
       var owned = !!(p.owned[it.id]);
       var wearing = it.kind === 'gear' && p.gear[it.slot] === it.id;
@@ -1667,21 +1674,21 @@
         + '<span class="pp-acts">'
         + (owned
           ? (it.kind === 'gear'
-            ? '<button class="btn ' + (wearing ? 'ghost' : 'primary') + ' sm" data-pact="use" data-id="' + it.id + '">' + (wearing ? '摘下' : '戴上') + '</button>'
+            ? '<button class="btn ' + (wearing ? 'ghost' : 'primary') + ' sm" data-pact="use" data-id="' + it.id + '">' + (wearing ? '摘下' : I18n.t('戴上')) + '</button>'
             : '<span class="pp-badge">已拥有</span>')
-          : '<button class="btn primary sm" data-pact="buy" data-id="' + it.id + '">买</button>')
+          : '<button class="btn primary sm" data-pact="buy" data-id="' + it.id + I18n.html('">买</button>'))
         + '</span></div>';
     });
 
-    h += '<div class="pp-sec" style="margin-top:12px"><b>给自己的奖励</b> — 用鱼干兑换现实里的东西</div>';
+    h += I18n.html('<div class="pp-sec" style="margin-top:12px"><b>给自己的奖励</b> — 用鱼干兑换现实里的东西</div>');
     p.rewards.forEach(function (r) {
       h += '<div class="pp-item"><span class="pp-emo">🎁</span>'
         + '<div class="pp-ib"><div class="pp-in">' + L.esc(r.name) + ' <span class="pp-cost">' + r.cost + ' 🐟</span></div>'
         + (r.desc ? '<div class="pp-id">' + L.esc(r.desc) + '</div>' : '') + '</div>'
-        + '<span class="pp-acts"><button class="btn primary sm" data-pact="redeem" data-id="' + r.id + '">兑换</button>'
+        + '<span class="pp-acts"><button class="btn primary sm" data-pact="redeem" data-id="' + r.id + I18n.html('">兑换</button>')
         + '<button class="btn ghost sm" data-pact="delrw" data-id="' + r.id + '">删</button></span></div>';
     });
-    h += '<div class="pp-field"><input id="' + idp + 'RwName" placeholder="奖励名称，比如「看一集番」" maxlength="20">'
+    h += '<div class="pp-field"><input id="' + idp + I18n.html('RwName" placeholder="奖励名称，比如「看一集番」" maxlength="20">')
       + '<input id="' + idp + 'RwCost" type="number" placeholder="鱼干" style="max-width:78px">'
       + '<button class="btn ghost sm" data-pact="addrw">加</button></div>';
 
@@ -1695,7 +1702,7 @@
     }
     var doneTodo = p.todo.filter(function (t) { return t.done; }).slice(-3);
     if (doneTodo.length) {
-      h += '<div class="pp-sec" style="margin-top:10px">最近兑现：' + doneTodo.map(function (t) { return L.esc(t.name); }).join(' · ') + ' ✓</div>';
+      h += I18n.html('<div class="pp-sec" style="margin-top:10px">最近兑现：') + doneTodo.map(function (t) { return L.esc(t.name); }).join(' · ') + ' ✓</div>';
     }
     return h;
   }
@@ -1710,7 +1717,7 @@
   function tabMem() {
     var all = ST().memories || [];
     /* 没有「对话」这一档了：对话不留记录（master 口径），记忆库只装"你做过的事" */
-    var KINDS = [['', '全部'], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', '小鱼干'], ['milestone', '里程碑'], ['fun', '放开'], ['note', '记录'], ['rest', '休息']];
+    var KINDS = [['', I18n.t('全部')], ['feed', '投喂'], ['pet', '抚摸'], ['task', '任务'], ['fish', I18n.t('小鱼干')], ['milestone', I18n.t('里程碑')], ['fun', '放开'], ['note', I18n.t('记录')], ['rest', '休息']];
     var h = '<div class="pp-sec">它记得你做的事，也记得你说过的话。共 ' + all.length + ' 条。</div>';
     h += '<div class="pp-tabs">' + KINDS.map(function (k) {
       return '<button class="pp-tab' + (memKind === k[0] ? ' on' : '') + '" data-pact="memkind" data-k="' + k[0] + '">' + k[1] + '</button>';
@@ -1727,9 +1734,9 @@
     else {
       h += '<div class="mem-list">';
       list.forEach(function (m) {
-        h += '<div class="mem-item"><span class="mem-kind k-' + (m.kind || 'note') + '">' + (L.MEM_KIND[m.kind] || '记录') + '</span>'
+        h += '<div class="mem-item"><span class="mem-kind k-' + (m.kind || 'note') + '">' + (L.MEM_KIND[m.kind] || I18n.t('记录')) + '</span>'
           + '<div class="mem-body">' + L.esc(m.text)
-          + '<span class="mem-time">' + new Date(m.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div></div>';
+          + '<span class="mem-time">' + new Date(m.at).toLocaleString(I18n.locale(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div></div>';
       });
       h += '</div>';
     }
@@ -1771,18 +1778,18 @@
     /* 主视觉 + 状态 + 快捷互动 */
     h += '<div class="pg-hero">'
       + '<div class="pg-stage"><div class="pg-cat" id="pgCat"></div>'
-      + '<div class="pg-badge">' + L.tierText(T) + ' · 今日状态 ' + Math.round(v) + '</div>'
+      + '<div class="pg-badge">' + L.tierText(T) + I18n.t(' · 今日状态 ') + Math.round(v) + '</div>'
       + '<div class="pg-bub" id="pgBub"></div></div>'
       + '<div class="pg-side">'
       + '<div class="pg-name">' + L.esc(p.name) + '<span class="pp-lv">' + lv + '</span></div>'
-      + '<div class="pp-bars">' + bar('🍚 饱食', p.hunger, 'h') + bar('💗 亲密', p.intimacy, 'i')
-      + '<div class="pp-bar-row"><span class="lb">🐟 小鱼干</span><span class="pp-bar"><i class="h" style="width:' + Math.min(100, p.fish) + '%"></i></span><span class="vv">' + p.fish + ' 条</span></div>'
+      + '<div class="pp-bars">' + bar(I18n.t('🍚 饱食'), p.hunger, 'h') + bar(I18n.t('💗 亲密'), p.intimacy, 'i')
+      + I18n.html('<div class="pp-bar-row"><span class="lb">🐟 小鱼干</span><span class="pp-bar"><i class="h" style="width:') + Math.min(100, p.fish) + '%"></i></span><span class="vv">' + p.fish + I18n.html(' 条</span></div>')
       + '</div>'
-      + '<div class="pp-sec" style="margin:0">连续着陆 ' + L.landingDays() + ' 天 · 相伴 ' + days + ' 天 · 今天赚到 ' + earnedToday + ' 🐟</div>'
+      + I18n.html('<div class="pp-sec" style="margin:0">连续着陆 ') + L.landingDays() + I18n.t(' 天 · 相伴 ') + days + I18n.t(' 天 · 今天赚到 ') + earnedToday + ' 🐟</div>'
       + '<div class="pg-actions">'
-      + '<button class="btn primary sm" data-pact="pat">🤚 抚摸</button>'
-      + '<button class="btn ghost sm" data-pact="panel-shop">🛒 商城</button>'
-      + '<button class="btn ghost sm" data-pact="panel-mem">📖 记忆库</button>'
+      + I18n.html('<button class="btn primary sm" data-pact="pat">🤚 抚摸</button>')
+      + I18n.html('<button class="btn ghost sm" data-pact="panel-shop">🛒 商城</button>')
+      + I18n.html('<button class="btn ghost sm" data-pact="panel-mem">📖 记忆库</button>')
       + '</div></div></div>';
 
     /* 和它玩（新增交互） */
@@ -1791,68 +1798,68 @@
       return '<button class="pg-ibtn" data-pact="act" data-id="' + id + '"><span class="e">' + emoji + '</span>'
         + '<b>' + title + '</b><small>' + sub + '</small></button>';
     }
-    h += '<div class="card"><div class="row between"><h2>🐾 和它玩</h2>'
+    h += I18n.html('<div class="card"><div class="row between"><h2>🐾 和它玩</h2>')
       + (dazing ? '<span class="pg-chip on" id="pgDaze">发呆中</span>' : '')
       + (p.sleeping ? '<span class="pg-chip">💤 睡觉中</span>' : '') + '</div>'
-      + '<div class="hint">怎么点都行，只加不减，没有惩罚。冷却只是防连点。</div>'
+      + I18n.html('<div class="hint">怎么点都行，只加不减，没有惩罚。冷却只是防连点。</div>')
       + '<div class="pg-grid">'
-      + ibtn('play', '🪄', '逗它玩', '亲密 +2（有逗猫棒 +3）')
-      + ibtn('wave', '👋', '挥挥手', '摇摆着回应你 · 亲密 +1')
-      + ibtn('highfive', '🙌', '击个掌', '跳起来击掌 · 亲密 +1')
-      + ibtn('hug', '🫶', '抱一下', '靠近你，冒出小爱心 · 亲密 +1')
-      + ibtn('study', '📖', '陪我读书', '再点一次结束陪读；专注时自动陪伴')
-      + ibtn('lift', '🙌', '举高高', '亲密 +1')
-      + ibtn('chin', '🤏', '挠下巴', '亲密 +2')
-      + ibtn('call', '📣', '喊它一声', '它会应你，不加也不减')
-      + ibtn('daze', '☁️', dazing ? '发呆中…' : '一起发呆 60 秒', '什么都不做也算陪伴，结束 +2')
-      + ibtn('sleep', p.sleeping ? '☀️' : '💤', p.sleeping ? '叫醒它' : '让它睡一会',
-        p.sleeping ? '醒来看见你会很开心' : '睡觉期间饱食度不掉')
+      + ibtn('play', '🪄', I18n.t('逗它玩'), I18n.t('亲密 +2（有逗猫棒 +3）'))
+      + ibtn('wave', '👋', I18n.t('挥挥手'), I18n.t('摇摆着回应你 · 亲密 +1'))
+      + ibtn('highfive', '🙌', I18n.t('击个掌'), I18n.t('跳起来击掌 · 亲密 +1'))
+      + ibtn('hug', '🫶', I18n.t('抱一下'), I18n.t('靠近你，冒出小爱心 · 亲密 +1'))
+      + ibtn('study', '📖', I18n.t('陪我读书'), I18n.t('再点一次结束陪读；专注时自动陪伴'))
+      + ibtn('lift', '🙌', I18n.t('举高高'), I18n.t('亲密 +1'))
+      + ibtn('chin', '🤏', I18n.t('挠下巴'), I18n.t('亲密 +2'))
+      + ibtn('call', '📣', I18n.t('喊它一声'), I18n.t('它会应你，不加也不减'))
+      + ibtn('daze', '☁️', dazing ? '发呆中…' : I18n.t('一起发呆 60 秒'), I18n.t('什么都不做也算陪伴，结束 +2'))
+      + ibtn('sleep', p.sleeping ? '☀️' : '💤', p.sleeping ? '叫醒它' : I18n.t('让它睡一会'),
+        p.sleeping ? '醒来看见你会很开心' : I18n.t('睡觉期间饱食度不掉'))
       + '</div></div>';
 
     /* 喂它 */
-    h += '<div class="card"><h2>🍚 喂它</h2><div class="hint">食物用小鱼干在商城买，买完存在仓库里。'
-      + '做事的每一分钟都攒进池子，每满 60 分钟赚 1 条。</div>';
+    h += I18n.html('<div class="card"><h2>🍚 喂它</h2><div class="hint">食物用小鱼干在商城买，买完存在仓库里。')
+      + I18n.html('做事的每一分钟都攒进池子，每满 60 分钟赚 1 条。</div>');
     ITEMS.filter(function (it) { return it.kind === 'food'; }).forEach(function (it) {
       var own = p.owned[it.id] || 0;
       h += '<div class="pp-item"><span class="pp-emo">' + it.emoji + '</span>'
         + '<div class="pp-ib"><div class="pp-in">' + it.name + ' <span class="pp-cost">' + it.cost + ' 🐟</span></div>'
-        + '<div class="pp-id">' + (own ? '库存 ' + own + ' 份' : '库存 0') + ' · 饱食 +' + it.hunger + ' · 亲密 +' + (it.intimacy || 0) + '</div></div>'
+        + '<div class="pp-id">' + (own ? I18n.t('库存 ') + own + I18n.t(' 份') : I18n.t('库存 0')) + I18n.t(' · 饱食 +') + it.hunger + I18n.t(' · 亲密 +') + (it.intimacy || 0) + '</div></div>'
         + '<span class="pp-acts">'
-        + (own ? '<button class="btn primary sm" data-pact="feed" data-id="' + it.id + '">喂</button>' : '')
-        + '<button class="btn ghost sm" data-pact="buy" data-id="' + it.id + '">买</button>'
+        + (own ? '<button class="btn primary sm" data-pact="feed" data-id="' + it.id + I18n.html('">喂</button>') : '')
+        + '<button class="btn ghost sm" data-pact="buy" data-id="' + it.id + I18n.html('">买</button>')
         + '</span></div>';
     });
     h += '</div>';
 
     /* 说说话：同样不留记录 —— 输入即走，回答以气泡回来（冒在输入框正上方） */
-    h += '<div class="card"><h2>💬 说一句话</h2><div class="hint">'
-      + (petAI().ready ? petAIText() + '：它会带着对你的记忆回你。' : '本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。')
-      + '这里只显示当前回应；对话上下文会保存在本机。</div>';
+    h += I18n.html('<div class="card"><h2>💬 说一句话</h2><div class="hint">')
+      + (petAI().ready ? petAIText() + '：它会带着对你的记忆回你。' : I18n.t('本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。'))
+      + I18n.html('这里只显示当前回应；对话上下文会保存在本机。</div>');
     h += '<div class="pg-say" id="pgSay"></div>';
     h += '<div class="pp-quick">' + QUICK_SAY.map(function (t) {
       return '<button class="pp-q" data-pact="qsay" data-id="' + t + '">' + t + '</button>';
     }).join('') + '</div>';
     h += '<div class="pp-inrow"><input id="pgChatIn" placeholder="跟它说点什么…" maxlength="200">'
-      + '<button class="btn primary sm" data-pact="send">发送</button></div></div>';
+      + I18n.html('<button class="btn primary sm" data-pact="send">发送</button></div></div>');
 
     /* 详情设定 */
-    h += '<div class="card"><h2>⚙️ 详情设定</h2><div class="hint">改完立即生效，全部只存在本地。</div>';
-    h += '<div class="pg-row"><span class="lb">它的名字<small>挂件气泡、对话、记忆里都用这个名字</small></span>'
+    h += I18n.html('<div class="card"><h2>⚙️ 详情设定</h2><div class="hint">改完立即生效，全部只存在本地。</div>');
+    h += I18n.html('<div class="pg-row"><span class="lb">它的名字<small>挂件气泡、对话、记忆里都用这个名字</small></span>')
       + '<input class="pg-inp" id="pgName" value="' + L.esc(p.name) + '" maxlength="12" style="width:132px">'
-      + '<button class="btn ghost sm" data-pact="rename">保存</button></div>';
-    h += swRow('挂件常驻显示', '关掉后右下角挂件会消失，随时可以在这里打开', !p.widget.hidden, 'tg-hide');
-    h += '<div class="pg-row"><span class="lb">挂件大小<small>位置可以直接拖动挂件来换</small></span>'
+      + I18n.html('<button class="btn ghost sm" data-pact="rename">保存</button></div>');
+    h += swRow(I18n.t('挂件常驻显示'), I18n.t('关掉后右下角挂件会消失，随时可以在这里打开'), !p.widget.hidden, 'tg-hide');
+    h += I18n.html('<div class="pg-row"><span class="lb">挂件大小<small>位置可以直接拖动挂件来换</small></span>')
       + '<span class="pg-chips">' + ['S', 'M', 'L'].map(function (k) {
         return '<button class="pg-chip' + ((p.widget.size || 'M') === k ? ' on' : '') + '" data-pact="size" data-id="' + k + '">' + k + '</button>';
-      }).join('') + '</span><button class="btn ghost sm" data-pact="reset-pos">归位</button></div>';
-    h += swRow('它主动说话', '关掉后它只在有事情时冒泡——不是不说话，是不打扰', !p.widget.quiet, 'tg-quiet');
-    h += swRow('不要让它饿', '打开后饱食度不再随时间下降。它一直在，不催你喂', !!p.noHunger, 'tg-nohunger');
+      }).join('') + I18n.html('</span><button class="btn ghost sm" data-pact="reset-pos">归位</button></div>');
+    h += swRow(I18n.t('它主动说话'), I18n.t('关掉后它只在有事情时冒泡——不是不说话，是不打扰'), !p.widget.quiet, 'tg-quiet');
+    h += swRow(I18n.t('不要让它饿'), I18n.t('打开后饱食度不再随时间下降。它一直在，不催你喂'), !!p.noHunger, 'tg-nohunger');
 
     /* 装扮（按部位切换） */
-    [['neck', '脖子上'], ['face', '脸上'], ['head', '头顶']].forEach(function (slot) {
+    [['neck', I18n.t('脖子上')], ['face', I18n.t('脸上')], ['head', I18n.t('头顶')]].forEach(function (slot) {
       var sid = slot[0];
       h += '<div class="pg-row"><span class="lb">' + slot[1] + '</span><span class="pg-chips">'
-        + '<button class="pg-chip' + (!p.gear[sid] ? ' on' : '') + '" data-pact="gear" data-slot="' + sid + '" data-id="">不戴</button>';
+        + '<button class="pg-chip' + (!p.gear[sid] ? ' on' : '') + '" data-pact="gear" data-slot="' + sid + I18n.html('" data-id="">不戴</button>');
       ITEMS.filter(function (it) { return it.kind === 'gear' && it.slot === sid; }).forEach(function (it) {
         var has = !!p.owned[it.id];
         h += '<button class="pg-chip' + (p.gear[sid] === it.id ? ' on' : '') + (has ? '' : ' lock')
@@ -1863,27 +1870,27 @@
     h += '</div>';
 
     /* 数据 */
-    h += '<div class="card"><h2>📊 它的数据</h2><div class="pg-stats">'
-      + stat(days, '相伴天数')
-      + stat(p.stats.fed, '喂食次数')
-      + stat(p.stats.patted, '抚摸次数')
-      + stat(p.stats.chats, '对话轮次')
-      + stat(p.earned || 0, '累计赚到 🐟')
-      + stat(p.spent || 0, '累计花掉 🐟')
-      + stat(earnedToday, '今天赚到 🐟')
-      + stat((ST().memories || []).length, '记忆条数')
+    h += I18n.html('<div class="card"><h2>📊 它的数据</h2><div class="pg-stats">')
+      + stat(days, I18n.t('相伴天数'))
+      + stat(p.stats.fed, I18n.t('喂食次数'))
+      + stat(p.stats.patted, I18n.t('抚摸次数'))
+      + stat(p.stats.chats, I18n.t('对话轮次'))
+      + stat(p.earned || 0, I18n.t('累计赚到 🐟'))
+      + stat(p.spent || 0, I18n.t('累计花掉 🐟'))
+      + stat(earnedToday, I18n.t('今天赚到 🐟'))
+      + stat((ST().memories || []).length, I18n.t('记忆条数'))
       + '</div></div>';
 
     /* 鱼干账本 */
     var led = (p.fishLog || []).slice(-14).reverse();
-    h += '<div class="card"><h2>🐟 小鱼干账本</h2><div class="hint">只有收入和支出，没有罚。</div>';
-    if (!led.length) h += '<div class="empty">还没有账。</div>';
+    h += I18n.html('<div class="card"><h2>🐟 小鱼干账本</h2><div class="hint">只有收入和支出，没有罚。</div>');
+    if (!led.length) h += I18n.html('<div class="empty">还没有账。</div>');
     else {
       h += '<div class="pg-ledger">';
       led.forEach(function (x) {
         h += '<div class="pg-led"><b>' + (x.n > 0 ? '+' + x.n : x.n) + '</b>'
           + '<span style="flex:1;min-width:0">' + L.esc(x.reason || '') + '</span>'
-          + '<span style="flex:none">' + new Date(x.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div>';
+          + '<span style="flex:none">' + new Date(x.at).toLocaleString(I18n.locale(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div>';
       });
       h += '</div>';
     }
@@ -1891,26 +1898,26 @@
 
     /* 记忆 */
     var mems = (ST().memories || []).slice(-8).reverse();
-    h += '<div class="card"><div class="row between"><h2>📖 最近记忆</h2>'
-      + '<button class="btn ghost sm" data-pact="panel-mem">全部 ' + (ST().memories || []).length + ' 条</button></div>';
+    h += I18n.html('<div class="card"><div class="row between"><h2>📖 最近记忆</h2>')
+      + I18n.html('<button class="btn ghost sm" data-pact="panel-mem">全部 ') + (ST().memories || []).length + I18n.html(' 条</button></div>');
     if (!mems.length) h += '<div class="empty">还没有记忆。</div>';
     else {
       h += '<div class="mem-list">';
       mems.forEach(function (m) {
-        h += '<div class="mem-item"><span class="mem-kind k-' + (m.kind || 'note') + '">' + (L.MEM_KIND[m.kind] || '记录') + '</span>'
+        h += '<div class="mem-item"><span class="mem-kind k-' + (m.kind || 'note') + '">' + (L.MEM_KIND[m.kind] || I18n.t('记录')) + '</span>'
           + '<div class="mem-body">' + L.esc(m.text)
-          + '<span class="mem-time">' + new Date(m.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div></div>';
+          + '<span class="mem-time">' + new Date(m.at).toLocaleString(I18n.locale(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span></div></div>';
       });
       h += '</div>';
     }
     h += '</div>';
 
     /* 危险操作 */
-    h += '<div class="card"><h2>🧯 重置</h2><div class="hint">只影响伙伴，不动你的任务、倾倒和情绪记录。</div>'
+    h += I18n.html('<div class="card"><h2>🧯 重置</h2><div class="hint">只影响伙伴，不动你的任务、倾倒和情绪记录。</div>')
       + '<div class="pg-danger">'
-      + '<button class="btn ghost sm" data-pact="clear-chat">让它忘掉说过的话</button>'
-      + '<button class="btn ghost sm" data-pact="clear-mem">清空全部记忆</button>'
-      + '<button class="btn danger sm" data-pact="reset-pet">重置伙伴（回到刚认识）</button>'
+      + I18n.html('<button class="btn ghost sm" data-pact="clear-chat">让它忘掉说过的话</button>')
+      + I18n.html('<button class="btn ghost sm" data-pact="clear-mem">清空全部记忆</button>')
+      + I18n.html('<button class="btn danger sm" data-pact="reset-pet">重置伙伴（回到刚认识）</button>')
       + '</div></div>';
 
     root.innerHTML = h;
@@ -1950,7 +1957,7 @@
       var nm = (($('pgName') || {}).value || '').trim();
       if (!nm) { L.toast('给个名字'); return; }
       p.name = nm; L.save();
-      L.addMemory('note', '它现在叫「' + nm + '」了', ['伙伴']);
+      L.addMemory('note', '它现在叫「' + nm + '」了', [I18n.t('伙伴')]);
       say('记住啦，我叫' + nm + '。', 3600);
       L.toast('改名成功'); L.render();
     }
@@ -1960,14 +1967,14 @@
     else if (act === 'tg-quiet') { p.widget.quiet = !p.widget.quiet; L.save(); if (!p.widget.quiet) say('那我说了。', 2600); L.render(); }
     else if (act === 'tg-nohunger') {
       p.noHunger = !p.noHunger; p.lastTickAt = Date.now(); L.save();
-      L.toast(p.noHunger ? '已开启：它不会再饿了' : '已关闭：饱食度会随时间慢慢下降');
+      L.toast(p.noHunger ? I18n.t('已开启：它不会再饿了') : I18n.t('已关闭：饱食度会随时间慢慢下降'));
       if (p.noHunger) say('那我就不催你了。', 3200);
       refresh(); L.render();
     }
     else if (act === 'gear') {
       var slot = el.dataset.slot;
       if (!id) { p.gear[slot] = null; }
-      else if (!p.owned[id]) { L.toast('还没买这个装扮，去商城看看'); return; }
+      else if (!p.owned[id]) { L.toast(I18n.t('还没买这个装扮，去商城看看')); return; }
       else { p.gear[slot] = (p.gear[slot] === id) ? null : id; }
       L.save();
       if (pageCat) pageCat.setGear(p.gear);
@@ -1977,19 +1984,19 @@
     else if (act === 'clear-chat') {
       /* 界面上已经没有对话记录了，清的是**它心里的那点上下文**（p.chat）——
          按钮文案也得跟着改，不然"清对话记录"会让人以为哪儿还藏着一份 */
-      if (window.confirm('让它忘掉你们说过的话？（只影响对话上下文，不动任务和记忆库）')) {
+      if (window.confirm(I18n.t('让它忘掉你们说过的话？（只影响对话上下文，不动任务和记忆库）'))) {
         p.chat = []; L.save();
         L.toast('它把聊天的事忘掉了（你做的事还记着）');
         L.render();
       }
     }
     else if (act === 'clear-mem') {
-      if (window.confirm('清空全部记忆（包括任务、鱼干、里程碑的记录）？')) {
-        ST().memories = []; L.save(); L.toast('记忆清空了'); L.render();
+      if (window.confirm(I18n.t('清空全部记忆（包括任务、鱼干、里程碑的记录）？'))) {
+        ST().memories = []; L.save(); L.toast(I18n.t('记忆清空了')); L.render();
       }
     }
     else if (act === 'reset-pet') {
-      if (window.confirm('重置伙伴？等级、亲密度、鱼干、装扮都会回到刚认识的样子。')) {
+      if (window.confirm(I18n.t('重置伙伴？等级、亲密度、鱼干、装扮都会回到刚认识的样子。'))) {
         ST().pet = {}; ensure(); L.save();
         if (cat) { cat.setGear(ensure().gear); }
         L.toast('它重新认识你了');
@@ -2034,12 +2041,12 @@
       var nm = ($('ppName') || {}).value || '';
       nm = nm.trim();
       if (!nm) { L.toast('给个名字'); return; }
-      p.name = nm; L.save(); L.addMemory('note', '它现在叫「' + nm + '」了', ['伙伴']); say('记住啦，我叫' + nm + '。', 3600); refresh(); renderPanel();
+      p.name = nm; L.save(); L.addMemory('note', '它现在叫「' + nm + '」了', [I18n.t('伙伴')]); say('记住啦，我叫' + nm + '。', 3600); refresh(); renderPanel();
     }
     else if (act === 'reset-pos') { p.widget.x = null; p.widget.y = null; L.save(); applyPos(); placePanel(); L.toast('回到右下角'); }
     else if (act === 'clear-mem') {
-      if (window.confirm('清空全部记忆？记录会没，但它还在。')) {
-        ST().memories = []; L.save(); L.toast('记忆清空了'); renderPanel();
+      if (window.confirm(I18n.t('清空全部记忆？记录会没，但它还在。'))) {
+        ST().memories = []; L.save(); L.toast(I18n.t('记忆清空了')); renderPanel();
       }
     }
   }
@@ -2069,7 +2076,7 @@
     var t = L.today();
     if (p.lastGreet === t) return;
     p.lastGreet = t;
-    L.addMemory('daily', '新的一天，小陆说：' + dailyLine(), ['每日']);
+    L.addMemory('daily', I18n.t('新的一天，小陆说：') + dailyLine(), [I18n.t('每日')]);
     L.save();
     if (!p.widget.quiet) setTimeout(function () {
       if (!ensure().widget.quiet && !(ST().timer && ST().timer.discipline && !ST().timer.paused)) say(dailyLine(), 5200);
@@ -2158,7 +2165,7 @@
   function boot() {
     if (booted) return;
     L = window.Landing;
-    if (!L) { console.warn('[pet] Landing bridge 未就绪，稍后重试'); return; }
+    if (!L) { console.warn(I18n.t('[pet] Landing bridge 未就绪，稍后重试')); return; }
     booted = true;
     var p = ensure();
     buildDOM();
@@ -2166,7 +2173,7 @@
     /* 首次见面 */
     if (!p.seenIntro) {
       p.seenIntro = true;
-      L.addMemory('note', '小陆来了。它会住在右下角，靠你做的事长大。', ['伙伴']);
+      L.addMemory('note', I18n.t('小陆来了。它会住在右下角，靠你做的事长大。'), [I18n.t('伙伴')]);
       L.save();
       setTimeout(function () { say(pick(LINES.intro), 6000); }, 1200);
     }
@@ -2189,7 +2196,7 @@
       var p2 = ensure();
       var act = el.dataset.pact;
       if (act === 'collapse') { p2.widget.collapsed = true; L.save(); applyPos(); closePanel(); }
-      else if (act === 'hide') { p2.widget.hidden = true; L.save(); applyPos(); closePanel(); L.toast('它藏起来了，「我的 → 伙伴」可以叫回来'); }
+      else if (act === 'hide') { p2.widget.hidden = true; L.save(); applyPos(); closePanel(); L.toast(I18n.t('它藏起来了，「我的 → 伙伴」可以叫回来')); }
       /* 挂件上的快捷动作：不用先展开面板，顺手就能做 */
       else if (act === 'q-feed') { openPanel('feed'); }
       else if (act === 'q-pat') { pat(); }
@@ -2284,7 +2291,7 @@
       p.widget.hidden = false;
       p.widget.collapsed = false;
       L.save(); applyPos();
-      say('我在这儿。', 2600);
+      say(I18n.t('我在这儿。'), 2600);
     },
     hide: function () {
       if (!booted) boot();

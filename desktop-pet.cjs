@@ -1,7 +1,7 @@
 'use strict';
 const {app,BrowserWindow,ipcMain,screen,Menu,globalShortcut}=require('electron');
 const path=require('path');
-module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,autoLaunch,closeBehavior}) {
+module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,autoLaunch,closeBehavior,i18n:I18n}) {
   let win=null,settingsWin=null,quitting=false,snapshot={},saveTimer,hit=true,recoveryRegistered=false,lastError='';
   const defaults={enabled:true,scale:1,opacity:1,lockDrag:false,clickThrough:false,hoverFade:false,alwaysOnTop:true,showTaskbar:false,showHints:true,panelOpen:false};
   const actions=new Set(['open','study','pause','resume','capture','settle','chat','pat','wave','hug','text','weekly','navigate','select','help','skins','playground']);
@@ -18,7 +18,7 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
   function persistPosition(){clearTimeout(saveTimer);if(!alive(win))return;const b=win.getBounds();writePrefs({desktopPet:Object.assign({},readPrefs().desktopPet||{},prefs(),{x:b.x,y:b.y})});}
   function recover(){lastError='';return configure({enabled:true,clickThrough:false});}
   function shortcut(on){
-    if(on&&!recoveryRegistered){if(!globalShortcut.register('F7',()=>recover()))throw Error('F7 已被其他程序占用，暂时不能开启鼠标穿透。可关闭占用后重试。');recoveryRegistered=true;}
+    if(on&&!recoveryRegistered){if(!globalShortcut.register('F7',()=>recover()))throw Error(I18n.t('F7 已被其他程序占用，暂时不能开启鼠标穿透。可关闭占用后重试。'));recoveryRegistered=true;}
     if(!on&&recoveryRegistered){globalShortcut.unregister('F7');recoveryRegistered=false;}
   }
   function inputMode(){if(alive(win))win.setIgnoreMouseEvents(prefs().clickThrough||!hit,{forward:true});}
@@ -54,9 +54,9 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
   function create(){
     if(alive(win)){const b=win.getBounds(),p=clamp(b.x,b.y);win.setPosition(p.x,p.y);win.showInactive();return;}
     const area=screen.getPrimaryDisplay().workArea,p=prefs(),size={width:Math.min(340,area.width-16),height:Math.min(Math.round(596+163*(p.scale-1)),area.height-16)},pos=clamp(Number.isFinite(p.x)?p.x:area.x+area.width-size.width-20,Number.isFinite(p.y)?p.y:area.y+area.height-size.height-20,size);
-    win=new BrowserWindow({...pos,...size,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:p.alwaysOnTop,skipTaskbar:!p.showTaskbar,resizable:false,show:false,title:'初华 · 着陆桌宠',webPreferences:{preload:path.join(__dirname,'desktop-pet-preload.js'),contextIsolation:true,nodeIntegration:false,spellcheck:false}});
+    win=new BrowserWindow({...pos,...size,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:p.alwaysOnTop,skipTaskbar:!p.showTaskbar,resizable:false,show:false,title:I18n.t('初华 · 着陆桌宠'),webPreferences:{preload:path.join(__dirname,'desktop-pet-preload.js'),contextIsolation:true,nodeIntegration:false,spellcheck:false}});
     win.setAlwaysOnTop(p.alwaysOnTop,'floating');inputMode();
-    win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',e=>e.preventDefault());
+    win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(e,url)=>{if(url!==win.webContents.getURL())e.preventDefault();});
     win.once('ready-to-show',()=>{if(prefs().enabled)win.showInactive();notify();});win.loadFile(path.join(__dirname,'desktop-pet.html'));
     win.on('close',e=>{if(!quitting){e.preventDefault();setPanel(false);}});win.on('closed',()=>{win=null;});
     win.on('move',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(persistPosition,200);});
@@ -64,20 +64,20 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
   }
   function openSettings(){
     if(alive(settingsWin)){if(settingsWin.isMinimized())settingsWin.restore();settingsWin.show();settingsWin.focus();notify();return true;}
-    settingsWin=new BrowserWindow({width:980,height:740,minWidth:740,minHeight:560,title:'桌宠设置 · 着陆',backgroundColor:'#cbcfb8',show:false,webPreferences:{preload:path.join(__dirname,'desktop-pet-settings-preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
-    settingsWin.webContents.setWindowOpenHandler(()=>({action:'deny'}));settingsWin.webContents.on('will-navigate',e=>e.preventDefault());
+    settingsWin=new BrowserWindow({width:980,height:740,minWidth:740,minHeight:560,title:I18n.t('桌宠设置 · 着陆'),backgroundColor:'#cbcfb8',show:false,webPreferences:{preload:path.join(__dirname,'desktop-pet-settings-preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+    settingsWin.webContents.setWindowOpenHandler(()=>({action:'deny'}));settingsWin.webContents.on('will-navigate',(e,url)=>{if(url!==settingsWin.webContents.getURL())e.preventDefault();});
     settingsWin.once('ready-to-show',()=>settingsWin.show());settingsWin.on('closed',()=>{settingsWin=null;});settingsWin.loadFile(path.join(__dirname,'desktop-pet-settings.html'));return true;
   }
   function menuConfigure(p){try{configure(p);}catch(e){lastError=e.message;openSettings();notify();}}
   function contextMenu(){const p=prefs();return Menu.buildFromTemplate([
-    {label:'桌宠设置…',click:openSettings},{label:p.panelOpen?'收起对话（角色保留）':'和伙伴说话',click:()=>setPanel(!p.panelOpen)},
-    {label:'更换皮肤 · Petdex',click:()=>openSkins&&openSkins()},{label:'和伙伴玩一会',click:()=>command({action:'playground'})},{type:'separator'},
-    {label:'锁定位置',type:'checkbox',checked:p.lockDrag,click:i=>menuConfigure({lockDrag:i.checked})},
-    {label:'游戏模式 / 鼠标穿透（F7 恢复）',type:'checkbox',checked:p.clickThrough,click:i=>menuConfigure({clickThrough:i.checked})},
-    {label:'找回桌宠并恢复互动',click:reposition},{type:'separator'},
-    {label:'打开着陆',click:()=>command({action:'open'})},{label:'开始学 Python · 5 分钟',click:()=>command({action:'study',track:'python'})},{label:'开始学 PyTorch · 5 分钟',click:()=>command({action:'study',track:'pytorch'})},
-    {label:snapshot.mode==='paused'?'继续学习':'暂停学习',click:()=>command({action:snapshot.mode==='paused'?'resume':'pause'})},{label:'截屏记断点',click:()=>command({action:'capture'})},{label:'结束并记录',click:()=>command({action:'settle'})},
-    {type:'separator'},{label:'隐藏整个桌宠（托盘或首页可叫回）',click:()=>configure({enabled:false})}
+    {label:I18n.t('桌宠设置…'),click:openSettings},{label:p.panelOpen?I18n.t('收起对话（角色保留）'):I18n.t('和伙伴说话'),click:()=>setPanel(!p.panelOpen)},
+    {label:I18n.t('更换皮肤 · Petdex'),click:()=>openSkins&&openSkins()},{label:I18n.t('和伙伴玩一会'),click:()=>command({action:'playground'})},{type:'separator'},
+    {label:I18n.t('锁定位置'),type:'checkbox',checked:p.lockDrag,click:i=>menuConfigure({lockDrag:i.checked})},
+    {label:I18n.t('游戏模式 / 鼠标穿透（F7 恢复）'),type:'checkbox',checked:p.clickThrough,click:i=>menuConfigure({clickThrough:i.checked})},
+    {label:I18n.t('找回桌宠并恢复互动'),click:reposition},{type:'separator'},
+    {label:I18n.t('打开着陆'),click:()=>command({action:'open'})},{label:I18n.t('开始学 Python · 5 分钟'),click:()=>command({action:'study',track:'python'})},{label:I18n.t('开始学 PyTorch · 5 分钟'),click:()=>command({action:'study',track:'pytorch'})},
+    {label:snapshot.mode==='paused'?I18n.t('继续学习'):I18n.t('暂停学习'),click:()=>command({action:snapshot.mode==='paused'?'resume':'pause'})},{label:I18n.t('截屏记断点'),click:()=>command({action:'capture'})},{label:I18n.t('结束并记录'),click:()=>command({action:'settle'})},
+    {type:'separator'},{label:I18n.t('隐藏整个桌宠（托盘或首页可叫回）'),click:()=>configure({enabled:false})}
   ]);}
   ipcMain.handle('petdesk:status',e=>(owner(e)||petSender(e))?status():null);
   ipcMain.handle('petdesk:reveal',e=>{if(mainSender(e)){showMain();return true;}return false;});
@@ -90,7 +90,7 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
   ipcMain.handle('petdesk:setCloseBehavior',(e,value)=>{if(!settingsSender(e)||!closeBehavior||!['tray','ask','quit'].includes(value))return null;closeBehavior.set(value);return closeBehavior.get();});
   ipcMain.on('petdesk:panel',(e,on)=>{if(petSender(e))setPanel(on);});
   ipcMain.on('petdesk:settingsClose',e=>{if(settingsSender(e))settingsWin.close();});
-  ipcMain.on('petdesk:publish',(e,p)=>{if(!mainSender(e)||!p||typeof p!=='object')return; snapshot={name:String(p.name||'初华').slice(0,32),course:String(p.course||'Python').slice(0,60),track:p.track==='pytorch'?'pytorch':'python',clock:String(p.clock||'').slice(0,12),mode:['idle','focus','paused','done','sleep'].includes(p.mode)?p.mode:'idle',line:String(p.line||'').slice(0,240),reply:String(p.reply||'').slice(0,240),replyId:Number(p.replyId)||0,gear:{head:['crown','ribbon','beret','headphones','starclip'].includes(p.gear?.head)?p.gear.head:null,face:p.gear?.face==='glasses'?'glasses':null,neck:p.gear?.neck==='scarf'?'scarf':null},studyMode:!!p.studyMode,gentle:!!p.gentle,sleeping:!!p.sleeping,motion:['wave','hug','pat','highfive','walk','music','camera','sketch','laser','hop'].includes(p.motion)?p.motion:null,motionId:Number(p.motionId)||0};if(win&&!win.isDestroyed())win.webContents.send('petdesk:state',snapshot);});
+  ipcMain.on('petdesk:publish',(e,p)=>{if(!mainSender(e)||!p||typeof p!=='object')return; snapshot={name:String(p.name||I18n.t('初华')).slice(0,32),course:String(p.course||'Python').slice(0,60),track:p.track==='pytorch'?'pytorch':'python',clock:String(p.clock||'').slice(0,12),mode:['idle','focus','paused','done','sleep'].includes(p.mode)?p.mode:'idle',line:String(p.line||'').slice(0,240),reply:String(p.reply||'').slice(0,240),replyId:Number(p.replyId)||0,gear:{head:['crown','ribbon','beret','headphones','starclip'].includes(p.gear?.head)?p.gear.head:null,face:p.gear?.face==='glasses'?'glasses':null,neck:p.gear?.neck==='scarf'?'scarf':null},studyMode:!!p.studyMode,gentle:!!p.gentle,sleeping:!!p.sleeping,motion:['wave','hug','pat','highfive','walk','music','camera','sketch','laser','hop'].includes(p.motion)?p.motion:null,motionId:Number(p.motionId)||0};if(win&&!win.isDestroyed())win.webContents.send('petdesk:state',snapshot);});
 
   ipcMain.handle('petdesk:ready',e=>petSender(e)?snapshot:null);
   ipcMain.handle('petdesk:command',(e,p)=>petSender(e)&&!prefs().clickThrough?command(p):{ok:false});

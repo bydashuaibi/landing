@@ -7,3 +7,6 @@ community-backend/community.json
 
 # 冒烟测试产物
 tools/_shots/
+*.jks
+*.keystore
+tools/.translator-page.tmp

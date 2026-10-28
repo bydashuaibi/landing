@@ -1,0 +1,1454 @@
+# Chinese source | English | 日本語
+着陆|StudyTrail|学びのあと
+今日|Today|今日
+今日行动|Today’s actions|今日の行動
+周报|Weekly review|週間レビュー
+日报|Tech digest|技術ダイジェスト
+技术日报|Tech digest|技術ダイジェスト
+陪伴|Talk|おしゃべり
+AI 陪伴|AI companion|AIと話す
+伙伴|Companion|パートナー
+伙伴养成|Companion care|パートナー育成
+商城|Shop|ショップ
+我的|My space|マイページ
+我的与设置|My space & settings|マイページ・設定
+设置|Settings|設定
+个人空间|Personal space|自分のスペース
+按照你的节奏|At your own pace|あなたのペースで
+今天，往前一点点就好。|One small step is enough today.|今日は、少しだけ前へ。
+每天一点，慢慢做到|Small steps, steady progress|毎日少しずつ、できることから
+添加计划|Add a plan|予定を追加
+打开主导航|Open navigation|メニューを開く
+今天的学习与陪伴|Today’s learning and company|今日の学びとパートナー
+慢慢来，|Take your time.|ゆっくりでも、
+也在向前。|You’re moving forward.|前に進んでいる。
+留一点时间，给真正想学的东西。\n从 Python 或 PyTorch 的一个小例子开始。|Make time for what you want to learn.\nStart with one small Python or PyTorch example.|学びたいことに、少し時間を。\nPythonやPyTorchの小さな例から始めよう。
+回到当前专注|Back to your session|今の集中に戻る
+先学 5 分钟|Start with 5 minutes|まず5分だけ
+显示到桌面|Show desktop pet|デスクトップに表示
+桌宠设置|Desktop pet settings|デスクトップペット設定
+FOCUS / 今日专注|FOCUS / Today|FOCUS / 今日の集中
+PLANS / 完成计划|PLANS / Completed|PLANS / 達成した予定
+RHYTHM / 连续行动|RHYTHM / Streak|RHYTHM / 続けた日数
+少一点催促，多一点陪伴。|Less pressure. More company.|急かさず、そばにいる。
+继续上次的进度|Pick up where you left off|前回の続きから
+伙伴已经来到桌面，收起着陆也能继续陪你|Your companion is on the desktop and stays when you close the main window.|メイン画面を閉じても、パートナーはデスクトップにいます。
+桌宠暂时没有打开，请重试|Couldn’t show the desktop pet. Please try again.|表示できませんでした。もう一度お試しください。
+AFTER CLASS / 给自己的学习时间|AFTER CLASS / Time for your learning|AFTER CLASS / 自分のための学習時間
+下课之后，接着上次那一步|After class, take the next small step|授業のあと、前回の続きから
+· 按课表|· From your timetable|・時間割に合わせて
+课后提醒|After-class reminder|授業後のリマインダー
+◷ 设置课后提醒|◷ Set a reminder|◷ リマインダー設定
+手动记进度 ↗|Save progress manually ↗|進捗を手動で記録 ↗
+先记下你下次要做的第一步|Leave your next first step here|次に始める一歩を残そう
+▣ 截屏记断点|▣ Capture a checkpoint|▣ 画面を撮って進捗を記録
+历史断点|Checkpoint history|これまでの記録
+▶ 接着学 5 分钟|▶ Continue for 5 minutes|▶ 続きを5分だけ
+打开上次位置|Resume last position|前回の位置を開く
+打开资料|Open resource|教材を開く
+开始前：把手机调成专注模式，放到伸手拿不到的地方。|Before starting, enable Focus mode and put your phone out of reach.|始める前に、スマホを集中モードにして手の届かない場所へ。
+设置安卓手机防分心 →|Set up Android Focus mode →|Androidの集中設定 →
+配置开机自启和托盘常驻|Set up startup & background mode|自動起動・常駐を設定
+STUDY BUDDY / 一起慢慢来|STUDY BUDDY / At your pace|STUDY BUDDY / 一緒に、少しずつ
+你的宠物|Your companion|あなたのパートナー
+小陆|Little Trail|トレイル
+也在这里|is here with you|もここにいるよ
+学累了就互动一下。专注时，它会安静陪你。|Take a little break together. Your companion stays quiet during focus.|疲れたら少し遊ぼう。集中中は静かに見守るよ。
+👋 挥挥手|👋 Wave|👋 手を振る
+🙌 击个掌|🙌 High five|🙌 ハイタッチ
+🫶 抱一下|🫶 Hug|🫶 ハグ
+📖 陪我读书|📖 Read with me|📖 一緒に読書
+叫它回来|Bring them back|呼び戻す
+展开 / 叫它过来|Expand / bring closer|表示・呼び寄せる
+喂食、聊天与养成 →|Feed, talk & care →|ごはん・会話・育成 →
+· 下次从这里继续|· Next time, start here|・次はここから
+留一个具体的学习断点，下次打开就能接上。资料链接可以留空。|Save a specific next step so you can resume easily. A resource link is optional.|次に取り組むことを具体的に残そう。教材リンクは空欄でも大丈夫。
+下次先做什么？|What’s your next step?|次は何から始める？
+比如：接着第 6 节，自己写一遍列表推导式|For example: continue lesson 6 and write a list comprehension yourself|例：第6章の続きから、リスト内包表記を書いてみる
+你的课程 / 文档链接（HTTPS，可选）|Course or document link (HTTPS, optional)|講座・資料リンク（HTTPS・任意）
+粘贴你正在学的资料地址|Paste your learning resource link|学習中の教材リンクを貼り付ける
+记住这个断点|Save checkpoint|この進捗を保存
+请填写 HTTPS 资料链接，或先留空|Enter an HTTPS resource link, or leave it blank.|HTTPSのリンクを入力するか、空欄にしてください。
+记住了，下次直接从这里继续|Saved. Start here next time.|保存しました。次はここから。
+先结束当前的计时，再接着学|Finish the current timer before starting another session.|今のタイマーを終了してから始めてください。
+只承诺接下来的 5 分钟|Just commit to the next 5 minutes|まず、これからの5分だけ
+先把手机放远一点|Put your phone out of reach|まずスマホを遠くへ
+打开手机的专注 / 勿扰模式，把短视频和短剧应用暂停。然后让手机离开桌面。|Enable Focus or Do Not Disturb, pause distracting apps, and move your phone off the desk.|集中・おやすみモードを使い、動画アプリを休止して、スマホを机から離そう。
+这次只做|This time, just do|今回はこれだけ
+5 分钟结束后，可以休息，也可以继续。完成后写一句下次从哪接着做。|After 5 minutes, rest or keep going. Leave one sentence about where to resume.|5分たったら、休んでも続けてもOK。次に始める場所をひと言残そう。
+手机怎么设置|Phone settings|スマホの設定方法
+打开资料，|Open your resource,|教材を開いて、
+开始 5 分钟|Start 5 minutes|5分始める
+今天已经安排三件，可以先移除一件，再加入学习|You already have three plans today. Remove one before adding this.|今日の予定は3件あります。1件減らしてから追加してください。
+下课后，让着陆来找你|Let StudyTrail remind you after class|授業のあと、学びのあとがお知らせ
+每天读取当前教学周的课表，在最后一节课结束后休息一会，再来找你。|Use your current-week timetable to remind you after your final class and a break.|今週の時間割から、最後の授業と休憩のあとにお知らせします。
+提醒方式|Reminder schedule|リマインダー方式
+根据课表最后一节课|After your last class|最後の授業に合わせる
+固定时间|At a fixed time|決まった時刻
+下课后休息多久（0–180 分钟）|Break after class (0–180 minutes)|授業後の休憩（0〜180分）
+填写学校下课时间（一次设置，之后按课表自动安排）|Set school end times once, then follow your timetable|授業の終了時刻を一度設定すると、時間割に合わせて動作します
+现有教务课表只提供节次。请填写本校实际下课时间，留空的节次使用备用提醒时间。|The timetable provides periods only. Enter actual end times; blank periods use the fallback reminder.|時間割には時限のみ含まれます。終了時刻が空欄の場合は予備時刻を使います。
+节下课|period ends|時限の終了
+固定 / 备用提醒时间（无课或缺少下课时间时）|Fixed / fallback time (no classes or unknown end time)|固定・予備時刻（授業なし・終了時刻不明の場合）
+固定提醒 / 无课日在哪几天提醒？有课日按课表提醒。|Which days should use fixed reminders? Class days follow your timetable.|固定通知・授業のない日に通知する曜日。授業がある日は時間割に従います。
+开启课后提醒|Enable after-class reminders|授業後の通知を有効にする
+专注时识别到短视频关键词，暂停并提醒|Pause and remind me when distracting video keywords are detected|集中中に動画のキーワードを検知したら一時停止して通知
+依赖活动感知开启，通过窗口标题粗略判断，可能识别不准；不会关闭或拦截应用。|Requires activity tracking. Window-title matching is approximate and does not block apps.|利用状況の記録が必要です。ウィンドウ名からの推定で、アプリをブロックしません。
+需要电脑开机、软件在后台运行。不会对手机推送；开机自启可在下一步单独设置。课表有调整时，请同步教务系统。|Your computer must be on and StudyTrail running. Desktop reminders are not phone push notifications. Sync your timetable after changes.|PCとアプリの起動が必要です。スマホへのプッシュ通知ではありません。時間割の変更後は再同期してください。
+保存提醒|Save reminder|通知設定を保存
+至少选一天，或关闭提醒|Choose at least one day or disable reminders.|曜日を1つ以上選ぶか、通知をオフにしてください。
+提醒已开启，记得让软件待在托盘里|Reminder enabled. Keep the app running in the tray.|通知を有効にしました。アプリをトレイに常駐させてください。
+提醒已关闭|Reminders disabled|通知をオフにしました
+课后，留一点时间给自己|After class, make a little time for yourself|授業のあと、自分のために少しだけ
+接着学一点|Learn a little more|続きを少しだけ
+不用安排一整晚。先放好手机，只做 5 分钟。|No need to plan the whole evening. Put your phone away and try 5 minutes.|一晩全部を予定にしなくていい。スマホを置いて、まず5分。
+上次给自己留下的下一步|The next step you left last time|前回残した、次の一歩
+20 分钟后提醒|Remind me in 20 minutes|20分後に通知
+就做 5 分钟|Just 5 minutes|5分だけやってみる
+给手机也留一道停顿|Give your phone a pause too|スマホにも、ひと休み
+电脑端不能直接限制手机。可以先用手机系统提供的功能，配合这次 5 分钟学习。|The desktop app cannot restrict your phone. Use your phone’s built-in tools for this session.|PC版からスマホを制限することはできません。スマホの標準機能を使ってみよう。
+安卓手机|Android phone|Androidスマートフォン
+查看系统官方说明|Read the official guide|公式ガイドを読む
+我去设置|Open settings guide|設定してみる
+让提醒在后台等你|Keep reminders ready in the background|バックグラウンドでお知らせを待機
+正在读取设置…|Reading settings…|設定を読み込み中…
+开启自启和托盘常驻|Enable startup & background mode|自動起動と常駐を有効にする
+关闭|Close|閉じる
+已开启|Enabled|有効
+未开启|Disabled|無効
+已关闭|Disabled|無効
+每次询问|Ask each time|毎回確認
+缩到托盘|Minimize to tray|トレイに格納
+退出软件|Quit app|アプリを終了
+FOCUS / 专注这一刻|FOCUS / One step now|FOCUS / いま、この一歩
+等待记录|Ready to record|記録待ち
+专注中|Focusing|集中中
+准备开始|Ready to begin|始める準備
+这一段，你做到了|You did this part|ここまで、できたね
+调整一下，再继续|Take a breath, then continue|ひと息ついて、また続きを
+只管眼前这一小步|Just this small step|目の前の一歩だけ
+留给重要的事|Time for what matters|大切なことのために
+先选一件想做的事|Choose one thing to do|やりたいことを1つ選ぼう
+把手机放远一点，继续眼前的事。|Put your phone away and return to this step.|スマホを離して、目の前のことへ。
+准备好需要的东西，就可以开始。|Get what you need, then begin.|必要なものをそろえたら、始めよう。
+不用安排完美的一天，从一个小动作开始。|You don’t need a perfect day. Start with one small action.|完璧な一日でなくてもいい。小さな行動から。
+✓ 记录本次专注|✓ Record this session|✓ 今回の集中を記録
+▶ 继续专注|▶ Resume focus|▶ 集中を再開
+Ⅱ 暂停一下|Ⅱ Take a pause|Ⅱ ひと休み
+结束并记录|Finish & record|終了して記録
+本次专注时长|Session duration|今回の集中時間
+没状态？先做 5 分钟|Low on energy? Try 5 minutes|気分が乗らない？まず5分
++ 定下今天第一件事|+ Plan your first step|+ 今日の最初の予定
+◷ 一次只做一件|◷ One thing at a time|◷ 一度に1つだけ
+完成专注后，再确认任务是否做完|After focusing, confirm whether the task is done.|集中後に、作業が終わったかを確認しよう。
+TODAY / 每日计划|TODAY / Daily plans|TODAY / 今日の予定
+今天的三件小事|Three small plans for today|今日の小さな3つの予定
++ 添加|+ Add|+ 追加
+把“要努力”变成一个动作|Turn intention into one action|「がんばる」を、1つの行動に
+写清做什么、从哪开始。今天最多安排三件。|Write what to do and where to start. Up to three plans a day.|何を、どこから始めるかを書こう。1日3件まで。
+读书 10 分钟|Read for 10 minutes|10分読書
+学习 25 分钟|Study for 25 minutes|25分勉強
+出门走 5 分钟|Walk outside for 5 minutes|5分外を歩く
+撤销完成：|Undo completion: |完了を取り消す：
+完成：|Completed: |完了：
+准备好需要的东西，先开始。|Gather what you need and start.|必要なものをそろえて、まず始めよう。
+接下来做这件|Do this next|次はこれをしよう
+编辑|Edit|編集
+昨天还有|From yesterday: |昨日の残り：
+件没做完。| unfinished plans.|件の未完了の予定。
+挑一件接着做 →|Pick one to continue →|1つ選んで続きを →
+✓ 今天安排的事已经做完。给自己一点休息时间。|✓ Today’s plans are done. Make room for rest.|✓ 今日の予定は完了。少し休もう。
+计划留少一点，给真正开始留多一点。|Fewer plans. More room to begin.|予定は少なめに、始める余白を。
+MOMENTUM / 最近七天|MOMENTUM / Last 7 days|MOMENTUM / 最近の7日間
+每一点行动，都有痕迹|Every small action leaves a trail|小さな行動にも、あとが残る
+七天里行动了|Active days this week: |この7日間で取り組んだ日：
+天。空白的一天，也可以从下一次开始。| days. A blank day can lead to a fresh start.|日。空白の日があっても、また始めればいい。
+REFLECT / 一分钟收尾|REFLECT / One-minute wrap-up|REFLECT / 1分の振り返り
+给今天一个交代|Leave a note for today|今日に、ひと言残そう
+已自动保存|Saved automatically|自動保存しました
+随时写一点|Write whenever you like|いつでも少しずつ
+今天哪一步做得不错？|What went well today?|今日、うまくできた一歩は？
+哪怕只是坐下来开始了……|Even just sitting down and starting…|座って始められただけでも…
+什么让你分心？下次怎么更容易开始？|What distracted you? What would make starting easier?|何に気を取られた？次はどうすれば始めやすい？
+比如：手机放到另一个房间，先打开书。|For example: leave the phone in another room and open the book first.|例：スマホを別の部屋に置き、先に本を開く。
+翻翻之前的记录 →|Browse earlier records →|これまでの記録を見る →
+ONE DAY AT A TIME · 一天一点|ONE DAY AT A TIME|一日、少しずつ
+今日专注|Today’s focus|今日の集中
+调整每日目标 ↗|Adjust daily goal ↗|1日の目標を調整 ↗
+完成计划|Plans completed|完了した予定
+你已经向前走了一步|You took a step forward|一歩、前に進んだね
+完成后点一下左边的圆圈|Tap the circle when finished|終わったら左の丸をタップ
+连续行动|Active-day streak|続けた日数
+专注或完成一件事，就算行动|Focusing or finishing one task counts.|集中するか、1つ終えたら、一歩です。
+调整这件小事|Edit this plan|この予定を編集
+今天想做哪件小事？|What small thing would you like to do?|今日は、どんな小さなことをする？
+把目标缩成一个具体动作。最多三件，第一步越小越好。|Make the goal one specific action. Up to three; smaller first steps help.|目標を具体的な行動に。3件まで、最初の一歩は小さく。
+要做的事|What to do|やること
+比如：学习一节 C++ 课程|For example: complete one C++ lesson|例：C++の講座を1つ学ぶ
+第一步怎么开始？|How will you begin?|最初は何から？
+比如：打开教程，看到第一个例子|For example: open the tutorial and find the first example|例：教材を開いて最初の例を見る
+一次专注多久（1–180 分钟）|Focus duration (1–180 minutes)|集中時間（1〜180分）
+删除这件事|Delete plan|この予定を削除
+保存调整|Save changes|変更を保存
+就从这件开始|Start with this|これから始める
+先结束当前专注，再调整这件事|Finish the current focus session before editing.|集中を終了してから編集してください。
+计划好了，现在就可以开始|Plan saved. You can begin now.|予定を保存しました。始められます。
+先记录当前的计时，再开始下一段|Record the current session before starting another.|今の記録を保存してから次を始めてください。
+这一段专注，完成了。|This focus session is complete.|今回の集中、おつかれさま。
+先记录到这里|Record up to here|ここまでを記録
+· 实际专注|· Actual focus|・実際の集中
+，可记|, recordable: |、記録できる時間：
+。不足 1 分钟，这次不计入时长。|. Under one minute, so no time will be recorded.|。1分未満のため時間には加算されません。
+专注时间和任务完成分开记录。只有确实做完，才勾选完成。|Focus time and task completion are separate. Check done only when finished.|集中時間と作業の完了は別々です。本当に終わったら完了にしよう。
+这件事已经做完了|This task is finished|この作業は完了した
+下次先做什么？留一句给下次的自己|Leave your next step for future you|次の自分へ、最初の一歩を残そう
+比如：自己写一遍刚才的例子，再看下一节|For example: recreate this example, then watch the next lesson|例：今の例を自分で書いてから次の章へ
+放弃这次记录|Discard this session|今回の記録を破棄
+结束本次|Finish session|今回を終了
+这一段结束了，准备好再来|Session finished. Come back when you’re ready.|ここまで終了。準備ができたら、またね。
+我的行动记录|My activity trail|自分の行動記録
+专注、完成的小事和每天的复盘，都留在这里。|Your focus sessions, completed plans, and reflections live here.|集中、終えたこと、日々の振り返りが残ります。
+分钟专注| minutes focused|分の集中
+做得不错：|Went well: |できたこと：
+下次试试：|Try next: |次に試すこと：
+还没有记录，从今天的第一步开始。|No records yet. Start with today’s first step.|まだ記録がありません。今日の一歩から。
+当前专注已暂停，准备好后再继续。|Focus paused. Resume when you’re ready.|集中を一時停止しました。準備ができたら再開してね。
+刚才好像刷到视频了|Looks like a video distraction|動画に気を取られたかも
+先结束这次|Finish this session|今回を終了する
+回到学习，继续计时|Back to learning, resume timer|学習に戻って再開
+天| days|日
+件| items|件
+分钟| min|分
+小时| hr|時間
+分| min|分
+秒| sec|秒
+返回|Back|戻る
+记下|Save|記録
+取消|Cancel|キャンセル
+今天|Today|今日
+已暂停|Paused|一時停止中
+已记录|Recorded|記録済み
+小鱼干|Fish tokens|おさかな
+初华|Uika|初華
+挥挥手|Wave|手を振る
+抱抱|Hug|ハグ
+互动|Interact|ふれあい
+兑换|Redeem|交換
+戴上|Wear|身につける
+最近兑现：|Recently enjoyed: |最近かなえたこと：
+我的收藏|Favorites|お気に入り
+逛一逛|Browse|見てみる
+点心|Snacks|おやつ
+装扮|Accessories|アクセサリー
+房间|Rooms|お部屋
+现实奖励|Real-life rewards|自分へのごほうび
+♡ 留一个小心愿|♡ Pick a little wish|♡ 小さな願いを選ぼう
+挑中喜欢的物品，点「心愿」。慢慢攒，也可以随时换。|Choose an item and tap Wish. Save at your own pace or change it anytime.|気になるものを「ほしいもの」に。自分のペースでためよう。
+已经拥有|Already owned|持っています
+心愿进度|Wish progress|願いの進み具合
+心愿实现啦，可以挑下一个了。|Wish fulfilled. You can choose another.|願いがかないました。次を選んでもいいね。
+已经攒够了，喜欢就带回家。|You have enough. Bring it home if you like.|もう十分たまったよ。気に入ったらお迎えしよう。
+还差|Still needed: |あと
+条，按自己的节奏来。| tokens. Go at your own pace.|枚。自分のペースで。
+可重复互动 · 亲密 +1 / 分钟|Reusable interaction · bond +1/min|繰り返し遊べる・なかよし +1/分
+像素配饰 · 同步桌宠|Pixel accessory · syncs with desktop pet|ピクセルアクセサリー・デスクトップにも反映
+布置首页与伙伴房间|Decorate your home and companion room|ホームとパートナーのお部屋を飾る
+卸下|Remove|はずす
+布置|Decorate|飾る
+一起玩|Play together|一緒に遊ぶ
+兑换 ·|Redeem ·|交換・
+使用中|In use|使用中
+库存 ×|Owned ×|所持 ×
+已收藏|Favorited|登録済み
+永久拥有|Keep forever|ずっと使える
+一份点心|One snack|おやつ1個
+分享一份|Share a snack|おすそ分け
+预览|Preview|プレビュー
+♥ 当前心愿|♥ Current wish|♥ 今のほしいもの
+♡ 心愿|♡ Wish|♡ ほしいもの
+也给自己一点奖励|A reward for you too|自分にも、ごほうびを
+兑换后会留在「待兑现」，享受完再打勾。|Redeemed rewards stay in Pending. Check them off after enjoying them.|交換したら「これから楽しむ」へ。楽しんだらチェックしよう。
+删除|Delete|削除
+奖励名称|Reward name|ごほうびの名前
+比如：看一集喜欢的番|For example: an episode of your favorite show|例：好きなアニメを1話見る
+添加奖励|Add reward|ごほうびを追加
+待兑现 ·|Pending ·|これから楽しむ・
+享受过了 ✓|Enjoyed ✓|楽しんだ ✓
+还没有，给自己留一个期待吧。|Nothing here yet. Leave yourself something to look forward to.|まだありません。楽しみを1つ残してみよう。
+LITTLE JOYS / 日常里的小欢喜|LITTLE JOYS / Everyday delights|LITTLE JOYS / 日々の小さな喜び
+把认真生活，换成一点喜欢。|Turn your effort into something you love.|がんばった日々を、好きなものに。
+挑一份礼物，也为自己留一份期待。|Pick a little gift and something to look forward to.|小さな贈りものと、次の楽しみを。
+我的小鱼干|My fish tokens|持っているおさかな
+物品|Items|アイテム
+件 · 已收藏| items · Favorites|件・お気に入り
+正在预览|Previewing|プレビュー中
+伙伴小屋|Companion room|パートナーのお部屋
+试用效果 · 尚未改变装扮|Preview only · outfit unchanged|試着中・着せ替えは未確定
+今天也一起慢慢来|Take it slowly together today|今日も一緒に、ゆっくりと
+恢复当前装扮|Restore current outfit|今の装いに戻す
+商品分类|Categories|商品カテゴリ
+已经带回家的小物|Your collection|お迎えしたアイテム
+挑一件喜欢的|Pick something you like|好きなものを選ぼう
+只看可用余额范围|Within my balance|今の残高で買えるもの
+这里还空着。先去逛逛，或者取消余额筛选。|Nothing here. Browse the shop or clear the balance filter.|ここはまだ空です。ほかのカテゴリや残高フィルターを確認してみよう。
+价格填 1～9999 的整数就好|Enter a whole number from 1 to 9999.|1〜9999の整数を入力してください。
+一起用的小物|Things to enjoy together|一緒に使う小物
+去商城 ↗|Visit shop ↗|ショップへ ↗
+玩具可以反复用。亲密奖励每分钟一次，休息时也能一起玩。|Reuse toys anytime. Bond rewards are limited to once a minute.|おもちゃは何度でも遊べます。なかよし報酬は1分に1回です。
+还没有互动道具。商城里可以先看看动作，再决定喜欢哪一个。|No toys yet. Preview their actions in the shop before choosing.|おもちゃはまだありません。ショップで動きを見てから選ぼう。
+全部|All|すべて
+收藏|Favorites|お気に入り
+购买|Buy|購入
+保存|Save|保存
+重试|Try again|再試行
+加载中…|Loading…|読み込み中…
+刷新|Refresh|更新
+查看|View|見る
+记忆库|Memories|思い出
+管理|Manage|管理
+撤销|Undo|元に戻す
+清空|Clear|消去
+记录|Records|記録
+导出备份|Export backup|バックアップを書き出す
+导回备份|Import backup|バックアップを読み込む
+打开数据文件夹|Open data folder|データフォルダーを開く
+数据管理|Data management|データ管理
+数据概览|Overview|データ概要
+设置面板|Settings panel|設定パネル
+打开设置面板|Open settings|設定を開く
+开机自启、课表与 AI 连接，都可以在这里调整。|Manage startup, timetable, and AI connections here.|自動起動、時間割、AI接続を設定できます。
+管理记录、调整偏好，也给走过的日子留一份备份。|Manage records, adjust preferences, and keep a backup of your trail.|記録や設定を整えて、これまでの日々をバックアップ。
+记录默认保存在本机；使用 AI 时会发送相关内容。换电脑或重装前，请先导出备份。|Records stay on your device. AI requests send relevant content. Export a backup before switching devices or reinstalling.|記録は端末内に保存されます。AI利用時は関連内容を送信します。端末変更や再インストール前にバックアップしてください。
+所有数据只存在这个浏览器的本地存储里。换电脑前先导出备份。|Data is stored in this browser. Export a backup before switching devices.|データはこのブラウザー内に保存されます。端末変更前にバックアップしてください。
+给自己一点空间|A little room for yourself|自分のための余白
+不用组织好语言。此刻的感受，可以慢慢说。|No perfect words needed. Take your time with what you feel.|うまく言葉にしなくていい。今の気持ちを、ゆっくり。
+对话保存在本机作为上下文；发送时，相关内容会交给你配置的 AI。|Chats are saved locally as context. Relevant content is sent to your chosen AI when you send a message.|会話は端末に保存され、送信時に関連内容が設定済みAIへ送られます。
+未配置 AI → 设置|Set up AI → Settings|AI未設定 → 設定へ
+近三日跟进|Review the last 3 days|最近3日間を振り返る
+想说的话|What’s on your mind?|話したいこと
+今天怎么样？有什么让你分心，或者有一点开心的事…|How was today? Anything distracting, or something that made you smile…|今日はどうだった？気が散ったことや、少しうれしかったこと…
+发送消息|Send|送信
+着陆伙伴|StudyTrail companion|学びのあとのパートナー
+一起，把日子过好|Make everyday life a little better, together|一緒に、日々を少しずつ
+和初华打个招呼，或让她陪你读一会书。每一点投入，都会成为你们共同的回忆。|Say hello to Uika or read together. Every small effort becomes a shared memory.|初華にあいさつしたり、一緒に読書したり。小さな積み重ねが思い出になります。
+初华会陪着你。桌面上的她也能帮你开始学习、保存断点和切换页面。|Uika keeps you company. On your desktop, she can start study sessions, save checkpoints, and open pages.|初華がそばにいます。デスクトップから学習開始、進捗保存、ページ移動もできます。
+正在唤醒…|Waking up…|起動中…
+这一周的足迹|This week’s trail|今週の足あと
+看看时间去了哪里，也看看自己已经走了多远。|See where your time went and how far you’ve come.|時間の使い方と、ここまでの歩みを振り返ろう。
+本周复盘|Weekly reflection|今週の振り返り
+根据记录自动整理|Summarized from your records|記録から自動でまとめます
+完成率|Completion rate|達成率
+日均投入(分钟)|Daily average (min)|1日平均（分）
+本周总计(分钟)|Weekly total (min)|今週の合計（分）
+其中|Including|うち
+偏紧|Too intense|がんばりすぎ
+偏松|Too relaxed|少しのんびり
+平衡|Balanced|ちょうどよい
+🧭 综合总结|🧭 Summary|🧭 まとめ
+🖥 自动测得娱乐|🖥 Tracked leisure time|🖥 自動記録した娯楽時間
+按前台窗口采样自动算的，不用你记|Estimated from active apps, automatically.|使用中のアプリから自動で推定します。
+还没有手动娱乐记录，应用使用时间会自动统计。|No manual leisure entries yet. App time is tracked automatically.|手動の娯楽記録はまだありません。アプリ時間は自動で集計されます。
+AI 读了一遍|AI reflection|AIの振り返り
+让 AI 把这段总结说得更像人话…|Ask AI for a friendlier summary…|AIがやさしくまとめています…
+换 AI 重说一遍|Ask AI again|AIにもう一度お願いする
+让 AI 说两句|Ask AI to reflect|AIに振り返ってもらう
+建议只是建议，加不加进任务你定。|Suggestions are optional. You decide what becomes a plan.|提案はあくまで提案。予定にするかはあなた次第。
+🐟 本周小鱼干|🐟 This week’s tokens|🐟 今週のおさかな
+这周一共赚到|Earned this week: |今週獲得した数：
+心情轨迹|Mood trail|気分の移り変わり
+本周投入分布|Time spent this week|今週の時間配分
+每日回顾|Daily review|日ごとの振り返り
+必做|Daily essentials|毎日の習慣
+投入|Time spent|取り組んだ時間
+应用时间|App time|アプリの利用時間
+正在记录|Recording|記録中
+查看与整理记录|Review & organize|記録を確認・整理
+应用时间记录|App usage tracking|アプリ利用時間の記録
+后台记录中|Tracking in background|バックグラウンドで記録中
+自动统计前台应用的使用时间，保存在本机。安静模式无需确认，也不会弹出记录通知。|Track active-app time locally. Quiet mode records without prompts or notifications.|使用中のアプリ時間を端末に記録します。静かなモードでは確認や通知を表示しません。
+记录方式|Recording mode|記録モード
+安静自动记录（推荐）|Quiet automatic recording (recommended)|静かに自動記録（おすすめ）
+自动记录，并显示通知|Record automatically with notifications|自動で記録して通知する
+每次记录前询问|Ask before recording|記録のたびに確認する
+仅统计，不计入时间池|Track only, without earning tokens|統計のみ・報酬には加算しない
+采样与截屏设置|Sampling & screenshots|サンプリング・スクリーンショット
+采样间隔 / 秒|Sampling interval / seconds|サンプリング間隔／秒
+自动截屏 / 分钟（0 为关闭）|Auto screenshot / minutes (0 disables)|自動撮影／分（0で無効）
+截图保留 / 天|Keep screenshots / days|画像の保存期間／日
+询问冷却 / 分钟|Prompt cooldown / minutes|確認の間隔／分
+清空截图|Delete screenshots|画像を削除
+保存记录设置|Save tracking settings|記録設定を保存
+开始记录|Start tracking|記録を開始
+应用排行|App ranking|アプリ別の時間
+整理记录|Organize records|記録を整理
+打开文件夹|Open folder|フォルダーを開く
+暂停记录|Pause tracking|記録を一時停止
+其他|Other|その他
+每|Every |毎
+保留|Keep |保存期間：
+自动截屏已关闭 ·|Auto screenshots off ·|自動撮影オフ・
+日常与启动|Daily use & startup|日常・起動
+AI 与陪伴|AI & companionship|AI・パートナー
+课表与教务|Timetable & school|時間割・教務
+日报访问|Digest access|ダイジェスト接続
+备份与重置|Backup & reset|バックアップ・初期化
+让着陆，适合你的日常。|Make StudyTrail fit your day.|学びのあとを、あなたの日常に。
+启动和关闭方式立即生效；其他填写内容请点击底部保存。|Startup and close behavior apply immediately. Save other changes below.|起動・終了の設定はすぐ反映されます。ほかの変更は下部で保存してください。
+连接你选择的 AI 服务。没有配置也可以使用计划、计时和伙伴互动。|Connect your preferred AI. Plans, timers, and companion interactions work without AI.|好きなAIに接続できます。未設定でも予定、タイマー、ふれあいは使えます。
+查看或更新教务连接。|Review or update school connection.|教務システムへの接続を確認・更新します。
+GitHub Token 为可选项。|GitHub token is optional.|GitHubトークンは任意です。
+导出的备份可能包含 API Key，请妥善保管。|Exported backups may include API keys. Keep them private.|バックアップにAPIキーが含まれる場合があります。大切に保管してください。
+此刻，想聊些什么？|What would you like to talk about?|今、何を話したい？
+保存失败：存储可能已满|Couldn’t save. Storage may be full.|保存できませんでした。空き容量を確認してください。
+出错了|Something went wrong|エラーが発生しました
+这一页没渲染出来|This page couldn’t be displayed|このページを表示できませんでした
+其它模块还能用。你的数据都在本地，没有丢。可以先切到别的栏目，或者把下面的报错贴给我。|Other pages still work. Your local data is safe. Try another page or report the error below.|ほかのページは使えます。端末内のデータは残っています。別のページを開くか、下のエラーを報告してください。
+错误信息：|Error details: |エラー詳細：
+外观与位置|Appearance & position|見た目・位置
+互动方式|Interactions|ふれあい設定
+启动与关闭|Startup & closing|起動・終了
+怎么相处|Getting along|使い方
+桌面上的小小陪伴|A little desktop company|デスクトップの小さな相棒
+设置即时保存|Settings save instantly|設定はすぐ保存されます
+按你舒服的方式陪着你。|Company that fits your day.|あなたに心地よい距離で。
+收起设置 ↙|Close settings ↙|設定を閉じる ↙
+让伙伴，刚好适合你的桌面。|Make your companion feel at home.|デスクトップに、ちょうどいい相棒を。
+找回桌宠 ↗|Find my companion ↗|パートナーを呼び戻す ↗
+正在读取桌宠状态…|Reading desktop pet status…|ペットの状態を読み込み中…
+显示桌面伙伴|Show desktop companion|デスクトップに表示
+独立悬浮在桌面，收起着陆后也在。|Stays on your desktop when the main window is closed.|メイン画面を閉じても、デスクトップに残ります。
+保持在其他窗口上方|Keep above other windows|ほかのウィンドウより手前に表示
+关闭后，其他应用可以盖住伙伴。|When off, other apps can cover your companion.|オフにすると、ほかのアプリの後ろに隠れます。
+显示桌宠任务栏图标|Show pet in taskbar|タスクバーにアイコンを表示
+需要在任务栏找到桌宠或选择录制窗口时开启。|Enable to find the pet in your taskbar or select it for recording.|タスクバーから選択したり、録画対象にする場合に使います。
+桌宠大小|Companion size|ペットの大きさ
+只调整桌面角色，养成和学习数据不变。|Changes desktop appearance only; progress stays intact.|表示サイズのみ変更し、育成や学習の記録は変わりません。
+桌宠透明度|Companion opacity|ペットの不透明度
+对话和设置保持清晰，角色可以更轻一点。|Fade the character while keeping chat and settings clear.|キャラクターだけ薄くし、会話や設定は読みやすく保ちます。
+更换皮肤 · Petdex ↗|Change skin · Petdex ↗|着せ替え・Petdex ↗
+恢复外观默认|Reset appearance|見た目を初期設定に戻す
+锁定位置|Lock position|位置を固定
+不能拖动搬家，仍可单击聊天和右键操作。|Prevents dragging. Click to chat and right-click still work.|ドラッグ移動を無効にします。クリックと右クリックは使えます。
+游戏模式 / 鼠标穿透|Game mode / click-through|ゲームモード・クリック透過
+鼠标直接操作下面的应用。按 F7 恢复，也可从托盘恢复互动。|Clicks go to the app underneath. Press F7 or use the tray to restore interaction.|下のアプリを操作できます。F7かトレイから操作を戻せます。
+鼠标悬停时半透明|Fade on hover|マウスを重ねると薄く表示
+指针经过角色时变淡，对话仍然可点。|The character fades on hover; chat stays clickable.|マウスを重ねるとキャラクターが薄くなります。会話は操作できます。
+显示操作提示|Show interaction hints|操作ヒントを表示
+角色下方显示单击、拖动等简短提示。|Show click and drag hints below the character.|クリックやドラッグのヒントを足元に表示します。
+关闭对话，不会赶走伙伴|Closing chat keeps your companion here|会話を閉じても、そばにいるよ
+“×”和“−”都只收起对话；单击角色可以再打开。只有右键菜单的“隐藏整个桌宠”才会隐藏角色。|Both × and − close chat only. Click the character to reopen. Hide the whole pet explicitly from the right-click menu.|×と−は会話だけを閉じます。キャラクターをクリックすると再表示。全体を隠す場合は右クリックメニューを使います。
+开机自动启动|Start at login|ログイン時に自動起動
+登录电脑后在后台启动着陆；已开启的桌宠也会出现。|Start StudyTrail in the background at login, with the pet if enabled.|ログイン時にバックグラウンドで起動し、有効なペットも表示します。
+关闭着陆主窗口时|When closing the main window|メイン画面を閉じるとき
+“收起到托盘”可以保留桌宠、计时和安静记录。|Minimizing to tray keeps the pet, timers, and quiet tracking running.|トレイに格納すると、ペット・タイマー・静かな記録を続けられます。
+保留桌宠，收起到托盘|Keep pet, minimize to tray|ペットを残してトレイに格納
+退出整个着陆|Quit StudyTrail completely|学びのあとを完全に終了
+隐藏、收起和退出是三件事|Hide, collapse, and quit are different|非表示・折りたたみ・終了は別の操作
+收起对话：伙伴留在桌面。隐藏桌宠：着陆继续运行。托盘菜单“退出着陆”：伙伴和程序一起退出。|Collapse chat: the pet stays. Hide pet: StudyTrail keeps running. Quit from the tray: both exit.|会話を閉じる：ペットは残ります。非表示：アプリは動作を続けます。トレイから終了：両方を終了します。
+单击，聊两句|Click to chat|クリックでおしゃべり
+点角色展开对话，再点一次收起。可以选择学习方向、开始五分钟、记断点或打开页面。|Click the character to toggle chat. Choose a study track, start five minutes, save a checkpoint, or open a page.|キャラクターをクリックで会話を開閉。学習分野の選択、5分の集中、進捗記録、ページ移動ができます。
+按住，搬个家|Drag to move|ドラッグでお引っ越し
+拖动角色即可移动，位置自动记住。开启“锁定位置”后，单击仍可使用。|Drag to move; the position saves automatically. Locking position still allows clicks.|ドラッグして移動すると位置を保存します。位置を固定してもクリックは使えます。
+右键，更多操作|Right-click for more|右クリックでメニュー
+更换皮肤、桌宠设置和学习操作都在菜单里。角色下方的“≡”也能打开菜单。|Skins, settings, and study actions are in the menu. The ≡ button opens it too.|着せ替え、設定、学習操作はメニューから。足元の≡でも開けます。
+找不到，就叫回来|Bring them back anytime|見失ったら、呼び戻そう
+点上方“找回桌宠”会回到屏幕右下并恢复互动。鼠标穿透时按 F7，或从系统托盘打开设置。|Find my companion moves the pet to the bottom-right and restores input. In click-through mode, press F7 or open settings from the tray.|呼び戻すと画面右下に移動し、操作が有効になります。透過中はF7かトレイから設定を開けます。
+设置即时生效。|Settings apply immediately.|設定はすぐ反映されます。
+角色共用原有皮肤、属性与回忆|Shared skins, attributes, and memories|これまでの着せ替え・能力・思い出を引き継ぎます
+这次没有保存成功，请重试。|Couldn’t save. Please try again.|保存できませんでした。もう一度お試しください。
+桌宠已隐藏 · 着陆仍在运行|Pet hidden · StudyTrail is running|ペット非表示・アプリは動作中
+鼠标穿透中 · F7 恢复互动|Click-through on · F7 to restore|クリック透過中・F7で操作を戻す
+对话已展开 · 关闭对话会保留角色|Chat open · Closing it keeps the pet|会話を表示中・閉じてもペットは残ります
+伙伴在桌面 · 单击聊天，右键更多|On your desktop · Click to chat, right-click for more|デスクトップにいます・クリックで会話、右クリックでメニュー
+已开启鼠标穿透。按 F7，或用托盘菜单恢复互动。|Click-through enabled. Use F7 or the tray menu to restore interaction.|クリック透過を有効にしました。F7かトレイで操作を戻せます。
+已保存，桌宠已经同步。|Saved and synced to your companion.|保存し、ペットに反映しました。
+已回到主屏幕右下，并恢复互动。|Back at the primary screen’s bottom-right, with interaction restored.|メイン画面の右下に戻り、操作を有効にしました。
+已开启开机启动。|Start at login enabled.|自動起動を有効にしました。
+已关闭开机启动。|Start at login disabled.|自動起動を無効にしました。
+开机启动没有生效，请重试。|Couldn’t set start at login. Please try again.|自動起動を変更できませんでした。再度お試しください。
+关闭方式未保存|Close behavior wasn’t saved|終了方法を保存できませんでした
+已设为退出整个着陆，桌宠也会退出。|Closing the main window will now quit StudyTrail and the pet.|メイン画面を閉じると、アプリとペットが終了します。
+已保存关闭主窗口时的行为。|Main-window close behavior saved.|メイン画面を閉じるときの動作を保存しました。
+开机启动状态读取失败：|Couldn’t read startup status: |自動起動の状態を読み込めませんでした：
+F7 已被其他程序占用，暂时不能开启鼠标穿透。可关闭占用后重试。|F7 is used by another app. Click-through stays off until the recovery key is available.|F7がほかのアプリで使用中です。復帰キーが使えるまで透過を有効にできません。
+桌宠设置…|Desktop pet settings…|デスクトップペット設定…
+收起对话（角色保留）|Close chat (keep pet)|会話を閉じる（ペットは残す）
+和伙伴说话|Talk to companion|パートナーと話す
+更换皮肤 · Petdex|Change skin · Petdex|着せ替え・Petdex
+和伙伴玩一会|Play together|一緒に遊ぶ
+游戏模式 / 鼠标穿透（F7 恢复）|Game mode / click-through (F7 restores)|ゲームモード・クリック透過（F7で解除）
+找回桌宠并恢复互动|Find pet & restore interaction|ペットを呼び戻して操作を有効に
+打开着陆|Open StudyTrail|学びのあとを開く
+开始学 Python · 5 分钟|Study Python · 5 minutes|Pythonを5分学ぶ
+开始学 PyTorch · 5 分钟|Study PyTorch · 5 minutes|PyTorchを5分学ぶ
+继续学习|Resume study|学習を再開
+暂停学习|Pause study|学習を一時停止
+截屏记断点|Capture checkpoint|画面から進捗を記録
+隐藏整个桌宠（托盘或首页可叫回）|Hide the pet (restore from tray or home)|ペット全体を隠す（トレイ・ホームから戻せます）
+显示桌宠 / 恢复互动|Show pet / restore interaction|ペットを表示・操作を戻す
+退出着陆|Quit StudyTrail|学びのあとを終了
+关于着陆|About StudyTrail|学びのあとについて
+换个伙伴外观 · 着陆|Companion skins · StudyTrail|パートナーの着せ替え・学びのあと
+桌宠设置 · 着陆|Pet settings · StudyTrail|ペット設定・学びのあと
+初华 · 着陆桌宠|Uika · StudyTrail pet|初華・学びのあと
+着陆 · 每天一点，慢慢做到|StudyTrail · Small steps, steady progress|学びのあと・毎日少しずつ
+你的桌面伙伴|Your desktop companion|デスクトップのパートナー
+· 你的桌面伙伴|· Your companion|・あなたのパートナー
+· 在这里陪你|· Here with you|・そばにいるよ
+· 在这里陪你|· Here with you|・そばにいるよ
+单击聊天 · 拖动搬家 · 右键更多|Click to chat · Drag to move · Right-click for more|クリックで会話・ドラッグで移動・右クリックでメニュー
+告诉我想去哪一页，或者从哪一步开始。|Tell me which page to open or where to start.|開きたいページや、始めたいことを教えてね。
+正在陪你学|Learning with you: |一緒に学習中：
+陪你歇一会，准备好再继续|Take a break; continue when you’re ready.|少し休もう。準備ができたら続きを。
+这一段做到了，记下进度吧|You did this part. Save your progress.|ここまでできたね。進捗を残そう。
+开始 5 分钟|Start 5 minutes|5分始める
+暂停一下|Pause|ひと休み
+继续学习|Resume study|学習を再開
+确认记录|Confirm record|記録を確定
+现在没有学习计时，先从五分钟开始吧。|No study timer yet. Start with five minutes.|学習タイマーはまだありません。まず5分から。
+关闭弹窗|Close dialog|ダイアログを閉じる
+学习方向|Study track|学習分野
+页面导航|Pages|ページ移動
+帮助|Help|ヘルプ
+送出|Send|送信
+比如：开始学 PyTorch、打开周报|For example: start PyTorch, open weekly review|例：PyTorchを始める、週報を開く
+打开着陆|Open StudyTrail|学びのあとを開く
+# Common pages, existing companions and legacy panels
+每日必做|Daily essentials|毎日の習慣
+必做项都被你关掉了。点「管理」可以把它们重新打开。|All essentials are disabled. Open Manage to enable them.|習慣がすべてオフです。「管理」から有効にできます。
+还没设必做项。每天都要交代的那几件（吃药、记账、背词…）放这儿 ——|No essentials yet. Add small daily habits such as medicine, budgeting, or vocabulary —|まだ習慣がありません。服薬、家計簿、単語など、毎日続けることをここに。
+点一下打勾，软件记下|Tap to check off and save the |タップでチェックすると、
+完成时刻|completion time|完了時刻を記録
+，全部清掉还会累计连续天数。|. Finish all to build your streak.|します。すべて終えると継続日数も増えます。
+加一条|Add an essential|習慣を追加
+今天全部清掉了 ✓|All done today ✓|今日は全部できた ✓
+打卡时间|Check-in time|達成した時刻
+·　已连续全清|· All-done streak: |・全達成の連続日数：
+点一下就打勾，软件记下时间。还差|Tap to check off and save the time. Remaining: |タップで時刻を記録。残り：
+再点一下取消今天这次打卡|Tap again to undo today’s check-in|もう一度タップすると今日の達成を取り消せます
+打卡|Check in|達成を記録
+未打卡|Not done|未達成
+已打卡|Done|達成済み
+已关|Off|オフ
+今天还没打|Not done today|今日はまだ
+近 7 天|Last 7 days|最近の7日間
+关|Off|オフ
+开|On|オン
+在后台待着|Running in background|バックグラウンドで動作中
+专注|Focus|集中
+继续|Resume|再開
+暂停|Pause|一時停止
+结束|Finish|終了
+自动|Auto|自動
+实际时长（分钟）|Actual duration (minutes)|実際の時間（分）
+填个分钟数|Enter the number of minutes|分数を入力してください
+记下来|Record|記録する
+这次不用|Skip this time|今回はスキップ
+个| items|件
+笔| entries|件
+条| entries|件
+分钟。| minutes.|分。
+今天的课表|Today’s timetable|今日の時間割
+📚 今天的课|📚 Today’s classes|📚 今日の授業
+去连接|Connect school account|学校のアカウントを接続
+连上教务系统后，这里会显示今天的课。学号密码用系统加密存在本机，不上传、不进代码。|Connect your school account to see today’s classes. Credentials are encrypted on this computer, not included in code.|教務システムに接続すると今日の授業を表示します。認証情報はPC内で暗号化し、コードには含めません。
+情绪、倾倒与生活记录|Mood, thoughts & daily life|気分・思考・日々の記録
+自动记录，随时查看|Recorded automatically, available anytime|自動で記録、いつでも確認
+情绪气象|Mood weather|気分のお天気
+今天记过了|Recorded today|今日は記録済み
+还没记|Not recorded yet|まだ記録していません
+不用解释，选一个就行。它会影响小陆今天的状态——你下雨的时候它不会催你。|Pick a mood, no explanation needed. Your companion will follow your pace.|説明はいりません。今の気分を選ぼう。パートナーもあなたのペースに合わせます。
+晴|Sunny|晴れ
+阴|Cloudy|くもり
+雨|Rainy|雨
+暴|Stormy|嵐
+状态不错|Feeling good|いい感じ
+还行，有点钝|Okay, a little sluggish|まあまあ、少しぼんやり
+有点乱|A little overwhelmed|少し落ち着かない
+快撑不住了|Having a hard time|かなりつらい
+倾倒台|Thought inbox|思考の受け皿
+今天还没倒过|No thoughts saved today|今日はまだ書いていません
+脑子里同时在转的事，先写下来。不用分类、不用有条理——写出来它就不在脑子里空转了。|Write down what’s circling in your head. It doesn’t need to be organized.|頭の中でぐるぐるしていることを、そのまま書こう。整理しなくて大丈夫。
+倒出来算数：每倒 1 次，小陆的活力 +12（每天最多算 2 次）。|Each entry gives your companion +12 energy, up to twice a day.|書くたびにパートナーの元気が+12。1日2回まで。
+倒出来|Let it out|書き出す
+写完再决定它是「要做的」「可以放掉」还是「只是感受」|Then decide: something to do, something to let go, or simply a feeling.|書いてから「やること」「手放すこと」「気持ちだけ」を選ぼう。
+倾倒台是空的。上面写点什么，哪怕只有一句。|Your inbox is empty. Even one sentence is enough.|まだ空です。ひと言だけでも、上に書いてみよう。
+现在最占脑子的那件事是…|What’s taking up the most space in your mind…|今、いちばん頭から離れないのは…
+未分类|Unsorted|未分類
+要做的|To do|やること
+可以放掉|Let go|手放してよい
+只是感受|Just a feeling|気持ちだけ
+🎈 放开一下|🎈 Make room for fun|🎈 少しのびのび
+看番、肯德基、打一场游戏都算。|A show, a favorite meal, or a game all count.|アニメ、好きなごはん、ゲームもいいね。
+记下来不是认罪|Recording is not a confession|記録は反省文ではありません
+是为了让周报看出你这周偏松还是偏紧。不发小鱼干，也不扣。|It helps your weekly review show balance. It neither earns nor spends tokens.|週のバランスを見るための記録です。おさかなの増減はありません。
+刚干了什么…|What did you just do…|さっき何をした？
+🎈 娱乐|🎈 Leisure|🎈 娯楽
+🍟 放纵|🍟 Treats|🍟 ぜいたく
+娱乐|Leisure|娯楽
+放纵|Treats|ぜいたく
+熬夜看番|Stay up for a show|夜更かししてアニメ
+吃一次肯德基|Enjoy a favorite meal|好きなごはんを楽しむ
+玩一场游戏|Play a game|ゲームを1回
+已暂停。要开回来去「我的 → 活动记录」。|Paused. Resume from My space → App usage tracking.|一時停止中。マイページの利用記録から再開できます。
+应用时间在「今日 → 应用时间」查看；自动记录也会进入周报和时间池。手动专注时避免重复计入时间池。|See app usage under Today → App time. Automatic records appear in weekly totals, without duplicating manual focus time.|今日のアプリ時間から確認できます。自動記録は週報にも反映し、手動の集中時間と重複しません。
+冷却仅影响询问模式。关闭自动截屏后，仍然正常统计应用时间。|The cooldown affects prompts only. App time is tracked even with screenshots off.|待ち時間は確認モードのみ。自動撮影がオフでも時間は記録します。
+已有|Existing: |保存済み：
+张截图 ·| screenshots ·|枚の画像・
+教学周起点（第 1 周的周一）|Term start (Monday of week 1)|第1週の月曜日
+后台常驻|Background mode|バックグラウンド常駐
+关掉窗口只是缩到右下角托盘，程序继续跑、计时照常走（托盘悬停能看到剩余时间）。要彻底退出：右键托盘图标 → 退出着陆。|Closing to tray keeps timers running. To quit, right-click the tray icon and choose Quit StudyTrail.|トレイに格納してもタイマーは動作します。完全に終了する場合はトレイを右クリックしてください。
+开机自动启动：|Start at login: |ログイン時の起動：
+关闭窗口时：|When closing: |画面を閉じるとき：
+直接退出|Quit completely|完全に終了
+应用|App|アプリ
+退出|Quit|終了
+设置…|Settings…|設定…
+导出备份…|Export backup…|バックアップを書き出す…
+导回备份…|Import backup…|バックアップを読み込む…
+重做|Redo|やり直す
+剪切|Cut|切り取り
+复制|Copy|コピー
+粘贴|Paste|貼り付け
+全选|Select all|すべて選択
+视图|View|表示
+重新加载|Reload|再読み込み
+恢复缩放|Reset zoom|ズームをリセット
+放大|Zoom in|拡大
+缩小|Zoom out|縮小
+全屏|Full screen|全画面
+开发者工具|Developer tools|開発者ツール
+项目主页|Project home|プロジェクトのページ
+显示主窗口|Show main window|メイン画面を表示
+结束当前计时|Finish current timer|今のタイマーを終了
+好|OK|OK
+语言切换失败，请重试。|Couldn’t change language. Please try again.|言語を変更できませんでした。再度お試しください。
+该功能仅桌面版可用。|This feature is available on desktop.|この機能はPC版で利用できます。
+# Companion labels and controls
+眼前这一小步|This small step|目の前の一歩
+在这里等你|Here when you need me|ここで待っているよ
+小憩中|Taking a nap|お昼寝中
+它睡着了，给你留着一盏灯。想休息也可以。|Your companion is resting. You can rest too.|パートナーは休憩中。あなたも休んでいいんだよ。
+这一段，做到了|You did this part|ここまでできたね
+先把刚才的进度记下来，再伸个懒腰。|Save your progress, then take a stretch.|進捗を残したら、ひと伸びしよう。
+陪你歇一会|Taking a break together|一緒にひと休み
+暂停也没关系。准备好了，就接着刚才那一步。|Pausing is okay. Continue when you’re ready.|休んでも大丈夫。準備ができたら、さっきの続きから。
+安静陪读中|Quietly reading together|静かに読書中
+书已翻开|The book is open|本を開いたよ
+我陪你看|I’ll read with you: |一緒に読もう：
+。不用赶，先弄懂眼前这个例子。|. No rush; understand this one example.|。急がず、目の前の例を理解しよう。
+点一下摸头 · 按住抱抱|Tap to pat · Hold to hug|タップでなでる・長押しでハグ
+A LITTLE COMPANY / 有我陪你|A LITTLE COMPANY / Here with you|A LITTLE COMPANY / そばにいるよ
+你的伙伴|Your companion|あなたのパートナー
+伙伴偏好设置|Companion preferences|パートナーの設定
+今天已专注|Focused today: |今日の集中：
+今天，从一点点开始|Today, start with a little|今日は、少しから
+击个掌|High five|ハイタッチ
+抱一下|Hug|ハグ
+合上书|Close the book|本を閉じる
+陪我读书|Read with me|一緒に読書
+走两步|Take a little walk|少し歩く
+有点学不动…|Feeling stuck…|ちょっと行き詰まった…
+聊两句|Have a chat|少し話す
+叫它过来|Bring closer|そばに呼ぶ
+喂食与养成 ↗|Feed & care ↗|ごはん・育成 ↗
+待记录|Ready to record|記録待ち
+摸摸伙伴的头；按住可以抱抱|Tap to pat; hold to hug|タップでなでる、長押しでハグ
+让陪伴舒服一点|Make company feel comfortable|心地よいパートナーに
+不用额外完成照料任务。你忙的时候，它会等你。|No extra chores. Your companion can wait while you’re busy.|お世話を義務にしなくて大丈夫。忙しいときは待っているよ。
+安静一点，只在我互动时回应|Quiet mode: respond only when I interact|静かに、触れ合うときだけ反応する
+专注期间始终关闭自动闲聊。|Automatic chatter is always off during focus.|集中中は自動のおしゃべりを止めます。
+减少动画，适合专心或容易晕动时|Reduce motion|動きを少なくする
+系统的减少动态效果设置也会生效。|Also follows the system’s reduced-motion setting.|OSの視覚効果を減らす設定にも従います。
+不用担心喂食，它不会变饿|Don’t worry about feeding; hunger won’t decrease|空腹にならないようにする
+原来的喂食、商店和养成仍可使用。|Feeding, the shop, and care still work.|ごはん、ショップ、育成はそのまま使えます。
+保存偏好|Save preferences|設定を保存
+让初华住在桌面上|Keep Uika on the desktop|初華をデスクトップに表示
+主窗口收起后，也能开始学习、暂停和记断点。资源：Petdex · 桜 八.|Start, pause, and save checkpoints with the main window closed. Asset: Petdex · 桜 八.|メイン画面を閉じても、学習・一時停止・進捗記録ができます。素材：Petdex・桜 八.
+记住了，按你舒服的方式陪着你|Saved. Company at your pace.|覚えたよ。あなたのペースでそばにいるね。
+我心情不错。|I’m feeling good.|いい気分だよ。
+心情不错|Feeling good|いい気分
+慢慢熟悉中|Getting to know you|少しずつ仲良く
+有点想你|Missed you a little|ちょっと会いたかった
+精神十足|Full of energy|元気いっぱい
+状态平稳|Feeling steady|落ち着いている
+第一次见面。|Nice to meet you.|はじめまして。
+刚认识|Just met|出会ったばかり
+不错|Good|いい感じ
+有精神|Energetic|元気
+懵懵的|A little dreamy|ぽわっとしてる
+随手画画|Casual sketcher|気ままにお絵かき
+看见新鲜事|Noticing new things|新しいものを見つける
+试着迈一步|Trying a first step|一歩を試してみる
+好奇心|Curiosity|好奇心
+创造力|Creativity|創造力
+勇气|Courage|勇気
+灵感|Inspiration|ひらめき
+精力|Energy|元気
+活力|Energy|元気
+心情|Mood|気分
+灵性|Insight|ひらめき度
+默契|Rapport|息ぴったり度
+亲密|Bond|なかよし
+饱食|Fullness|満腹度
+饱食 +|Fullness +|満腹度 +
+· 亲密 +|· Bond +|・なかよし +
+🍚 饱食|🍚 Fullness|🍚 満腹度
+💗 亲密|💗 Bond|💗 なかよし
+🐟 小鱼干|🐟 Tokens|🐟 おさかな
+🐾 伙伴详情与设定|🐾 Details & settings|🐾 詳細・設定
+🐟 喂它|🐟 Feed|🐟 ごはん
+🤚 抚摸|🤚 Pat|🤚 なでる
+💬 说说话|💬 Talk|💬 おしゃべり
+🛒 商城|🛒 Shop|🛒 ショップ
+🐾 和它玩|🐾 Play together|🐾 一緒に遊ぶ
+怎么点都行，只加不减，没有惩罚。冷却只是防连点。|Try any interaction. No penalties; cooldowns only limit repeated rewards.|どれを選んでも大丈夫。罰はありません。報酬の連続獲得だけ制限します。
+逗它玩|Play with a toy|おもちゃで遊ぶ
+亲密 +2（有逗猫棒 +3）|Bond +2 (+3 with a teaser)|なかよし +2（猫じゃらしありで+3）
+摇摆着回应你 · 亲密 +1|A little wave · bond +1|ゆらゆら応える・なかよし +1
+跳起来击掌 · 亲密 +1|A jumping high five · bond +1|ジャンプしてハイタッチ・なかよし +1
+靠近你，冒出小爱心 · 亲密 +1|A close hug and little hearts · bond +1|そっとハグして小さなハート・なかよし +1
+再点一次结束陪读；专注时自动陪伴|Tap again to stop reading together; automatic during focus.|もう一度押すと読書を終了。集中中は自動で寄り添います。
+举高高|Lift up|たかいたかい
+亲密 +1|Bond +1|なかよし +1
+亲密 +2|Bond +2|なかよし +2
+挠下巴|Chin scratch|あごをなでる
+喊它一声|Call their name|名前を呼ぶ
+它会应你，不加也不减|Just a response, no stat change|返事だけ、能力の増減なし
+一起发呆 60 秒|Daydream together for 60 seconds|60秒一緒にぼんやり
+什么都不做也算陪伴，结束 +2|Doing nothing together counts too · bond +2|何もしない時間も一緒に・なかよし +2
+让它睡一会|Let them rest|少し寝かせる
+睡觉期间饱食度不掉|No hunger loss while sleeping|睡眠中は満腹度が減りません
+🍚 喂它|🍚 Feed|🍚 ごはん
+食物用小鱼干在商店买，买完存在仓库里。做事的每一分钟都攒进池子，每满 60 分钟赚 1 条。|Buy food with tokens and keep it in inventory. Each 60 recorded minutes earns one token.|おさかなでごはんを買って保管できます。記録した時間60分ごとに1枚獲得。
+库存|Inventory|所持数
+份| servings|個
+喂|Feed|あげる
+买|Buy|買う
+💬 说一句话|💬 Say something|💬 ひと言話す
+本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。这里只显示当前回应；对话上下文会记在本机。|Local replies. Configure AI in My space → Settings for richer conversation. Context stays locally until sent.|ローカルの返事です。設定でAIに接続すると詳しく話せます。送信前の会話は端末内に保存します。
+今天好累|I’m tired today|今日は疲れた
+有点慌|Feeling anxious|少し不安
+做完了|I finished|できたよ
+发送|Send|送信
+详情设定|Detailed settings|詳しい設定
+改完立即生效，全部只存在本地。|Changes apply instantly and stay on this device.|変更はすぐ反映され、端末内に保存されます。
+它的名字|Companion name|パートナーの名前
+挂件气泡、对话、记忆里都用这个名字|Used in bubbles, conversations, and memories|吹き出し、会話、思い出に使う名前です
+挂件常驻显示|Keep companion widget visible|パートナーを常に表示
+关掉后右下角挂件会消失，随时可以在这里打开|Hide the widget; turn it back on here anytime.|ウィジェットを隠します。ここからいつでも戻せます。
+挂件大小|Widget size|ウィジェットの大きさ
+位置可以直接拖动挂件来换|Drag the widget to change its position.|ドラッグして位置を変えられます。
+归位|Reset position|位置を戻す
+它主动说话|Allow spontaneous chatter|自分からおしゃべりする
+关掉后它只在有事情时冒泡——不是不说话，是不打扰|When off, bubbles appear only for relevant events.|オフにすると、必要なときだけ吹き出しを表示します。
+不要让它饿|Keep hunger from decreasing|おなかを空かせない
+打开后饱食度不再随时间下降。它一直在，不催你喂|Stops fullness decreasing over time. No pressure to feed.|時間による満腹度の低下を止めます。ごはんを急かしません。
+脖子上|Neckwear|首まわり
+脸上|Eyewear|顔まわり
+头顶|Headwear|頭まわり
+不戴|None|なし
+它的数据|Companion stats|パートナーのデータ
+相伴天数|Days together|一緒に過ごした日数
+喂食次数|Times fed|ごはんの回数
+抚摸次数|Pats|なでた回数
+对话轮次|Conversations|会話の回数
+累计赚到 🐟|Total earned 🐟|獲得した合計 🐟
+累计花掉 🐟|Total spent 🐟|使った合計 🐟
+今天赚到 🐟|Earned today 🐟|今日の獲得 🐟
+记忆条数|Memories saved|思い出の数
+🐟 小鱼干账本|🐟 Token ledger|🐟 おさかな帳
+只有收入和支出，没有罚。|Earnings and spending, never penalties.|獲得と支出だけ。罰はありません。
+还没有账。|No transactions yet.|まだ取引がありません。
+最近记忆|Recent memories|最近の思い出
+重置|Reset|リセット
+只影响伙伴，不动你的任务、倾倒和情绪记录。|Affects your companion only; plans, thoughts, and mood records stay.|パートナーのみを変更し、予定・思考・気分の記録は残します。
+让它忘掉说过的话|Clear conversation context|会話の記憶を消す
+清空全部记忆|Clear all memories|すべての思い出を消す
+重置伙伴（回到刚认识）|Reset companion (start fresh)|パートナーをリセット（初対面に戻す）
+的状态|’s stats|の状態
+你做的事、和伙伴说过的话，都会归到这里。它不是待办清单，是你走过的痕迹。|Your actions and conversations are collected here: a trail, not a to-do list.|行動やパートナーとの会話が集まります。ToDoではなく、歩んだあとの記録です。
+树洞|Private journal|ひみつの日記
+写点不敢对别人说的。它只存在|Write what’s hard to say. It stays on |人には話しにくいことを書こう。保存するのは
+这台电脑|this device|この端末だけ
+上，不上传、不联网、没有别人能看见——|, offline and private — |。送信せず、ほかの人には見えません。
+说出来的意义在于说出来本身。|Sometimes saying it is enough.|言葉にすること自体に、意味があります。
+今天着陆了吗？还是还在飘着？|How are you feeling right now?|今は、どんな気持ち？
+写进去|Save to journal|日記に残す
+树洞还空着。写第一句吧。|Your journal is empty. Leave the first sentence.|日記はまだ空です。最初のひと言を。
+# Store names
+小鱼干换来的|Little rewards for your trail|積み重ねから、小さなごほうび
+给伙伴选份小礼物，也为自己存一个期待。每累计 60 分钟获得 1 条小鱼干，零头当日清零。|Pick gifts for your companion and a wish for yourself. Each 60 recorded minutes earns one fish token; partial minutes reset daily.|パートナーへの贈りものと、自分の楽しみを。記録時間60分でおさかな1枚、端数は日ごとにリセット。
+给|For |贈る相手：
+莓果蝴蝶结|Berry ribbon|ベリーのリボン
+金发旁的一点莓果色|A berry accent for golden hair|金色の髪に、ベリー色のアクセント
+星光八音盒|Starlight music box|星明かりのオルゴール
+一起摇摆，飘出小音符（无声音）|Sway together with little notes (silent)|音符がふわり、一緒にゆらゆら（無音）
+晨光窗边|Morning window|朝日の窓辺
+首页与伙伴房间 · 暖阳与奶油色|Home and companion room · warm sunlight and cream|ホーム・お部屋用・あたたかな朝日とクリーム色
+黄油曲奇|Butter cookies|バタークッキー
+下午茶的小甜点|A small teatime treat|午後のお茶に、小さなおやつ
+拍立得|Instant camera|インスタントカメラ
+挥手摆姿势，亮起星星；不截屏|Pose and sparkle; doesn’t capture the screen|ポーズをとると星がきらり。画面撮影はしません
+星夜小屋|Starry room|星空のお部屋
+首页与伙伴房间 · 深蓝与点点星光|Home and companion room · deep blue and tiny stars|ホーム・お部屋用・紺色と小さな星
+它最爱的日常口粮|A favorite everyday snack|いつものお気に入り
+猫罐头|Tinned meal|ごちそう缶
+开罐会有声音的那种|A familiar mealtime favorite|缶を開けたら、うれしいごはん
+豪华大餐|Deluxe meal|ぜいたくディナー
+吃完会舔盘子|Worth every last bite|最後のひと口までおいしい
+逗猫棒|Feather teaser|猫じゃらし
+抚摸时它会更嗨（每次亲密 +2）|Extra fun during pats (bond +2)|なでる時間がもっと楽しく（なかよし+2）
+激光笔|Laser toy|レーザーのおもちゃ
+它永远抓不到的那个红点|The little red dot that’s always one step ahead|いつも少し先にいる赤い点
+毛线围巾|Knitted scarf|ニットのマフラー
+戴上就没那么赛博了|A warm, cozy touch|ぬくもりを、ひとつ
+墨镜|Round glasses|丸いサングラス
+看起来很有主意|A thoughtful little look|ちょっと頼もしい顔
+小王冠|Little crown|小さな王冠
+送给伙伴的小小加冕|A tiny coronation for your companion|パートナーに、小さな戴冠式
+草莓拼盘|Strawberry plate|いちごのプレート
+分享一点清甜的好心情|Share a little sweetness|甘ずっぱい気分をおすそ分け
+午后轻食|Afternoon plate|午後の軽食
+读书前先好好吃饭|A nourishing break before reading|読書の前に、きちんとごはん
+抹茶点心|Matcha treat|抹茶のおやつ
+留给认真生活的你们|For the two of you, doing your best|日々をがんばる、ふたりに
+涂鸦手账|Sketch journal|お絵かき手帳
+坐下来翻一翻，陪你安静画画|Settle down for a quiet drawing break|腰をおろして、静かにお絵かき
+画家贝雷帽|Artist beret|絵描きのベレー帽
+把普通午后变成创作时间|Make an ordinary afternoon creative|いつもの午後を、創作の時間に
+奶油耳机|Cream headphones|クリーム色のヘッドホン
+读书时也能戴的像素耳机|Pixel headphones for reading time|読書の時間にも似合うヘッドホン
+星星发夹|Star hairclip|星のヘアピン
+随身带着一颗小星星|Keep a little star close|小さな星を、いつもそばに
+雨天书桌|Rainy desk|雨の日の机
+首页与伙伴房间 · 蓝灰雨滴窗景|Home and companion room · blue-gray rain|ホーム・お部屋用・青灰色の雨の窓
+森林书房|Forest study|森の書斎
+首页与伙伴房间 · 绿色书架与木色|Home and companion room · leafy green and wood|ホーム・お部屋用・緑の本棚と木のぬくもり
+# Adventure, attribute guidance and progress
+SMALL ADVENTURES / 一起长大的日常|SMALL ADVENTURES / Growing together|SMALL ADVENTURES / 一緒に育つ日々
+今天，一起做点什么？|What shall we try together today?|今日は、一緒に何をする？
+散步观察、翻牌和真实专注积累；20 解锁林间小径|Grow through observation, matching and real focus; forest path unlocks at 20.|観察、絵合わせ、本当の集中で成長。20で林の道を解放。
+画下不重复的小作品；20 解锁薄荷与薰衣草画笔|Create original sketches; mint and lavender unlock at 20.|新しい絵を描いて成長。20でミントとラベンダー色を解放。
+尝试新路线与完成翻牌；20 解锁六对翻牌，35 解锁星光天台|Try routes and finish matching games; 6 pairs at 20, rooftop at 35.|道の探索と絵合わせで成長。20で6組、35で星の屋上を解放。
+观察、翻牌和真实专注会增长，20 解锁林间小径|Grows with observation, matching and real focus; forest path at 20.|観察、絵合わせ、集中で成長。20で林の道へ。
+像素涂鸦和记录风景会增长，20 解锁新画笔|Grows with pixel art and sketching scenery; new colors at 20.|ピクセル絵や風景のスケッチで成長。20で新しい色。
+尝试路线与翻牌会增长，20 解锁六对翻牌，35 解锁天台|Grows with routes and matching; 6 pairs at 20, rooftop at 35.|探索と絵合わせで成長。20で6組、35で屋上へ。
+今日成长|Growth today|今日の成長
+成长规则|Growth rules|成長のルール
+口袋散步|Pocket walks|ポケット散歩
+选路线、做选择、收集小发现|Choose routes and collect little discoveries|道を選んで、小さな発見を集めよう
+默契翻牌|Memory match|なかよし絵合わせ
+翻开相同图案，试试记忆力|Find matching pictures|同じ絵を探してみよう
+像素手账|Pixel journal|ピクセル手帳
+画一张小画，留进作品册|Draw a little picture for your album|小さな絵を描いて作品集へ
+收集册 ·|Collection ·|コレクション・
+作品|Artwork|作品
+保存了|Saved |保存した数：
+条成长足迹| shared moments|件の成長の記録
+收集册与作品|Collection & artwork|コレクション・作品
+回去歇一会|Back to a break|休憩に戻る
+花园小路|Garden path|お花の小道
+林间小径|Forest path|木立の小道
+星光天台|Starlit rooftop|星明かりの屋上
+花丛里传来轻轻的沙沙声。你们决定……|A soft rustle comes from the flowers. You decide to…|花の間から、ささやかな音。ふたりは…
+树梢漏下细细的光，路边像藏着什么。你们决定……|Light filters through the trees. Something is hiding beside the path. You decide to…|木漏れ日の中、道端に何かが。ふたりは…
+晚风吹动衣角，远处有一颗亮星。你们决定……|The evening breeze stirs your clothes. A bright star waits. You decide to…|夜風に服のすそが揺れ、遠くに明るい星。ふたりは…
+压平的小花|Pressed blossom|押し花
+口袋里的圆石|Pocket pebble|ポケットの丸い石
+蒲公英种子|Dandelion seed|たんぽぽの種
+叶脉书签|Leaf-vein bookmark|葉脈のしおり
+灰蓝羽毛|Blue-gray feather|青灰色の羽
+松鼠的橡果|Squirrel’s acorn|りすのどんぐり
+星光明信片|Starlight postcard|星明かりのはがき
+风筝的线头|Kite string|たこの糸
+月牙剪影|Crescent silhouette|三日月のシルエット
+你们蹲下来，发现花瓣边缘像一颗心。|You notice a heart-shaped edge on a petal.|しゃがむと、花びらのふちがハートに見えた。
+掌心大小的一颗石头，摸起来温温的。|A palm-sized stone feels warm to the touch.|手のひらの丸い石は、ほんのり温かかった。
+没有许很大的愿望，只希望明天也轻松一点。|No grand wishes, just a gentler tomorrow.|大きな願いはしなかった。明日も少し穏やかでありますように。
+对着阳光，叶脉像一幅细小的地图。|Against the sun, the leaf veins look like a tiny map.|光に透かすと、葉脈は小さな地図のよう。
+一阵风过去，留下了一片轻轻的羽毛。|The breeze leaves one weightless feather behind.|風のあとに、軽い羽が1枚残った。
+你们把橡果留在树下，只带走了这张小画。|You leave the acorn under the tree and take only this sketch.|どんぐりは木の下に置いて、小さな絵だけ持ち帰った。
+今晚的星星不多，但刚好够画一张明信片。|Just enough stars to fill a postcard.|星は少ないけれど、はがき1枚を描くには十分。
+大胆往前一步，栏杆旁的彩线原来是一只旧风筝。|One brave step reveals an old kite beyond the colorful string.|一歩近づくと、色の糸は古いたこにつながっていた。
+把月亮画进掌心，夜色也变得柔软了。|Drawing the moon in your palm makes the night feel gentler.|手のひらに月を描くと、夜もやわらかくなった。
+先暂停专注，再和伙伴歇一会儿吧|Pause focus before taking a play break.|集中を一時停止してから、一緒に休もう。
+今天的 6 次成长已完成，接下来可以轻松练习。|All six growth chances used today. Keep playing freely.|今日の成長6回は完了。あとは気軽に遊べます。
+灵感暂时用完了，可以自由练习。新的一天至少补到 3 点。|Out of inspiration for now; practice freely. At least 3 points refill each day.|ひらめきはひと休み。自由に練習でき、新しい日には3点まで補充します。
+本次成长用 1 点灵感 · 还有|Growth uses 1 inspiration · Remaining: |成長にひらめき1点・残り：
+点 · 今日成长| points · Growth today: |点・今日の成長：
+这次是轻松练习。成长机会用完了，休息和游玩都随你。|Free practice this time. Rest or keep playing; it’s up to you.|今回は自由な練習。休んでも、遊び続けても大丈夫。
+。每条路线藏着 3 个小发现。|. Each route has three discoveries.|。それぞれの道に3つの発見。
+出发 ↗|Let’s go ↗|出発 ↗
+解锁|Unlock|解放
+蹲下来仔细观察|Look closely|しゃがんで観察する
+和伙伴往前走走|Take a step together|一緒に進んでみる
+把眼前的景色画下来|Sketch the scenery|目の前の景色を描く
+换条路|Choose another path|別の道へ
+又走了一段熟悉的路|A familiar path, walked together|いつもの道を、また一緒に
+已放进收集册|Added to collection|コレクションに追加
+轻松练习 · 没有消耗灵感|Free practice · no inspiration used|自由な練習・ひらめき消費なし
+看看收集册|Open collection|コレクションを見る
+再走走|Walk a little more|もう少し歩く
+回去|Go back|戻る
+对| pairs|組
+找到相同图案。翻错可以再试，不扣分。完成：勇气 +2、好奇心 +1。|Find matching pictures. Mistakes have no penalty. Finish: courage +2, curiosity +1.|同じ絵を探そう。間違えても減点なし。完成で勇気+2、好奇心+1。
+重新洗牌|Shuffle again|もう一度混ぜる
+已配对|Matched: |そろった数：
+· 翻牌|· Moves: |・めくった回数：
+次| times|回
+，未翻开|, face down|、裏向き
+画笔颜色|Brush colors|ペンの色
+奶油白（橡皮）|Cream (eraser)|クリーム色（消しゴム）
+森林绿|Forest green|森の緑
+莓果粉|Berry pink|ベリーピンク
+暖金|Warm gold|あたたかな金色
+天空蓝|Sky blue|空色
+橄榄绿|Olive green|オリーブグリーン
+薄荷绿|Mint|ミント
+薰衣草紫|Lavender|ラベンダー
+给作品起个名字|Name your artwork|作品に名前をつける
+今天的小心情|A little feeling today|今日の小さな気分
+清空画布|Clear canvas|キャンバスを消す
+保存到作品册|Save to art album|作品集に保存
+先画一点喜欢的东西吧|Draw a little something first.|まず、好きなものを少し描こう。
+这张作品已经在册子里啦|This artwork is already in your album.|この作品はもう作品集にあります。
+作品册已有 12 张，先在作品册移除一张再保存|Your album has 12 pictures. Remove one before saving another.|作品集は12枚までです。1枚外してから保存してください。
+保存好了 · 创造力 +3，好奇心 +1|Saved · creativity +3, curiosity +1|保存しました・創造力+3、好奇心+1
+作品保存好了 · 这次是自由创作|Artwork saved · free creation|作品を保存しました・今回は自由な創作
+你们的收集册|Your shared collection|ふたりのコレクション
+小发现|Discoveries|小さな発見
+像素作品|Pixel artwork|ピクセル作品
+还没遇见|Not found yet|まだ出会っていない
+移出册子|Remove from album|作品集から外す
+还没有作品，随手画一点就好。|No artwork yet. A little doodle is enough.|まだ作品はありません。気軽に描いてみよう。
+最近一起经历的事|Recent shared moments|最近一緒に過ごしたこと
+继续玩|Keep playing|続けて遊ぶ
+合上册子|Close album|作品集を閉じる
+慢慢长大就好|Grow at your own pace|ゆっくり育てばいい
+知道啦|Got it|わかった
+换肤窗口暂时没打开，请重试|Couldn’t open skins. Please try again.|着せ替えを開けませんでした。再度お試しください。
+换皮肤|Change skin|着せ替え
+换皮肤 · Petdex ↗|Change skin · Petdex ↗|着せ替え・Petdex ↗
+一起玩 ↗|Play together ↗|一緒に遊ぶ ↗
+# Digest
+每天一点新发现|A little discovery every day|毎日、小さな発見を
+从你的兴趣出发，找到下一个值得动手的小项目。|Follow your interests to a small project worth trying.|興味から、手を動かしたくなる小さなプロジェクトへ。
+定制我的日报|Customize my digest|ダイジェストをカスタマイズ
+个项目| projects|件のプロジェクト
+个关注方向| interests|件の関心分野
+发现|Discover|見つける
+日报日期|Digest date|ダイジェストの日付
+正在更新…|Updating…|更新中…
+正在获取|Fetching |取得中：
+AI 与机器学习|AI & machine learning|AI・機械学習
+效率工具|Productivity|作業効率化
+前端开发|Frontend development|フロントエンド開発
+后端开发|Backend development|バックエンド開発
+开发工具|Developer tools|開発ツール
+移动开发|Mobile development|モバイル開発
+游戏开发|Game development|ゲーム開発
+数据科学|Data science|データサイエンス
+搜索项目、简介或语言|Search projects, descriptions, or languages|プロジェクト・説明・言語で検索
+排序方式|Sort by|並び順
+为你发现|Discoveries for you|あなたへの発見
+按总星标排序|Sorted by total stars|合計スター数順
+按更新时间排序|Sorted by update time|更新順
+总星标|Total stars|合計スター数
+最近更新|Recently updated|最近の更新
+正在寻找值得一读的项目…|Finding projects worth exploring…|気になるプロジェクトを探しています…
+可以调整兴趣或语言条件，或点「更新日报」重试。|Adjust interests or languages, or refresh the digest to retry.|興味や言語を変えるか、ダイジェストを更新してみてください。
+来源：|Source: |取得元：
+星标为累计数量，不代表今日涨幅。|Stars are cumulative, not today’s growth.|スター数は累計で、本日の増加数ではありません。
+兴趣与收藏保存在本机；获取项目时，选中的主题和关键词仅发送给上述数据源。|Interests and favorites stay locally. Searches send selected topics and keywords only to the chosen source.|興味とお気に入りは端末に保存。検索時、選んだ分野とキーワードだけを指定のサービスに送信します。
+更新日报|Refresh digest|ダイジェストを更新
+兴趣方向|Interests|興味の分野
+关注方向|Interests|関心分野
+自定义关键词|Custom keywords|カスタムキーワード
+数据源|Source|データ取得元
+语言筛选|Language filter|言語で絞り込み
+全部语言|All languages|すべての言語
+近期活跃|Recently active|最近活発なプロジェクト
+新项目|New projects|新しいプロジェクト
+我的收藏|Favorites|お気に入り
+历史日报|Past digests|過去のダイジェスト
+保存并更新|Save & refresh|保存して更新
+已保存|Saved|保存しました
+获取失败|Couldn’t fetch|取得できませんでした
+清除|Clear|消去
+没有找到项目|No projects found|プロジェクトが見つかりません
+仅看收藏|Favorites only|お気に入りのみ
+每天首次打开自动更新|Refresh on first open each day|毎日の初回起動時に更新
+最多 8 个方向，每个关键词最多 40 字。|Up to 8 interests; each keyword can be up to 40 characters.|分野は8件まで、キーワードは各40文字まで。
+至少选择一个兴趣方向或填写关键词。|Choose an interest or enter a keyword.|興味の分野かキーワードを1つ以上設定してください。
+
+黄铜观察镜|Brass field lens|真鍮の観察レンズ
+找出细微差别 · 好奇心 +3|Spot the difference · Curiosity +3|違いを見つける · 好奇心 +3
+透过镜片看一片叶子，解锁林间邮路。|Look closer at a leaf. Unlock the woodland mail route.|葉っぱをじっくり観察。森の郵便路が開きます。
+旅行水彩盒|Travel watercolors|旅の水彩セット
+调出自己的颜色 · 创造力 +3|Mix your own colors · Creativity +3|自分の色を作る · 創造力 +3
+选两种颜料，为旅行明信片盖上彩色邮戳。|Blend two pigments into a stamp for your travel postcards.|2色を選んで、旅のはがきに彩りの消印を。
+口袋指南针|Pocket compass|ポケットコンパス
+走出迷你迷宫 · 勇气 +3|Find your way out · Courage +3|迷路の出口へ · 勇気 +3
+慢慢寻找出口，解锁星光邮路。|Find the exit at your pace. Unlock the starlight mail route.|自分のペースで出口を探して、星空の郵便路へ。
+月相图鉴|Moon phase atlas|月の図鑑
+接上月相规律 · 灵性 +3|Complete the moon sequence · Insight +3|月の並びを完成 · ひらめき +3
+把缺少的那一轮月亮放回夜空。|Find the missing moon in the night sky.|夜空に欠けた月を戻してあげよう。
+双人旅行日记|Our travel journal|ふたりの旅日記
+写一则双人日记 · 默契 +3|Write a page together · Bond +3|日記を一緒に書く · 絆 +3
+记住彼此喜欢的风景，一起续写旅途。|Remember each other's favorite places. Keep the journey going.|好きな景色を覚えて、ふたりの旅を続けよう。
+云朵保温杯|Cloud thermos|雲のマイボトル
+安静休息 30 秒 · 精力 +6、心情 +2|A quiet 30-second break · Energy +6, Mood +2|静かな30秒の休憩 · 元気 +6、気分 +2
+留一小段空白给自己；中途离开也没关系。|Leave a little space for yourself. You can stop whenever you like.|自分に小さな余白を。途中でやめても大丈夫。
+成长工具|Growth tools|成長ツール
+使用工具|Use tool|ツールを使う
+花园邮路|Garden route|庭の郵便路
+林间邮路|Woodland route|森の郵便路
+星光邮路|Starlight route|星空の郵便路
+晴日|Sunshine|晴れの日
+微雨|Soft rain|小雨
+晚霞|Sunset|夕焼け
+薄雾|Morning mist|薄霧
+小路尽头有一间还没开门的邮局。窗台上，三片叶子排成一封信。|At the end of the path, a little post office waits to open. Three leaves make a letter on its windowsill.|小道の先には、まだ開いていない郵便局。窓辺には、手紙のように3枚の葉っぱが並んでいました。
+风把空白信纸吹到了花坛边。你们决定给这一天留下一句话。|The wind brings a blank page to the flowerbed. You decide to leave a line for today.|風に飛ばされた便せんが花壇のそばに。今日のために、ひとこと残すことにしました。
+邮差问：想把今天寄给谁？你们把收件人写成了“未来的我们”。|The postmaster asks who today's letter is for. You write: Our future selves.|「今日を誰に届けますか？」郵便屋さんに聞かれて、宛名に「未来の私たち」と書きました。
+观察镜里，树叶的纹路连成了一条新路。你们循着光往里走。|Through your lens, leaf veins trace a new path. You follow the light into the woods.|レンズの向こうで、葉脈が新しい道につながります。ふたりは光をたどって森の奥へ。
+木桥中央有一串小小的铃铛。伙伴停下来，等你一起过去。|Little bells hang above a wooden bridge. Your companion waits for you to cross together.|木の橋には小さな鈴。パートナーは立ち止まって、一緒に渡るのを待っています。
+树屋信箱里躺着一张旧地图。背面写着：走慢一点，也会到达。|An old map rests in the treehouse mailbox. On the back: Slowly is still a way forward.|木の家のポストには古い地図。裏には「ゆっくりでも、ちゃんと着く」とありました。
+指南针的指针轻轻转动。楼梯尽头是一片安静的星空。|The compass needle turns gently. A quiet sky waits at the top of the stairs.|コンパスの針が静かに動きます。階段の先に、穏やかな星空が広がっていました。
+天台上有一架旧望远镜。今晚的月亮刚好装得进镜筒。|An old telescope stands on the rooftop. Tonight's moon fits perfectly in its view.|屋上には古い望遠鏡。今夜の月は、レンズにぴったり収まります。
+你们在最后一页画下星座，把这张明信片寄向下一次相见。|On the last page, you draw a constellation and send this postcard toward your next meeting.|最後のページに星座を描いて、次に会う日の私たちにはがきを送りました。
+收好工具|Put tools away|ツールをしまう
+一起使用了|Used together:|一緒に使いました：
+这一小步，做到了|One little step, complete|小さな一歩、できました
+这次是自由体验，今天这件工具已成长或灵感不足。|Free play this time. This tool has grown today, or inspiration is low.|今回は自由に楽しもう。今日の成長済み、またはひらめきが不足しています。
+每件工具每天成长一次，与散步、翻牌、画画共用每日 6 次成长和灵感。|Each tool grows once a day, sharing inspiration and six daily growth chances with walks, cards and drawing.|各ツールは1日1回成長。散歩・カード・お絵描きと、1日6回の成長枠とひらめきを共有します。
+看看其他工具|Explore other tools|ほかのツールを見る
+先在商城兑换这件工具吧|Pick up this tool in the shop first.|先にお店でこのツールを手に入れよう。
+有一片叶子的叶脉不同，找找看。|One leaf has a different vein. Can you spot it?|葉脈が違う葉っぱが1枚あります。探してみよう。
+叶片|Leaf|葉っぱ
+把缺少的月亮放回序列。|Put the missing moon back in the sequence.|欠けた月を並びに戻してみよう。
+选两种颜色，调出一枚只属于今天的邮戳。|Choose two colors for a stamp that's all your own.|2色を選んで、今日だけの消印を作ろう。
+保存我的邮戳|Save my stamp|消印を保存
+从脚印出发，点相邻石板走到星星。走错可以退回来。|Tap adjacent stones to reach the star. You can always step back.|隣の石を押して星まで進もう。間違えたら戻れます。
+迷你迷宫|Pocket maze|ミニ迷路
+雨天的书店|A rainy-day bookshop|雨の日の本屋
+雨天书店|Rainy bookshop|雨の本屋
+有风的海边|A breezy seaside|風のある海辺
+海边|Seaside|海辺
+安静的花园|A quiet garden|静かな庭
+花园|Garden|庭
+伙伴说，今天最想去的地方是：|Your companion says today's favorite place is: |パートナーが今日行きたい場所は：
+翻到下一页，你会画下哪一种风景？|What scene will you draw on the next page?|次のページには、どの景色を描く？
+把视线从屏幕移开，肩膀放松。没有声音，也没有结束提醒。|Look away from the screen and relax your shoulders. This break stays silent.|画面から目を離して、肩の力を抜こう。音も終了通知もありません。
+这只是应用里的休息片刻，随时可以结束。|A small break in the app. End it whenever you like.|アプリの中の小休憩。いつでも終われます。
+休息好了|I'm rested|ひと休みできた
+再看一眼就好，不扣分。|Take another look. No points lost.|もう一度見てみよう。減点はありません。
+先选两种颜色吧|Choose two colors first.|まず2色を選んでね。
+点一块相邻的石板就好|Tap an adjacent stone.|隣の石を押してね。
+随身工具包|My toolkit|持ち歩きツール
+永久工具可以反复使用；成长有每日上限，不用追赶。|Permanent tools are yours to reuse. Daily growth has a limit, so take your time.|ツールはずっと使えます。成長には1日の上限があるので、焦らずに。
+去商城看看|Visit the shop|お店をのぞく
+给明天寄张明信片|Send a postcard to tomorrow|明日にはがきを送ろう
+三段小旅途，十二种天气记忆。带上工具，把风景和心情装进信封。|Three little routes, twelve weather memories. Pack your tools and send a piece of today.|3つの小さな旅路と12の天気の思い出。ツールを持って、景色と気持ちを封筒へ。
+继续这段旅程|Continue the journey|旅の続きを歩く
+开始一封旅行信|Start a travel letter|旅の手紙を始める
+明信片册|Postcard album|はがきアルバム
+每天第一封完成的旅行信可成长；之后仍可散步和收集。|Your first completed letter each day can bring growth. Keep exploring and collecting afterward.|その日の最初の完成した手紙で成長。その後も散歩と収集を楽しめます。
+今天想把信寄向哪里？|Where shall today's letter go?|今日はどこから手紙を送る？
+整装出发|Set off|出発しよう
+需要|Requires|必要：
+仔细看看眼前的小细节|Look a little closer|小さなものをよく見る
+给这一幕涂上颜色|Add a little color|この景色に色を添える
+和伙伴向前迈一步|Take a step together|一緒に一歩進む
+进度自动保存，随时收起，下次接着走。|Progress saves automatically. Close this anytime and pick up here later.|進み具合は自動保存。いつ閉じても、次回ここから続けられます。
+给未来的我们寄出了一张明信片。|Sent a postcard to our future selves.|未来の私たちにはがきを送りました。
+这封信，寄给未来的我们|For our future selves|未来の私たちへ
+风景已经收进明信片册。|This scene is saved in your postcard album.|景色をはがきアルバムに収めました。
+轻松旅行 · 未消耗灵感|A gentle trip · No inspiration used|気軽な旅 · ひらめきの消費なし
+翻开明信片册|Open postcard album|はがきアルバムを開く
+寄给明天的十二张信|Twelve letters to tomorrow|明日への12通の手紙
+不同邮路与天气各留一张。重复风景不会挤掉旧收藏。|One card for each route and weather. Repeat visits keep your old memories safe.|郵便路と天気ごとに1枚ずつ。同じ景色でも前の思い出は消えません。
+再寄一封|Send another letter|もう1通送る
+兑换后永久拥有。使用并完成互动才成长，每天一次。|Yours to keep. Complete its activity to grow, once per day.|交換したらずっと使えます。遊びを完了すると成長、1日1回。
+寄张旅行明信片|Send a travel postcard|旅のはがきを送る
+
+学习与成长|Learn & grow|学びと成長
+陪伴与生活|Companionship & life|パートナーと暮らし
+打开正在学的 Python 资料，运行一个例子|Open your Python material and run one example.|Pythonの教材を開いて、例を1つ動かしてみる。
+打开正在学的 PyTorch 资料，运行一个例子|Open your PyTorch material and run one example.|PyTorchの教材を開いて、例を1つ動かしてみる。
+状态|Status|状態
+连续着陆|Active days|続けた日数
+ 天 · 相伴 | days · Together |日 · 出会ってから
+ 天 · 今天赚到 | days · Earned today |日 · 今日の獲得
+食物用小鱼干在商城买，买完存在仓库里。|Use fish tokens to buy food in the shop. Purchases stay in your inventory.|お店で小魚を使って食べ物を買うと、持ち物に入ります。
+做事的每一分钟都攒进池子，每满 60 分钟赚 1 条。|Each recorded minute counts. Every 60 minutes earns one fish token.|記録した時間がたまり、60分で小魚を1つ獲得します。
+喂|Feed|あげる
+买|Buy|買う
+本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。|Offline dialogue. Add an AI key in My space → Settings for richer replies.|オフラインの会話です。「マイスペース → 設定」でAIキーを追加すると、より豊かな会話に。
+这里只显示当前回应；对话上下文会保存在本机。|Only the current reply is shown. Conversation context stays on this device.|今の返事だけを表示します。会話の履歴は端末に保存されます。
+第一次见面。我会一直待在你屏幕右下角。|Nice to meet you. I'll be here in the corner of your screen.|はじめまして。画面の隅で、いつもそばにいるね。
+小鱼干账本|Fish token ledger|小魚の出納帳
+每日|Daily|毎日
+里程碑|Milestone|節目
+随手记|Quick note|ひとことメモ
+新的一天，小陆说：|A new day. Little Trail says: |新しい1日。リトルトレイルが言います：
+小陆来了。它会住在右下角，靠你做的事长大。|Little Trail is here. Your daily actions help your companion grow.|リトルトレイルが来ました。毎日の小さな行動で一緒に成長します。
+这么晚还没睡？|Still up? Take care of yourself.|まだ起きてる？無理しないでね。
+到了「| reached “|が「
+倾倒：|Brain dumps: |気持ちメモ：
+情绪记录：|Mood entries: |気分の記録：
+休息日：|Rest days: |休んだ日：
+今日攒时：|Today's time pool: |今日ためた時間：
+暂无记录，去「今日」选心情|No entries yet. Choose a mood in Today.|まだ記録がありません。「今日」で気分を選んでみよう。
+睡觉、记录会回；你 0-5 点还在专注，它会跟着熬|Sleep and journaling restore energy. Late-night focus tires your companion too.|睡眠と記録で回復。深夜0〜5時の集中ではパートナーも疲れます。
+摸摸、说说话、一起玩都会涨；很久不理它会淡下去|Petting, chatting and playing lift its mood. Long absences gently lower it.|なでたり話したり遊んだりすると上昇。長く会わないと少しずつ下がります。
+聊天和记录会涨，只涨不掉|Chatting and journaling build insight. It never decreases.|会話や記録で増えます。減ることはありません。
+你专注时它陪着，每 15 分钟 +1，只涨不掉|Your companion gains +1 for every 15 minutes of focus. It never decreases.|集中を見守るたび、15分で+1。減ることはありません。
+解锁的小动作：|Unlocked gestures: |できるようになった動き：
+还没有 —— 灵性 50 解锁「念诗」，心情 80 解锁「一起打滚」|None yet. Insight 50 unlocks poetry; Mood 80 unlocks rolling together.|まだありません。ひらめき50で「詩を読む」、気分80で「一緒にごろごろ」が開きます。
+松散时长 |Extra time entries: |単発の時間記録：
+ 笔 · 倾倒 | · Brain dumps: |件 · 気持ちメモ：
+用来算「今天是第几周」，直接决定课表按周次怎么过滤。|This anchors the teaching week and filters your timetable.|授業週の計算と時間割の絞り込みに使います。
+按现在这个起点，本周是第 |Current teaching week: |現在の授業週：第
+ 周（| (|週（
+ 起）。| onward).|開始）。
+跟开学周对不上就改这里。|Adjust it if this doesn't match your term.|学期に合わない場合はここを調整してください。
+这周的松紧挺平衡|Your week looks balanced.|今週はちょうどよいバランスです。
+保持这个节奏就行，不用额外加码|Keep this pace. There's no need to add more.|今のペースで大丈夫。無理に増やさなくてもいいよ。
+可以试试：|You could try: |こんな工夫も：
+休息也是前进的一部分|Rest is part of moving forward.|休むことも前進の一部。
+本周（|This week (|今週（
+ 起，已过 | onward, |開始、経過
+ 天）总投入 | days): total time |日）の取り組み
+ 笔、放纵 | entries; treats: |件、楽しみすぎた記録：
+ · 为自己和伙伴留一份期待。| · A little joy for you and your companion.| · 自分にもパートナーにも、小さな楽しみを。
+换个伙伴外观 · 着陆|StudyTrail · Companion skins|学びのあと · スキン変更
+此安卓预览版支持计划、计时、手动断点、养成与备份。桌面悬浮、跨应用截屏和使用时长监测尚未移植。|This Android preview supports plans, timers, manual checkpoints, companion growth and backups. Desktop overlays, cross-app capture and usage tracking are not available.|このAndroidプレビューは計画・タイマー・手動の進捗メモ・育成・バックアップに対応。オーバーレイ、他アプリの撮影と使用時間計測には未対応です。
+安卓预览版|Android preview|Androidプレビュー
+跨应用截屏仅桌面版可用，安卓端请先手动记录学习断点。|Cross-app capture is available on desktop. Use a manual checkpoint on Android.|他アプリの撮影はデスクトップ版で利用できます。Androidでは手動の進捗メモをご利用ください。
+
+我是小陆。你做事我就在，不做事我也在。|I'm Little Trail. Busy or resting, I'll be here.|リトルトレイルです。何かをするときも、休むときも、ここにいるよ。
+睡不着的话，把想法倒出来会好受点。|If you can't sleep, putting your thoughts into words might help.|眠れないなら、思っていることを言葉にしてみよう。
+天亮啦，我在。|A new morning. I'm here.|朝が来たね。ここにいるよ。
+早上好，先喝口水再想别的。|Morning. Have some water before anything else.|おはよう。まず水をひと口飲もう。
+中午了，吃了吗？|It's lunchtime. Have you eaten?|お昼だね。ごはん食べた？
+歇一会儿也不耽误什么。|A short break won't set you back.|少し休んでも大丈夫だよ。
+夜里适合慢慢来。|Evenings are for taking it slowly.|夜はゆっくりでいいよ。
+我在这儿。|I'm right here.|ここにいるよ。
+你忙你的，我不吵。|Do your thing. I'll keep you quiet company.|忙しいときは、静かにそばにいるね。
+要不要动一动？|How about a little stretch?|ちょっと体を動かす？
+我在看窗外（并没有窗户）。|I'm looking out the window. An imaginary one.|窓の外を見てるの。想像の窓だけどね。
+伸个懒腰吧，你也是。|Time for a stretch. You too.|背伸びしよう。あなたもね。
+有想做但一直没开始的吗？|Anything you've been meaning to begin?|やりたいけど、まだ始めていないことある？
+电脑好热，你也是吗。|The computer feels warm. How are you doing?|パソコンがあったかいね。あなたはどう？
+刚才那会儿你在想什么？|What was on your mind just now?|さっき、何を考えてたの？
+喵。|Meow.|にゃ。
+我有点饿了…|A little hungry…|ちょっとお腹すいたな…
+鱼干…还有吗？|Any fish snacks left?|小魚、まだある？
+我盯着你看了很久了，因为饿。|I've been looking at you. A little snack, maybe?|ずっと見てたよ。おやつ、もらえるかな？
+肚子在响，你听见没。|My tummy is rumbling. Can you hear it?|お腹が鳴ってる。聞こえた？
+好吃！|Delicious!|おいしい！
+满足了…|That hit the spot…|満足…
+谢谢你。|Thank you.|ありがとう。
+再来一条也不是不行。|I wouldn't say no to one more.|もう1つあっても、いいかな。
+呼噜呼噜…|Purr, purr…|ごろごろ…
+嗯…这里，对。|Mm… right there.|うん…そこ、そこ。
+再摸一下。|One more pat?|もう一回なでて？
+（眯眼）|(Closes eyes happily.)|（目を細める）
+刚摸过啦，让我缓一下。|A little pause between pats, please.|今なでてもらったから、ちょっとひと休み。
+它在呼噜，别打扰。|Purring in progress.|ごろごろしてるところ。
+鱼干到手！|A fish token!|小魚、手に入れた！
+这个我会存起来的。|I'll save this one.|これは大事にとっておくね。
+嘿嘿。|Hehe.|えへへ。
+又攒了一点。|A little more saved.|少しずつ、たまってきたね。
+我有点撑不住了…你也早点歇。|Getting tired… let's rest soon.|ちょっと疲れたな…あなたも早めに休もう。
+咖啡不如睡觉，真的。|Sleep beats coffee. Really.|コーヒーより眠ること。ほんとだよ。
+睡了一觉，满血了。|Rested and recharged.|ぐっすり眠って、元気いっぱい。
+跟你待着就是好。|It's nice just being with you.|一緒にいるだけで、うれしいよ。
+我开始记得住一些事了。|I'm starting to remember our little moments.|一緒に過ごしたこと、覚えられるようになってきた。
+你上次说的那个，后来怎么样了？|How did that thing you mentioned turn out?|この前話してたこと、その後どうなった？
+你最近在想什么，我大概能猜到一点。|I think I'm getting to know what's on your mind.|最近考えてること、少しわかるようになった気がする。
+不用说话也知道你要干嘛。|Sometimes we don't need words.|言わなくても、伝わることがあるね。
+你一动，我就知道下一步。|I can almost guess your next step.|次にすること、なんとなくわかるよ。
+山中何事？松花酿酒，春水煎茶。|Mountain days: pine blossoms for wine, spring water for tea.|山の日々。松の花で酒を醸し、春の水で茶を淹れる。
+风来疏竹，风过而竹不留声。|Wind passes through bamboo, leaving no sound behind.|竹を渡る風。過ぎ去れば、音も残らない。
+莫听穿林打叶声，何妨吟啸且徐行。|Let the rain fall through the trees. Walk slowly, singing.|木々を打つ雨の音にとらわれず、歌いながらゆっくり歩こう。
+此心安处，便是吾乡。|Where the heart rests, there is home.|心が安らぐ場所が、ふるさと。
+（它滚了一圈）|(Rolls over.)|（ころんと一回転）
+地上凉快。|It's cool down here.|床、ひんやりしてる。
+一起？|Join me?|一緒にどう？
+（翻过来躺着不动了）|(Flops over and stays there.)|（仰向けになって、じっとする）
+……我有点困。|…A little sleepy.|…ちょっと眠い。
+眼皮有点重，不过我在。|Heavy eyelids, but I'm here.|まぶたが重いけど、ここにいるよ。
+陪得有点久了，你也是。|We've been at this a while, haven't we?|ずいぶん長く頑張ったね。あなたも。
+（打了个哈欠）|(Yawns.)|（あくび）
+……不太想说话，但我在。|…Not many words today, but I'm here.|…今日はあまり話せないけど、そばにいるよ。
+我在这儿，不用管我。|I'm here. You don't need to worry about me.|ここにいるから、気にしなくていいよ。
+有点闷，一会儿就好了。|A little quiet today. It'll pass.|少しもやもや。きっと、じきに晴れるよ。
+要不要一起做点什么？|Shall we do something together?|一緒に何かしてみる？
+我大概知道你在想什么。|I think I understand a little.|少し、わかる気がする。
+不急，一件一件来。|No rush. One thing at a time.|急がず、ひとつずつね。
+我们好像…更熟了？|We're getting to know each other, aren't we?|なんだか…もっと仲よくなったね。
+嗯，我喜欢你在的时候。|I like it when you're here.|うん、あなたがいる時間が好き。
+你还在吗？我一直都在。|Still there? I'm right here.|まだいる？私はずっとここにいるよ。
+刚才那段时间去哪了，我不问。你回来了就好。|No need to explain where you went. Welcome back.|どこにいたかは聞かないよ。おかえり。
+！这个我能追一天。|I could chase this all day!|これ、一日中追いかけられそう！
+来了来了！|Here I come!|いくよ、いくよ！
+再动一下，就动一下下。|Move it once more. Just a little.|もう一度だけ、ちょっと動かして。
+（扑）|(Pounces.)|（ぴょん）
+哇——|Whoa!|わあー！
+有点高…不过还行。|A little high… but okay.|ちょっと高い…でも大丈夫。
+（被举起来，尾巴晃）|(Lifted up, swaying happily.)|（持ち上げられて、ゆらゆら）
+你力气挺大。|You're strong!|力持ちだね。
+嗯…就是这里…|Mm… that's the spot…|ん…そこ、そこ…
+呼噜呼噜……|Purr…|ごろごろ……
+（仰头）|(Tilts head up.)|（上を向く）
+再往上一点。|A little higher.|もう少し上。
+喵？|Meow?|にゃ？
+（耳朵动了动）|(Perks up.)|（ぴくっ）
+在。|I'm here.|いるよ。
+嗯？|Hm?|ん？
+那我先眯一会儿。|I'll take a little nap.|じゃあ、少しうとうとするね。
+晚安…|Good night…|おやすみ…
+（团成一团）|(Curls up.)|（まるくなる）
+醒了。|I'm awake.|起きたよ。
+嗯…几点了？|Mm… what time is it?|ん…今何時？
+（揉眼睛）|(Rubs eyes.)|（目をこする）
+好，那就什么都不做。|Okay. Let's do nothing for a moment.|うん、今は何もしないでいよう。
+陪你坐一会儿。|I'll sit with you.|ちょっと一緒に座ろう。
+（一起发呆）|(Daydreams together.)|（一緒にぼんやり）
+谢谢陪我。|Thanks for staying with me.|一緒にいてくれてありがとう。
+这样也挺好的。|This is nice, too.|こういう時間も、いいね。
+（伸个懒腰）|(Stretches.)|（のびをする）
+鱼干不够…先去做点正事？|Not enough tokens yet. We'll save up slowly.|小魚はまだ足りないね。ゆっくりためよう。
+攒着吧，我不急。|Let's save up. I'm in no hurry.|少しずつためよう。急いでないよ。
+AI 接口（陪伴、周报点评、近三日跟进）|AI connection for chat and reviews|会話・振り返り用のAI接続
+现在接的是 |Suggested service: |おすすめのサービス：
+：点一下按钮自动填地址和模型，|: use a preset to fill the endpoint and model. |：プリセットで接続先とモデルを入力できます。
+只粘 Key 就行。填完记得点「测试连接」，能省掉后面一堆莫名其妙的报错。|Add your API key, then test the connection before saving.|APIキーを入力して、保存前に接続をテストしてください。
+用 DeepSeek|Use DeepSeek|DeepSeekを使う
+用 OpenAI|Use OpenAI|OpenAIを使う
+测试连接|Test connection|接続をテスト
+Key 存在本机浏览器存储里（明文）。|Keys are stored unencrypted in this device's app storage. |キーはこの端末のアプリ内に暗号化せず保存されます。
+它是你自己的机器、自己的 key，但导出的备份文件别随手发给别人。|Backups can contain keys. Keep exported files private.|バックアップにキーが含まれる場合があります。取り扱いにご注意ください。
+伙伴单独用哪套 AI（可留空）|Companion AI override (optional)|パートナー専用のAI（任意）
+留空时共用上方的 AI。也可以单独填写服务地址和模型；使用本地服务前，请先启动服务并确认模型可用。|Leave blank to share the AI above, or enter a different endpoint and model. Start a local service before connecting.|空欄なら上のAIを共用します。別の接続先とモデルも設定できます。ローカルサービスは先に起動してください。
+用本地 Ollama|Use local Ollama|ローカルのOllamaを使う
+跟上面共用|Share main AI|上のAIと共用
+测试伙伴 AI|Test companion AI|パートナーのAIをテスト
+教务系统（查课表）|School timetable connection|学校の時間割に接続
+连上以后，今日页会显示今天的课。凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。|Connect to show today's classes. Credentials are encrypted locally by Windows and sent only to your school when signing in.|接続すると今日の授業を表示します。認証情報はWindowsで暗号化して端末に保存し、ログイン時に学校のシステムにのみ送信します。
+连接教务系统|Connect to school|学校のシステムに接続
+GitHub Token（可选，提升日报拉取限额）|GitHub token (optional, higher digest limits)|GitHubトークン（任意・取得上限を増やす）
+导入备份|Import backup|バックアップを読み込む
+清空全部数据|Clear all data|すべてのデータを削除
+ollama（它不校验，随便填个非空的）|ollama (any nonempty value)|ollama（空欄以外の値）
+pet-cpu:1.5b（或 ollama list 里的任意名字）|pet-cpu:1.5b (or a model from ollama list)|pet-cpu:1.5b（またはollama listのモデル名）
+导出失败：|Export failed: |書き出せませんでした：
+导入失败：|Import failed: |読み込めませんでした：
+已导出到 |Exported to |書き出し先：
+未知原因|Unknown reason|原因不明
+导入失败：不是有效的 JSON|Import failed: invalid JSON.|読み込み失敗：JSON形式が正しくありません。
+
+上次看到「|Last time: “|前回は「
+」。今天接着这一点就好。|”. Let's continue just a little.|」。今日はそこから少しだけ。
+ 的资料打开，先看五分钟。我在旁边。| material and try five minutes. I'll be here.|の教材を開いて、まず5分。そばにいるよ。
+心情美滋滋|Feeling cheerful|ごきげん
+想和你待一会|Happy to stay with you|一緒にいたい気分
+形影不离|Inseparable|いつも一緒
+好朋友|Good friends|仲よし
+很亲近|Close friends|とても親しい
+越来越熟|Getting closer|少しずつ仲よく
+仍会回应你；|Still here to respond; |いつでも応えるよ。
+ 秒后可再次获得互动成长| seconds until the next interaction reward|秒後にまた成長できます
+它在认真想怎么回答你…|Thinking of a thoughtful reply…|返事を考えているよ…
+让初华住在桌面上|Let Uika stay on the desktop|初華をデスクトップに表示
+主窗口收起后，也能开始学习、暂停和记断点。资源：Petdex · 桜 八.|Start, pause and save checkpoints even with the main window tucked away. Art: Petdex · 桜 八.|メイン画面を閉じても、学習の開始・一時停止・進捗記録ができます。素材：Petdex · 桜 八.
+走两步，活动一下。回来再陪你看书。|Take a few steps and stretch. I'll be here when you're back.|少し歩いて体をほぐそう。戻ったらまた一緒に読もうね。
+卡住了就把目标缩小：只运行一个例子，或者写下一个不懂的地方。|If you're stuck, try one example or write down one question.|行き詰まったら、例を1つ動かすか、疑問を1つ書くだけでいいよ。
+今天不用追平所有进度。把 |No need to catch up with everything today. Open your |今日は全部追いつかなくても大丈夫。
+ 的资料打开，看懂一个例子，就可以先停下来。| material, understand one example, then take a break.|の教材を開いて、例を1つ理解したら、ひと休みしよう。
+着陆正在启动，请稍后再试一下。|StudyTrail is starting. Try again in a moment.|学びのあとを起動中です。少し待ってもう一度お試しください。
+这次没有连接到着陆，请稍后再试。|Couldn't connect to StudyTrail. Please try again.|学びのあとに接続できませんでした。もう一度お試しください。
+打开|Open|開く
+选择 |Select |選択：
+这次没有完成，请重试。|That didn't finish. Please try again.|完了できませんでした。もう一度お試しください。
+内置皮肤|Built-in skin|内蔵スキン
+Petdex 皮肤|Petdex skin|Petdexスキン
+正在使用|In use|使用中
+换上并显示到桌面|Apply and show on desktop|着替えてデスクトップに表示
+桌面陪伴已开启|Desktop companion is on|デスクトップのパートナーは表示中
+桌宠已收起 · 点下方按钮叫它出来|Pet is hidden · Bring it back below|パートナーは非表示 · 下のボタンで呼び出せます
+先选一个喜欢的角色。|Choose a character you like.|好きなキャラクターを選んでね。
+内置 · 随时恢复|Built in · Always available|内蔵 · いつでも戻せます
+本地保存 · 可离线使用|Saved locally · Works offline|端末に保存 · オフラインでも使えます
+熟悉的路也有新心情。今天的风，你们又一起感受了一次。|A familiar path can feel new. You shared today's breeze together.|慣れた道にも新しい気持ち。今日の風を、また一緒に感じました。
+第 |No. |第
+ 张| cards|枚
+ 格| cells|マス
+一起找到了 |Together, you found |一緒に見つけたのは
+ 对图案，做得很好。| matching pairs. Well done.|組の絵柄。よくできました。
+用了 |Moves: |手数：
+ 次翻牌。慢一点也没关系，我们记住了彼此的节奏。| turns. Taking it slowly is fine. We're learning each other's rhythm.|回。ゆっくりで大丈夫。お互いのリズムを覚えました。
+这次是自由练习|Free practice this time|今回は自由に練習
+收工|All done|おしまい
+把「|Saved “|「
+」收进了你们的像素手账。|” in your pixel journal.|」をふたりのピクセル手帳に収めました。
+拖动画格子，也可用键盘逐格上色。保存新的作品：创造力 +3、好奇心 +1。空白或重复作品不消耗灵感。|Drag across cells or use the keyboard. A new drawing earns Creativity +3 and Curiosity +1. Blank or duplicate drawings use no inspiration.|ドラッグやキーボードで色を塗れます。新作の保存で創造力+3、好奇心+1。空白や同じ作品ではひらめきを消費しません。
+好奇心、创造力、勇气只涨不掉；换皮肤不重置。新的一天灵感至少补到 3 点，上限 9 点。|Curiosity, Creativity and Courage never decrease, and skins don't reset them. Inspiration refills to at least 3 each day, up to 9.|好奇心・創造力・勇気は減らず、着せ替えでも維持されます。ひらめきは毎日最低3まで回復、上限は9です。
+一次散步、完成一局翻牌或保存新的涂鸦，消耗 1 点灵感并获得成长。每天最多成长 6 次，用完后仍可自由练习和保存作品。|A walk, card game or new drawing uses 1 inspiration to grow. Up to six growth rewards a day; free play and saving art remain available.|散歩・カードの完成・新しい絵で、ひらめきを1使って成長します。1日6回まで。その後も自由に遊んで作品を保存できます。
+真实专注累计每 15 分钟，好奇心 +1；一次确认记录至少 5 分钟，灵感 +1，每天最多 3 次。玩游戏不增加学习时长，也不发小鱼干。专注计时中请先暂停再玩。|Every 15 recorded focus minutes adds Curiosity +1. A confirmed session of at least 5 minutes adds 1 inspiration, up to three times daily. Games earn no study time or fish tokens. Pause focus before playing.|記録した集中15分で好奇心+1。5分以上の確定した記録でひらめき+1、1日3回まで。ゲームで学習時間や小魚は増えません。遊ぶ前に集中を一時停止してください。
+好奇心 20 解锁林间小径；勇气 20 解锁六对翻牌、35 解锁星光天台；创造力 20 解锁两种新画笔。散步每条路线有 3 件收藏。作品册最多 12 张；移除作品会清掉画面，但同一作品的成长领取记录会保留。|Curiosity 20 unlocks the woodland path. Courage 20 unlocks six card pairs, and 35 the rooftop. Creativity 20 unlocks two colors. Each path has three finds. Keep up to 12 artworks; deleting one doesn't reset its reward history.|好奇心20で森の小道、勇気20で6組のカード、35で星空の屋上、創造力20で2色が開きます。各散歩道に3つの収集品。作品は12枚まで。削除しても成長の受取記録は残ります。
+今天已有三件计划，先移除一件，再把这一步加进来|Three plans already today. Remove one before adding another.|今日の計画は3つあります。1つ減らしてから追加してください。
+先准备需要的资料，做 5 分钟|Get your material ready and try five minutes.|教材を用意して、まず5分。
+按固定时间提醒|Remind at the set time|設定した時刻に通知
+还没有课表，暂用备用时间|No timetable yet; using the fallback time.|時間割がないため、予備の時刻を使います。
+今天无课，使用备用时间|No classes today; using the fallback time.|今日は授業がないため、予備の時刻を使います。
+ 节下课时间待补，暂用备用时间| end time is missing; using the fallback time.|限の終了時刻が未設定のため、予備の時刻を使います。
+今天下课较晚，休息后已过 23 点，不再提醒|Classes end late today. No reminder after 11 pm.|今日は授業の終了が遅いため、23時以降は通知しません。
+今天最后一节是第 |Last class today: period |今日の最後の授業は第
+ 节，|; |限、
+ 下课后休息 |. Break after class: |授業後の休憩：
+今天休息|Resting today|今日はお休み
+自学 |Study |自習：
+着陆 · 给自己的学习时间|StudyTrail · A little time to learn|学びのあと · 自分のための学習時間
+接着学 |Continue learning |続きから学ぼう：
+，先做 5 分钟。|. Just five minutes to begin.|。まず5分だけ。
+这些限制仍可由你修改。先用一周观察是否能帮你及时停下来。|You can change these limits. Try them for a week and see whether they help.|制限は自分で変更できます。1週間試して、役に立つか見てみよう。
+请使用桌面版本配置后台运行。|Use the desktop app to configure background mode.|バックグラウンド動作の設定はデスクトップ版で行えます。
+开机自启：|Start at login: |ログイン時に起動：
+；关闭窗口：|; when closing: |、閉じたとき：
+读取后台设置失败，可以稍后重试|Couldn't read background settings. Try again later.|バックグラウンド設定を読み取れませんでした。後でもう一度お試しください。
+另一个计时还在账上，请先在底部计时条结束并记录。|Another timer is active. Finish and record it using the bottom bar first.|別のタイマーが動いています。まず下部のバーで終了して記録してください。
+▶ 开始这 |▶ Start |▶ 開始：
+选择专注：|Select focus: |集中を選択：
+最近七天的专注分钟数：|Focus minutes over seven days: |直近7日間の集中時間（分）：
+今天先做好这三件，做少一点也可以|Start with these three. Doing less is fine too.|今日はこの3つから。少なくても大丈夫。
+开始了。现在只做「|Started. For now, just “|始めたよ。今は「
+ 分钟。休息一下也很好。| minutes. A break is welcome too.|分。休んでも大丈夫。
+先休息，20 分钟后再提醒你|Take a break. I'll remind you in 20 minutes.|まず休憩。20分後にまた知らせるね。
+今天就休息吧，明天再来|Rest today. We can start again tomorrow.|今日は休もう。また明日。
+已开启自启，关闭窗口后会留在托盘|Startup enabled. Closing the window keeps the app in the tray.|自動起動を有効にしました。閉じるとトレイに残ります。
+已设置托盘常驻，开机自启未能启用，请在设置里重试|Tray mode is on. Startup couldn't be enabled; retry in Settings.|トレイ常駐は有効です。自動起動は設定で再試行してください。
+设置失败，请稍后重试|Couldn't save settings. Please try again.|設定を保存できませんでした。もう一度お試しください。
+拿出书，翻到上次读到的地方|Open your book where you left off.|本を出して、前回の続きから。
+打开学习资料，只看眼前这一节|Open your material and focus on this section.|教材を開いて、目の前の1節だけ。
+穿上鞋，走到门外|Put on your shoes and step outside.|靴を履いて、外へ一歩。
+这次没有计入时长，准备好可以再开始|No time recorded this round. Start again when you're ready.|今回は時間を記録していません。準備ができたらまた始めよう。
+做完一件了 ✓|One thing done ✓|ひとつできた ✓
+已撤销完成，可以继续做|Completion undone. You can keep going.|完了を取り消しました。続けられます。
+先结束当前专注，再删除这件事|Finish the current focus session before removing this plan.|この計画を削除する前に、集中を終了してください。
+已移除计划，已记录的专注时间保留|Plan removed. Recorded focus time is kept.|計画を削除しました。記録済みの集中時間は残ります。
+昨天的记录会保留，只把你选的这一件加入今天。|Yesterday's records stay. Only your selected plan moves into today.|昨日の記録は残し、選んだ計画だけを今日に追加します。
+目标已调整|Goal updated|目標を更新しました
+着陆 · 要回到刚才那一步吗？|StudyTrail · Back to that next step?|学びのあと · さっきの一歩に戻る？
+着陆还在准备，请稍等。|StudyTrail is getting ready. One moment.|学びのあとの準備中です。少しお待ちください。
+着陆里还有正在填写的内容，先保存或取消，我会等你。|Finish or cancel the open form in StudyTrail first. I'll wait.|入力中の内容を保存するか、キャンセルしてね。待っているよ。
+先保存或取消正在编辑的学习断点，我会等你。|Save or cancel the checkpoint you're editing first.|編集している進捗メモを保存するか、キャンセルしてください。
+已经有一个计时了，可以暂停、继续或结束记录。|A timer is already running. Pause, resume or finish it.|タイマーはすでに動いています。一時停止・再開・終了できます。
+请先选择 Python 或 PyTorch。|Choose Python or PyTorch first.|まずPythonかPyTorchを選んでください。
+开始学 |Starting |学習開始：
+，先做五分钟。手机放远一点，我陪你。| for five minutes. Put your phone aside; I'll be here.|をまず5分。スマホを少し離して、一緒にやろう。
+今天已有三件计划，请在着陆中先移除一件再开始。|Three plans already today. Remove one in StudyTrail before starting.|今日は計画が3つあります。1つ減らしてから始めてください。
+现在没有可以暂停或继续的学习计时。|No study timer to pause or resume.|一時停止・再開できるタイマーはありません。
+暂停了，歇一会也没关系。|Paused. It's okay to rest.|一時停止したよ。休んでも大丈夫。
+接着刚才那一步，我陪你。|Let's pick up where you left off.|さっきの続きから、一緒にやろう。
+请在着陆里确认实际学习时间，再保存记录。|Confirm the actual study time in StudyTrail before saving.|学びのあとで実際の学習時間を確認して、保存してください。
+暂时无法截屏，请打开着陆重试。|Capture is unavailable. Open StudyTrail and try again.|撮影できません。学びのあとを開いて再試行してください。
+正在截取学习画面，请在着陆里核对并保存断点。|Capturing your study screen. Review and save it in StudyTrail.|学習画面を撮影中。学びのあとで確認して保存してください。
+上次的学习画面|Previous study screen|前回の学習画面
+默认模型|Default model|既定のモデル
+截屏需要重启更新后的桌面版|Restart the updated desktop app to capture the screen.|撮影するには、更新したデスクトップ版を再起動してください。
+这次没截到画面|Couldn't capture this time|今回は撮影できませんでした
+重新截取|Capture again|もう一度撮影
+学习屏幕|Study display|学習用ディスプレイ
+重新截屏|Retake|撮り直す
+画面 |Frame |画面
+即将用于识别的学习画面|Study image ready for recognition|読み取りに使う学習画面
+识别这两张画面|Read these two frames|2枚の画面を読み取る
+将发送这两张截图至 |These two screenshots will be sent to |この2枚の画像の送信先：
+。请确认没有私人内容。模型需支持图片。|. Check for private content first. The model must support images.|。私的な情報がないか確認してください。画像対応のモデルが必要です。
+未配置 AI。可先手动填写保存截图；在「我的 → 设置」配置支持图片的 AI 后可识别。|AI isn't configured. You can fill this in manually. Add an image-capable AI in My space → Settings for recognition.|AIが未設定です。手動で入力して保存できます。「マイスペース → 設定」で画像対応AIを設定すると読み取れます。
+未识别；不会猜测看不见的进度或网址。|Not analyzed yet. Hidden progress or links won't be guessed.|まだ読み取っていません。見えない進捗やURLは推測しません。
+课程 / 章节名称|Course / chapter|コース・章の名前
+识别后填入，也可以自己写|Filled after recognition, or type your own|読み取り後に入力、または手動で記入
+当前播放到（可留空）|Playback position (optional)|再生位置（任意）
+例如 12:35 或 1:02:35|For example, 12:35 or 1:02:35|例：12:35 または 1:02:35
+画面正在讲什么|What's being explained?|画面で説明していること
+例如 Tensor 的 shape 和维度|For example, tensor shapes and dimensions|例：テンソルのshapeと次元
+下次从哪里接着做|Next step for later|次回の続き
+接着画面中的例子，自己运行一遍|Run the example shown on screen yourself|画面の例を自分で動かしてみる
+这一节的课程链接（HTTPS，可选）|This lesson's URL (HTTPS, optional)|このレッスンのURL（HTTPS・任意）
+确认，记住这个断点|Confirm and save checkpoint|確認して進捗を保存
+正在读画面…|Reading the screen…|画面を読み取り中…
+正在读取课程、当前时间点和讲解内容。看不清的项目会留空。|Reading the course, playback time and explanation. Unclear details stay blank.|コース・再生時刻・説明内容を読み取っています。読めない項目は空欄にします。
+AI 返回格式不完整，请重试或手动填写|Incomplete AI response. Retry or fill in manually.|AIの応答が不完全です。再試行するか手動で入力してください。
+接着当前画面，自己运行或复述一遍|Run or explain the example on this screen yourself|この画面の例を自分で動かすか、説明してみる
+已识别，请核对后保存。|Analyzed. Please review before saving.|読み取りました。確認してから保存してください。
+画面里没有读到播放时间，请手动补充。|Playback time wasn't visible. Please add it manually.|再生時刻を読み取れませんでした。手動で補ってください。
+尤其确认这是当前时间，而非总时长。|Check that this is the current position, not the total duration.|合計時間ではなく、現在の再生位置か確認してください。
+识别没成功：|Recognition failed: |読み取り失敗：
+。截图还在，可以重试或手动填写。|. Screenshots are still here. Retry or fill in manually.|。画像は残っています。再試行か手動入力ができます。
+重新识别画面|Analyze again|もう一度読み取る
+下次：|Next: |次回：
+时间请填 12:35 或 1:02:35，也可以留空。|Use 12:35 or 1:02:35, or leave time blank.|12:35や1:02:35の形式で入力するか、空欄にしてください。
+课程链接需要是 HTTPS，不能带用户名或密码。|The lesson URL must use HTTPS and contain no username or password.|レッスンのURLはHTTPSを使い、ユーザー名やパスワードを含めないでください。
+留一句下次从哪里继续。|Leave a sentence about where to continue.|次回どこから続けるか、ひとこと書いてください。
+断点已记住，下次从这张画面继续|Checkpoint saved. Continue from this screen next time.|進捗を保存しました。次回はこの画面から続けよう。
+这一步我帮你记住了。下次回来接着做。|I've kept your place. Pick up here next time.|ここまで覚えたよ。次回はここから。
+本地空间不足，暂时没保存。请先导出备份、清理旧截图，再试一次。|Not saved: storage is full. Export a backup and clear old screenshots before retrying.|容量不足で保存できませんでした。バックアップを取り、古い画像を整理して再試行してください。
+ · 最近的学习断点| · Recent checkpoints| · 最近の進捗メモ
+保留最近 8 条。可以恢复之前的一条，或删除不需要的截图。|The latest eight are kept. Restore one or remove screenshots you no longer need.|最新8件を保存します。前の記録に戻したり、不要な画像を削除できます。
+保存的学习画面|Saved study screen|保存した学習画面
+识别后确认|Reviewed AI capture|読み取り後に確認済み
+手动记录|Manual entry|手動で記録
+恢复这条断点|Restore this checkpoint|この進捗に戻す
+还没有截屏记录，点课程卡片上的「截屏记断点」开始。|No captures yet. Use Save screen checkpoint on a course card.|まだ撮影記録がありません。コースカードの「画面で進捗記録」から始められます。
+已恢复，接着学会使用这条断点|Restored. Continue learning will use this checkpoint.|復元しました。「続きから学ぶ」でこの進捗を使います。
+
+找一个能省下重复劳动的工具|Find a tool that saves repetitive work|繰り返し作業を減らすツールを探す
+看看界面与交互如何实现|Explore how interfaces and interactions work|画面や操作の仕組みを知る
+从示例入手，练习 Python|Practice Python through examples|サンプルから Python を練習する
+读训练示例，理解张量与模型|Explore tensors and models through training examples|学習のサンプルでテンソルとモデルを理解する
+数据可视化|Data visualization|データ可視化
+把数据变成更直观的图表|Turn data into clear visual stories|データをわかりやすい図にする
+了解构建、部署与运维流程|Explore build, deployment and operations workflows|ビルド・デプロイ・運用を知る
+安全|Security|セキュリティ
+了解安全工具及其使用边界|Learn about security tools and responsible use|セキュリティツールと適切な使い方を知る
+硬件与 IoT|Hardware & IoT|ハードウェアと IoT
+从软硬件结合的小项目开始|Start a small hardware and software project|ハードとソフトを組み合わせた小さな制作から
+连接失败|Connection failed|接続に失敗しました
+时间未知|Time unknown|時刻不明
+访问令牌无效或已过期，请在定制中更新|The access token is invalid or expired. Update it in preferences.|トークンが無効か期限切れです。設定で更新してください
+没有读取权限，请检查令牌权限|Read access denied. Check the token permissions.|読み取り権限がありません。トークンの権限を確認してください
+未找到服务接口，请检查服务地址|API endpoint not found. Check the server address.|API が見つかりません。サーバーのアドレスを確認してください
+服务发生重定向，请填写最终服务地址|The server redirected the request. Enter the final server address.|転送が発生しました。転送先のアドレスを入力してください
+准备获取|Preparing to fetch|取得を準備中
+私有|Private|非公開
+较上次收录|Since last collected|前回の収録から
+更新于|Updated|更新日
+先看 README，再挑一个示例试试|Read the README, then try an example|README を読んで、サンプルを試してみよう
+没有找到匹配项目|No matching projects|該当するプロジェクトがありません
+暂时没有项目|No projects yet|まだプロジェクトがありません
+私有 GitLab|Private GitLab|非公開 GitLab
+上次更新|Last updated|最終更新
+近 90 天新建项目|Created in the last 90 days|過去90日間に作成されたプロジェクト
+近 30 天有代码更新的项目|Code updated in the last 30 days|過去30日間にコードが更新されたプロジェクト
+当前仍可阅读缓存内容。|Cached content is still available.|キャッシュした内容は引き続き読めます。
+最多星标|Most stars|スターが多い順
+正在更新，请完成后再调整定制|An update is running. Please wait before editing preferences.|更新が完了してから設定を変更してください
+不限语言|Any language|すべての言語
+公共 GitHub|Public GitHub|公開 GitHub
+自部署|Self-hosted|セルフホスト
+服务类型|Service type|サービスの種類
+服务地址|Server address|サーバーのアドレス
+只请求此 Enterprise 服务，不向公共 GitHub 查询。私有项目不设最低星标门槛。|Only this Enterprise server is queried. Private projects have no minimum star count.|この Enterprise サーバーにのみ問い合わせます。非公開プロジェクトにスター数の条件はありません。
+✅ 已记下|✅ Recorded|✅ 記録しました
+这段|This activity|この活動
+某个程序|An application|アプリ
+这段时间记作什么？|What were you working on?|この時間は何をしていましたか？
+在别的程序里自动记的 · 记错了去今日页「今天的池子」里删|Recorded automatically from another app. Remove incorrect entries on Today.|他のアプリの使用を自動記録しました。間違いは「今日」で削除できます。
+按你上次的叫法填好了 · 回车即记下|Filled in your previous label. Press Enter to record.|前回の名前を入力しました。Enter で記録します。
+确认一次就记住 · 回车即记下|Confirm once to remember this label. Press Enter to record.|一度確認すると名前を覚えます。Enter で記録します。
+给它起个名字再记 —— 随便写两个字的都行。|Give this activity a short name before recording.|記録する活動に短い名前をつけてください。

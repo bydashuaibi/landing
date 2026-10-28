@@ -53,7 +53,7 @@ async function test(name,fn){await fn();results.push(name);console.log('PASS '+n
   await page.evaluate(async()=>{await landing.activity.setPref({enabled:false,ask:true,askConfirm:false,askNotify:false});Landing.state().timer=null;});
   await page.waitForTimeout(300);
   const baseline=await page.evaluate(()=>({loose:Landing.state().loose.length,fish:Landing.state().pet.fish,toast:document.querySelector('#toast').textContent}));
-  await page.evaluate(()=>{window.qaCalls=[];window.qaFish=Pet.onFish;Pet.onFish=function(){qaCalls.push('fish');};var p={segmentId:'qa-one',startedAt:Date.now()-3600000,at:Date.now(),prevProc:'code',prevMinutes:60,prevCat:'work'};Landing.appChanged(p);Landing.appChanged(p);});
+  await page.evaluate(()=>{window.qaCalls=[];window.qaFish=Pet.onFish;Pet.onFish=function(){qaCalls.push('fish');};var p={segmentId:'qa-one',at:Date.now(),prevProc:'code',prevMinutes:60,prevCat:'work'};Landing.appChanged(p);Landing.appChanged(p);});
   assert.equal(await page.evaluate(()=>Landing.state().loose.length),baseline.loose+1);assert.equal(await page.evaluate(()=>Landing.state().pet.fish),baseline.fish+1);
   assert.equal(await page.locator('#toast').textContent(),baseline.toast);assert.deepEqual(await page.evaluate(()=>qaCalls),[]);
   assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().filter(w=>/ask\.html/.test(w.webContents.getURL())).length),0);

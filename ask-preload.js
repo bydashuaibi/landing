@@ -10,3 +10,5 @@ contextBridge.exposeInMainWorld('landingAsk', {
   ready: () => ipcRenderer.send('ask:ready'),
   resolve: (r) => ipcRenderer.send('ask:resolve', r || {}),
 });
+
+contextBridge.exposeInMainWorld('studyTrailLocale',{get:()=>ipcRenderer.sendSync('language:get'),set:language=>ipcRenderer.invoke('language:set',language),onChange:cb=>ipcRenderer.on('language:changed',(_event,value)=>cb(value))});

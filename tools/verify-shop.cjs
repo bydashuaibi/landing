@@ -22,8 +22,8 @@ async function check(name,fn){await fn();results.push(name);console.log('PASS '+
  await page.waitForFunction(()=>window.Landing&&window.Pet);await page.route('https://**/*',r=>r.abort());
  await page.setViewportSize({width:1280,height:900});
  await page.evaluate(()=>{var p=Pet.state();p.name='初华';p.fish=3;p.widget.quiet=true;p.noHunger=true;Landing.save();Landing.tab('shop');});
- await check('23 products with useful categories and affordable filter',async()=>{
-   assert.equal(await page.locator('.market-item').count(),23);await act('category','food');assert.equal(await page.locator('.market-item').count(),7);
+ await check('29 products with useful categories and affordable filter',async()=>{
+   assert.equal(await page.locator('.market-item').count(),29);await act('category','food');assert.equal(await page.locator('.market-item').count(),7);
    await act('affordable');assert.equal(await page.locator('.market-item').count(),3);await act('affordable');await act('category','gear');assert.equal(await page.locator('.market-item').count(),7);
    assert.equal(await page.locator('[data-item=ribbon] button:disabled').count(),1);
  });

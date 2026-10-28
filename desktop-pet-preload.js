@@ -17,3 +17,5 @@ contextBridge.exposeInMainWorld('petSkins',{
   open:()=>ipcRenderer.invoke('skins:open'),state:()=>ipcRenderer.invoke('skins:state'),asset:id=>ipcRenderer.invoke('skins:asset',id),
   onActive:cb=>ipcRenderer.on('skins:active',(_e,p)=>cb(p))
 });
+
+contextBridge.exposeInMainWorld('studyTrailLocale',{get:()=>ipcRenderer.sendSync('language:get'),set:language=>ipcRenderer.invoke('language:set',language),onChange:cb=>ipcRenderer.on('language:changed',(_event,value)=>cb(value))});

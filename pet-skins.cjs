@@ -50,7 +50,7 @@ function parsePack(buf){
   return {id:'skin-'+crypto.createHash('sha256').update(image).update(files.get(manifest)).digest('hex').slice(0,24),name:String(meta.displayName||meta.id||'新伙伴').slice(0,60),description:String(meta.description||'从 Petdex 导入的伙伴').slice(0,300),image,ext:path.extname(imagePath).toLowerCase(),frameWidth:size.width/8,frameHeight:size.height/9};
 }
 function petdexURL(value,asset=false){try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port)return false;return asset?u.hostname==='assets.petdex.dev'&&/^\/pets\/[^/]+\/[^?]+\.zip$/i.test(u.pathname):u.hostname==='petdex.dev';}catch{return false;}}
-module.exports=function setup({getMain,getDesktop,showDesktop,desktopStatus}){
+module.exports=function setup({getMain,getDesktop,showDesktop,desktopStatus,i18n}){
   const {app,BrowserWindow,WebContentsView,ipcMain,dialog,net,session,shell}=require('electron');
   const root=path.join(app.getPath('userData'),'data','pet-skins'),dbFile=path.join(root,'skins.json');let win=null,browser=null,mode='web',busy=false,lastStatus='',statusKind='info',lastImported=null;
   fs.mkdirSync(root,{recursive:true});
@@ -102,7 +102,7 @@ module.exports=function setup({getMain,getDesktop,showDesktop,desktopStatus}){
   function browse(raw){const url=petdexURL(raw)?raw:HOME;mode='web';layout();notify('正在打开 Petdex…');browser.webContents.loadURL(url).catch(()=>notify('Petdex 暂时没连上。可点“重试”，或导入已经下载的 ZIP。','error'));return state();}
   function open(){
     if(win&&!win.isDestroyed()){win.show();win.focus();return true;}
-    win=new BrowserWindow({width:1200,height:800,minWidth:880,minHeight:650,title:'换个伙伴外观 · 着陆',backgroundColor:'#cbcfb8',parent:getMain(),show:false,webPreferences:{preload:path.join(__dirname,'pet-skins-window-preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+    win=new BrowserWindow({width:1200,height:800,minWidth:880,minHeight:650,title:i18n?i18n.t('换个伙伴外观 · 着陆'):'StudyTrail · Skins',backgroundColor:'#cbcfb8',parent:getMain(),show:false,webPreferences:{preload:path.join(__dirname,'pet-skins-window-preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
     const remote=session.fromPartition('persist:landing-petdex');remote.setPermissionRequestHandler((_w,_p,cb)=>cb(false));remote.setPermissionCheckHandler(()=>false);
     browser=new WebContentsView({webPreferences:{session:remote,contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:false}});win.contentView.addChildView(browser);
     const wc=browser.webContents;
@@ -110,7 +110,7 @@ module.exports=function setup({getMain,getDesktop,showDesktop,desktopStatus}){
     const navigate=(e,url)=>{if(petdexURL(url,true)){e.preventDefault();download(url);}else if(!petdexURL(url))e.preventDefault();};wc.on('will-navigate',navigate);wc.on('will-redirect',navigate);
     const downloaded=(e,item,contents)=>{if(contents!==wc)return;e.preventDefault();download(item.getURL());};remote.on('will-download',downloaded);
     wc.on('did-finish-load',()=>notify('在 Petdex 找到喜欢的角色，点下载即可导入。'));wc.on('did-fail-load',(_e,code,_desc,_url,main)=>{if(main&&code!==-3)notify('Petdex 暂时没连上。可重试，或导入本地 ZIP。','error');});
-    win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',e=>e.preventDefault());
+    win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(e,url)=>{if(url!==win.webContents.getURL())e.preventDefault();});
     win.on('resize',layout);win.once('ready-to-show',()=>{win.show();layout();browse(HOME);});
     win.on('closed',()=>{remote.removeListener('will-download',downloaded);if(!wc.isDestroyed())wc.close();browser=null;win=null;});
     win.loadFile(path.join(__dirname,'pet-skins-window.html'));return true;

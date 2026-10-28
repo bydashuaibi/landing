@@ -11,7 +11,7 @@
 
 /* ================= 配置 & 分类体系 ================= */
 var APP_CONFIG = {
-  version: '2.10.0',
+  version: '2.11.0',
   storageKey: 'landing.v2',
   repo: 'https://github.com/bydashuaibi/landing',
   communityApi: ''
@@ -22,7 +22,7 @@ var APP_CONFIG = {
  * 充能恢复型任务的类别从 health/life 的子类中取
  */
 var CATEGORIES = [
-  {key:'fun',    label:'休闲娱乐', cls:'fun',    subs:['游戏','看番','追剧','音乐','社交','出门玩']},
+  {key:'fun',    label:I18n.t('休闲娱乐'), cls:'fun',    subs:['游戏','看番','追剧','音乐','社交','出门玩']},
   {key:'work',   label:'工作学习', cls:'work',   subs:['课程','项目','刷题','英语','论文','实习']},
   {key:'life',   label:'生活品质', cls:'life',   subs:['作息','运动','整理','饮食','健康','出行']},
   {key:'growth', label:'素养提高', cls:'growth', subs:['阅读','冥想','写作','技能','艺术','视野']}
@@ -180,9 +180,9 @@ function stripLegacySeed(){
      所以这组记录只可能来自示例。用「完全等于当初那 5 条」做签名匹配：
      用户只要自己在今日页选过心情，日期或备注就会对不上，整体不碰。 */
   var seedWeather = [
-    {d:-4, m:'sun',   n:'状态还行'},
+    {d:-4, m:'sun',   n:I18n.t('状态还行')},
     {d:-3, m:'cloud', n:''},
-    {d:-2, m:'rain',  n:'有点乱'},
+    {d:-2, m:'rain',  n:I18n.t('有点乱')},
     {d:-1, m:'cloud', n:''},
     {d: 0, m:'rain',  n:''}
   ];
@@ -258,7 +258,7 @@ function migrate(){
 function save(){
   syncManualCoverage();
   try{ localStorage.setItem(APP_CONFIG.storageKey, JSON.stringify(STATE)); }
-  catch(e){ toast('保存失败：存储可能已满'); }
+  catch(e){ toast(I18n.t('保存失败：存储可能已满')); }
 }
 
 /* ================= 个性化技术日报 ================= */
@@ -370,15 +370,15 @@ function renderMustCard(){
     /* 分两种空：从没设过 / 全都关掉了。后者再劝他"加一条"是错的，该说的是怎么打开 */
     var allOff = (STATE.mustDos||[]).length > 0;
     return '<div class="card must-card must-empty">'
-      + '<div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
+      + '<div class="row between"><h2>'+icon('check')+I18n.html(' 每日必做</h2>')
       + '<span class="must-count">0 / 0</span></div>'
       + '<div class="hint">'+(allOff
-          ? '必做项都被你关掉了。点「管理」可以把它们重新打开。'
-          : '还没设必做项。每天都要交代的那几件（吃药、记账、背词…）放这儿 —— '
-            + '点一下打勾，软件记下<b>完成时刻</b>，全部清掉还会累计连续天数。')+'</div>'
+          ? I18n.t('必做项都被你关掉了。点「管理」可以把它们重新打开。')
+          : I18n.t('还没设必做项。每天都要交代的那几件（吃药、记账、背词…）放这儿 —— ')
+            + I18n.html('点一下打勾，软件记下<b>完成时刻</b>，全部清掉还会累计连续天数。'))+'</div>'
       + '<div class="must-foot">'
-      +   '<button class="btn primary sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
-      +   (allOff ? '<button class="btn ghost sm" data-act="mustManage">管理</button>' : '')
+      +   '<button class="btn primary sm" data-act="newMust">'+icon('plus')+I18n.html(' 加一条</button>')
+      +   (allOff ? I18n.html('<button class="btn ghost sm" data-act="mustManage">管理</button>') : '')
       + '</div>'
       + '</div>';
   }
@@ -395,35 +395,35 @@ function renderMustCard(){
   var streak = mustAllStreak();
 
   var h = '<div class="card must-card">'
-    + '<div class="row between"><h2>'+icon('check')+' 每日必做</h2>'
+    + '<div class="row between"><h2>'+icon('check')+I18n.html(' 每日必做</h2>')
     + '<span class="must-count'+(allDone?' all':'')+'">'+st.done+' / '+st.total+'</span></div>';
 
   if(allDone){
-    h += '<div class="hint">今天全部清掉了 ✓'
+    h += I18n.html('<div class="hint">今天全部清掉了 ✓')
       + (firstTs!==null
-          ? '　打卡时间 <b class="must-ok">'+clockOf(firstTs)+'</b>'
+          ? I18n.html('　打卡时间 <b class="must-ok">')+clockOf(firstTs)+'</b>'
             + (lastTs!==firstTs ? ' ~ <b class="must-ok">'+clockOf(lastTs)+'</b>' : '')
           : '')
-      + (streak>1 ? '　·　已连续全清 <b>'+streak+'</b> 天' : '') + '</div>';
+      + (streak>1 ? I18n.html('　·　已连续全清 <b>')+streak+I18n.html('</b> 天') : '') + '</div>';
   } else {
-    h += '<div class="hint">点一下就打勾，软件记下时间。还差 <b>'+(st.total-st.done)+'</b> 件'
-      + (streak>1 ? '　·　已连续全清 <b>'+streak+'</b> 天' : '') + '</div>';
+    h += I18n.html('<div class="hint">点一下就打勾，软件记下时间。还差 <b>')+(st.total-st.done)+I18n.html('</b> 件')
+      + (streak>1 ? I18n.html('　·　已连续全清 <b>')+streak+I18n.html('</b> 天') : '') + '</div>';
   }
 
   h += '<div class="must-list">';
   ms.forEach(function(m){
     var r = mustRecOn(m, today());
-    h += '<div class="must-row'+(r?' done':'')+'" data-act="mustToggle" data-id="'+m.id+'" title="'+(r?'再点一下取消今天这次打卡':'打卡')+'">'
+    h += '<div class="must-row'+(r?' done':'')+'" data-act="mustToggle" data-id="'+m.id+'" title="'+(r?I18n.t('再点一下取消今天这次打卡'):I18n.t('打卡'))+'">'
       + '<span class="must-box">'+(r ? icon('check') : '')+'</span>'
       + '<span class="must-name">'+esc(m.name)+'</span>'
       + (r
           ? '<span class="must-time">'+clockOf(r.ts)+'</span>'
-          : '<span class="must-time blank">未打卡</span>')
+          : I18n.html('<span class="must-time blank">未打卡</span>'))
       + '</div>';
   });
   h += '</div>'
-    + '<div class="must-foot"><button class="btn ghost sm" data-act="newMust">'+icon('plus')+' 加一条</button>'
-    + '<button class="btn ghost sm" data-act="mustManage">管理</button></div>'
+    + '<div class="must-foot"><button class="btn ghost sm" data-act="newMust">'+icon('plus')+I18n.html(' 加一条</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="mustManage">管理</button></div>')
     + '</div>';
   return h;
 }
@@ -438,23 +438,23 @@ function renderMustItemCard(m){
   for(var i=6;i>=0;i--){
     var d = addDays(today(),-i);
     var cls = mustRecOn(m,d) ? 'on' : (isRestDay(d) ? 'rest' : '');
-    dots += '<span class="mdot '+cls+'" title="'+d+(mustRecOn(m,d)?' 已打卡':'')+'"></span>';
+    dots += '<span class="mdot '+cls+'" title="'+d+(mustRecOn(m,d)?I18n.t(' 已打卡'):'')+'"></span>';
   }
 
   return '<div class="task">'
     + '<div class="tinfo">'
-    + '<div class="tname">'+esc(m.name)+(m.enabled?'':'<span class="badge-pause">已关</span>')+'</div>'
+    + '<div class="tname">'+esc(m.name)+(m.enabled?'':I18n.html('<span class="badge-pause">已关</span>'))+'</div>'
     + '<div class="tmeta">'
     + (r
-        ? '<span class="must-ok">✓ 今天 '+clockOf(r.ts)+' 已打卡</span>'
-        : '<span class="muted">今天还没打</span>')
-    + (st>1 ? ' · 连续 '+st+' 天' : '')
+        ? I18n.html('<span class="must-ok">✓ 今天 ')+clockOf(r.ts)+I18n.html(' 已打卡</span>')
+        : I18n.html('<span class="muted">今天还没打</span>'))
+    + (st>1 ? ' · 连续 '+st+I18n.t(' 天') : '')
     + '</div>'
-    + '<div class="mdots">'+dots+'<span class="mdot-hint">近 7 天</span></div>'
+    + '<div class="mdots">'+dots+I18n.html('<span class="mdot-hint">近 7 天</span></div>')
     + '</div>'
     + '<button class="btn '+(r?'ghost':'primary')+' sm" data-act="mustToggle" data-id="'+m.id+'">'
-    + icon(r?'refresh':'check')+(r?'撤销':'打卡')+'</button>'
-    + '<button class="btn ghost sm" data-act="toggleMust" data-id="'+m.id+'">'+(m.enabled?'关':'开')+'</button>'
+    + icon(r?'refresh':'check')+(r?I18n.t('撤销'):I18n.t('打卡'))+'</button>'
+    + '<button class="btn ghost sm" data-act="toggleMust" data-id="'+m.id+'">'+(m.enabled?I18n.t('关'):I18n.t('开'))+'</button>'
     + '<button class="btn ghost sm" data-act="editMust" data-id="'+m.id+'">'+icon('edit')+'</button>'
     + '<button class="btn ghost sm" data-act="delMust" data-id="'+m.id+'">'+icon('trash')+'</button>'
     + '</div>';
@@ -465,7 +465,7 @@ function renderMustItemCard(m){
 function poolTail(awarded){
   if(awarded) return '';
   var p = poolState();
-  return p.minutes > 0 ? ' · 池子已攒 '+Math.round(p.minutes)+'/'+POOL_MIN+' 分钟' : '';
+  return p.minutes > 0 ? ' · 池子已攒 '+Math.round(p.minutes)+'/'+POOL_MIN+I18n.t(' 分钟') : '';
 }
 
 /* ================= 专注计时器 ================= */
@@ -523,12 +523,12 @@ function pushBackgroundState(){
     _trayActive = backgroundNeeded;
     if(window.landing && window.landing.timerActive) window.landing.timerActive(backgroundNeeded);
   }
-  var hint = '在后台待着';
+  var hint = I18n.t('在后台待着');
   if(active){
     var w = timerTask();
-    var nm = w ? w.name : (t.name||'专注');
-    if(t.mode==='stopwatch') hint = (t.paused?'已暂停 · ':'')+nm+' · 已 '+fmtClockLong(timerElapsedMs());
-    else hint = (t.paused?'已暂停 · ':'')+nm+' · 剩 '+fmtClock(timerRemainMs());
+    var nm = w ? w.name : (t.name||I18n.t('专注'));
+    if(t.mode==='stopwatch') hint = (t.paused?I18n.t('已暂停 · '):'')+nm+' · 已 '+fmtClockLong(timerElapsedMs());
+    else hint = (t.paused?I18n.t('已暂停 · '):'')+nm+' · 剩 '+fmtClock(timerRemainMs());
   }
   if(hint !== _trayHint){
     _trayHint = hint;
@@ -570,11 +570,11 @@ function timerWantsNudge(t){
 }
 function nudgeWindowBack(t){
   var nm = timerTask();
-  var label = nm ? nm.name : (t.name || '专注');
+  var label = nm ? nm.name : (t.name || I18n.t('专注'));
   window.landing.nudge();
   armRetract();
   notify('⏱ 还在计时', label + ' 已经 ' + fmtClockLong(timerElapsedMs()) + ' 了，回来瞄一眼？');
-  if(window.Pet && Pet.say) Pet.say('我一直看着呢，已经 '+Math.floor(timerElapsedMs()/60000)+' 分钟了。');
+  if(window.Pet && Pet.say) Pet.say('我一直看着呢，已经 '+Math.floor(timerElapsedMs()/60000)+I18n.t(' 分钟了。'));
 }
 
 /* 自动收回：被叫回来的窗口如果没人理，20 秒后自己缩回托盘。
@@ -608,22 +608,22 @@ function renderTimerBar(){
   pushBackgroundState();
   if(!t || t.finished){ el.classList.add('hidden'); el.innerHTML=''; return; }
   var w = timerTask();
-  var nm = esc(w ? w.name : (t.name||'专注'));
+  var nm = esc(w ? w.name : (t.name||I18n.t('专注')));
   el.classList.remove('hidden');
   if(t.mode==='stopwatch'){
     var used = timerElapsedMs();
     el.innerHTML = '<span class="tb-ico">▶</span>'
       +'<span class="tb-time">'+fmtClockLong(used)+'</span>'
-      +'<span class="tb-name">'+(t.auto?'<i class="tb-auto">自动</i>':'')+nm+' · 已 '+Math.floor(used/60000)+' 分钟</span>'
-      +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?'继续':'暂停')+'</button>'
-      +'<button class="tb-btn" data-act="timerFinish">结束</button>';
+      +'<span class="tb-name">'+(t.auto?I18n.html('<i class="tb-auto">自动</i>'):'')+nm+' · 已 '+Math.floor(used/60000)+I18n.html(' 分钟</span>')
+      +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?I18n.t('继续'):I18n.t('暂停'))+'</button>'
+      +I18n.html('<button class="tb-btn" data-act="timerFinish">结束</button>');
     return;
   }
   el.innerHTML = '<span class="tb-ico">⏱</span>'
     +'<span class="tb-time">'+fmtClock(timerRemainMs())+'</span>'
-    +'<span class="tb-name">'+nm+' · '+t.plannedMin+' 分钟</span>'
-    +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?'继续':'暂停')+'</button>'
-    +'<button class="tb-btn" data-act="timerFinish">结束</button>';
+    +'<span class="tb-name">'+nm+' · '+t.plannedMin+I18n.html(' 分钟</span>')
+    +'<button class="tb-btn" data-act="timerToggle">'+(t.paused?I18n.t('继续'):I18n.t('暂停'))+'</button>'
+    +I18n.html('<button class="tb-btn" data-act="timerFinish">结束</button>');
 }
 function ensureTimerTick(){
   if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
@@ -638,16 +638,16 @@ function ensureTimerTick(){
       /* 忘记停的保护：单次超过 4 小时先封顶暂停，不悄悄记一整天 */
       if(el2 >= SW_MAX_MS){
         t.accMs = SW_MAX_MS; t.paused = true; save(); renderTimerBar();
-        notify('⏱ 计时太久啦', '已按 4 小时封顶并暂停，记得结束一下');
-        toast('计时超过 4 小时，已封顶暂停');
+        notify('⏱ 计时太久啦', I18n.t('已按 4 小时封顶并暂停，记得结束一下'));
+        toast(I18n.t('计时超过 4 小时，已封顶暂停'));
         return;
       }
       /* 每 60 分钟温和提醒一次，只报时、不评判 */
       if(!t.paused && el2-(t.nagMs||0) >= SW_NAG_MS){
         t.nagMs = el2; save();
         var nm2 = timerTask();
-        notify('⏱ 计时还在跑', (nm2?nm2.name:'专注')+' 已 '+fmtClockLong(el2)+'，还顺利吗？');
-        if(window.Pet && Pet.say) Pet.say('已经 '+Math.floor(el2/60000)+' 分钟了，喝口水也行。');
+        notify('⏱ 计时还在跑', (nm2?nm2.name:I18n.t('专注'))+' 已 '+fmtClockLong(el2)+'，还顺利吗？');
+        if(window.Pet && Pet.say) Pet.say('已经 '+Math.floor(el2/60000)+I18n.t(' 分钟了，喝口水也行。'));
       }
       renderTimerBar();
       return;
@@ -676,8 +676,8 @@ function onTimerEnd(){
   if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
   save();
   alarmSound();
-  notify('⏰ 时间到', (timerTask()?timerTask().name:'专注')+' '+t.plannedMin+' 分钟完成，来记录一下');
-  if(window.Pet && Pet.say) Pet.say('时间到啦！你做了 ' + t.plannedMin + ' 分钟，去记一笔吧。');
+  notify('⏰ 时间到', (timerTask()?timerTask().name:I18n.t('专注'))+' '+t.plannedMin+I18n.t(' 分钟完成，来记录一下'));
+  if(window.Pet && Pet.say) Pet.say('时间到啦！你做了 ' + t.plannedMin + I18n.t(' 分钟，去记一笔吧。'));
   renderTimerBar();
   if(t.discipline) render();
   if(!(window.LearningCheckpoint && LearningCheckpoint.isOpen())) openTimerFinishSheet(false);
@@ -692,40 +692,40 @@ function finishTimerEarly(){
 function openTimerFinishSheet(early){
   var t=STATE.timer; if(!t) return;
   if(t.discipline && window.Discipline){ Discipline.settle(); return; }
-  var name = '专注';   /* 任务模块删掉后（2026-10-13）倒计时只剩这一种 */
+  var name = I18n.t('专注');   /* 任务模块删掉后（2026-10-13）倒计时只剩这一种 */
   var passed = Math.max(1, Math.round(timerElapsedMs()/60000));
-  openSheet('<h2>'+(early?'结束本次专注？':'⏰ 时间到！')+'</h2>'
-    +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+' 分钟'+(early?(' · 已进行 '+passed+' 分钟'):'')+'</div>'
+  openSheet('<h2>'+(early?I18n.t('结束本次专注？'):'⏰ 时间到！')+'</h2>'
+    +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+I18n.t(' 分钟')+(early?(' · 已进行 '+passed+I18n.t(' 分钟')):'')+'</div>'
     +'<div class="ph-actions">'
-      +'<button class="btn primary block" id="tf_done" style="margin-bottom:8px">'+icon('check')+' 已完成（记 '+t.plannedMin+' 分钟）</button>'
+      +'<button class="btn primary block" id="tf_done" style="margin-bottom:8px">'+icon('check')+' 已完成（记 '+t.plannedMin+I18n.html(' 分钟）</button>')
       +'<button class="btn ghost block" id="tf_part">完成部分 · 我自己填时长</button>'
-      +(early?'<button class="btn ghost block" id="tf_giveup" style="margin-top:8px">放弃这次，不记录</button>':'')
+      +(early?I18n.html('<button class="btn ghost block" id="tf_giveup" style="margin-top:8px">放弃这次，不记录</button>'):'')
     +'</div>');
 
   $('tf_done').onclick=function(){
-    looseRecord(t.name||'专注', early ? Math.floor(timerElapsedMs()/60000) : t.plannedMin, t.category||'work');
+    looseRecord(t.name||I18n.t('专注'), early ? Math.floor(timerElapsedMs()/60000) : t.plannedMin, t.category||'work');
     STATE.timer=null; save(); closeSheet(); render(); renderTimerBar();
   };
   $('tf_part').onclick=function(){
     var def = Math.max(1, Math.round(timerElapsedMs()/60000));
     openSheet('<h2>完成部分</h2>'
-      +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+' 分钟。这段实际做了多久？记多少算多少，不丢人。</div>'
-      +'<div class="field"><label>实际时长（分钟）</label><input id="tf_min" type="number" value="'+def+'" min="1"></div>'
-      +'<div class="sheet-actions"><button class="btn ghost" id="tf_back">返回</button>'
-      +'<button class="btn primary" id="tf_save">记下</button></div>');
+      +'<div class="hint">'+esc(name)+' · 计划 '+t.plannedMin+I18n.html(' 分钟。这段实际做了多久？记多少算多少，不丢人。</div>')
+      +I18n.html('<div class="field"><label>实际时长（分钟）</label><input id="tf_min" type="number" value="')+def+'" min="1"></div>'
+      +I18n.html('<div class="sheet-actions"><button class="btn ghost" id="tf_back">返回</button>')
+      +I18n.html('<button class="btn primary" id="tf_save">记下</button></div>'));
     $('tf_back').onclick=function(){ openTimerFinishSheet(early); };
     $('tf_save').onclick=function(){
       var m=parseInt($('tf_min').value,10);
-      if(!m||m<=0){ toast('填个分钟数'); return; }
-      looseRecord(t.name||'专注', m, t.category||'work');
+      if(!m||m<=0){ toast(I18n.t('填个分钟数')); return; }
+      looseRecord(t.name||I18n.t('专注'), m, t.category||'work');
       STATE.timer=null; save(); closeSheet(); render();
     };
   };
   if(early && $('tf_giveup')){
     $('tf_giveup').onclick=function(){
       STATE.timer=null; save(); closeSheet(); renderTimerBar();
-      toast('已放弃这次，没有记录也没关系');
-      if(window.Pet && Pet.say) Pet.say('没关系，下次想动的时候我在。');
+      toast(I18n.t('已放弃这次，没有记录也没关系'));
+      if(window.Pet && Pet.say) Pet.say(I18n.t('没关系，下次想动的时候我在。'));
     };
   }
 }
@@ -760,11 +760,11 @@ function startStopwatch(scope, id, opts){
   /* 同一时刻只跑一个计时：先问一声，不粗暴丢掉 */
   if(STATE.timer && !STATE.timer.finished){
     var busy = timerTask();
-    openSheet('<h2>先结束正在计时的那个？</h2>'
+    openSheet(I18n.html('<h2>先结束正在计时的那个？</h2>')
       +'<div class="hint">「'+esc(busy?busy.name:(STATE.timer.name||'另一个任务'))+'」已经计时 '
-      +fmtClockLong(timerElapsedMs())+'，先把它记下来再开始新的。</div>'
-      +'<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
-      +'<button class="btn primary" id="sw_switch">结束并开始</button></div>');
+      +fmtClockLong(timerElapsedMs())+I18n.html('，先把它记下来再开始新的。</div>')
+      +I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>')
+      +I18n.html('<button class="btn primary" id="sw_switch">结束并开始</button></div>'));
     $('sw_switch').onclick=function(){
       var used = timerElapsedMs();
       if(used>=SW_MIN_MS) commitStopwatchRecord(Math.round(used/60000));
@@ -782,7 +782,7 @@ function startStopwatch(scope, id, opts){
     finished:false, nagMs:0 };
   save(); renderTimerBar(); ensureTimerTick();
   render();   /* 让卡片/芯片立刻反映「计时中」 */
-  toast('开始计时：'+tname+'。做多久算多久，不用看表。关掉窗口也没事，会在右下角托盘继续走。');
+  toast('开始计时：'+tname+I18n.t('。做多久算多久，不用看表。关掉窗口也没事，会在右下角托盘继续走。'));
   if(window.Pet && Pet.say) Pet.say('我帮你记着时间，你专心做就行。');
   addMemory('timer', '开始计时：「'+tname+'」（'+(task ? scopeName(scope) : '临时记一笔')+'）', ['计时']);
 }
@@ -797,16 +797,16 @@ function commitStopwatchRecord(minutes, meta){
 
   /* 松散计时（没挂任务，如「玩一会杀戮尖塔」）：记进 STATE.loose + 今天的池子 */
   if(!task && scope === 'loose'){
-    var ln = t.name || '一段专注';
+    var ln = t.name || I18n.t('一段专注');
     var lmin = Math.max(0, Math.round(minutes||0));
     STATE.timer = null;
     if(_timerTick){ clearInterval(_timerTick); _timerTick = null; }
     if(lmin > 0){
       looseRecord(ln, lmin, t.category || 'life');
-      toast('记下了：'+ln+' '+lmin+' 分钟，已进今天的池子');
+      toast(I18n.t('记下了：')+ln+' '+lmin+I18n.t(' 分钟，已进今天的池子'));
     } else {
       save();
-      toast('这段是 0 分钟，没记');
+      toast(I18n.t('这段是 0 分钟，没记'));
     }
     closeSheet(); render(); renderTimerBar();
     return lmin;
@@ -840,7 +840,7 @@ function commitStopwatchRecord(minutes, meta){
     task.records.push({date:today(), minutes:minutes, mode:'stopwatch', plannedMin:0, ts:Date.now()});
   }
 
-  addMemory('task', '「'+name+'」计时 '+minutes+' 分钟（正计时 · '+scopeName(scope)+'）', ['计时']);
+  addMemory('task', '「'+name+'」计时 '+minutes+I18n.t(' 分钟（正计时 · ')+scopeName(scope)+'）', ['计时']);
   STATE.timer = null;
   if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
   /* 长周期走计时也要给「推进量」那条鱼 —— 否则同样是推进了，走打卡给、走计时不给 */
@@ -849,7 +849,7 @@ function commitStopwatchRecord(minutes, meta){
     fish += awardLongProgress(task, amtL);
   }
   save(); closeSheet(); render(); renderTimerBar();
-  toast('记下 '+minutes+' 分钟'+(fish?(' · +'+fish+' 🐟'):poolTail(0))+(scope==='daily'?'，今天已打卡 ✓':''));
+  toast(I18n.t('记下 ')+minutes+I18n.t(' 分钟')+(fish?(' · +'+fish+' 🐟'):poolTail(0))+(scope==='daily'?I18n.t('，今天已打卡 ✓'):''));
 
   return minutes;
 }
@@ -858,14 +858,14 @@ function commitStopwatchRecord(minutes, meta){
 function openStopwatchFinishSheet(){
   if(!timerIsStopwatch()) return;
   var t = STATE.timer, task = timerTask();
-  var name = task ? task.name : (t.name||'专注');
+  var name = task ? task.name : (t.name||I18n.t('专注'));
   var ms = timerElapsedMs();
   var mins = Math.max(1, Math.round(ms/60000));
 
   if(ms < SW_MIN_MS){
     openSheet('<h2>这段太短啦</h2>'
-      +'<div class="hint">「'+esc(name)+'」只计了 '+Math.round(ms/1000)+' 秒（不到 1 分钟），默认不算打卡。</div>'
-      +'<div class="sheet-actions"><button class="btn ghost" id="sw_min1">还是记 1 分钟</button>'
+      +'<div class="hint">「'+esc(name)+'」只计了 '+Math.round(ms/1000)+I18n.html(' 秒（不到 1 分钟），默认不算打卡。</div>')
+      +I18n.html('<div class="sheet-actions"><button class="btn ghost" id="sw_min1">还是记 1 分钟</button>')
       +'<button class="btn primary" id="sw_drop0">丢掉这段</button></div>');
     $('sw_min1').onclick=function(){ commitStopwatchRecord(1); };
     $('sw_drop0').onclick=function(){ dropStopwatch(); };
@@ -873,16 +873,16 @@ function openStopwatchFinishSheet(){
   }
 
   var longField = (t.scope==='long')
-    ? '<div class="field"><label>这次完成了多少（'+esc(task.unit||'个')+'，可以不填）</label>'
+    ? '<div class="field"><label>这次完成了多少（'+esc(task.unit||I18n.t('个'))+'，可以不填）</label>'
       +'<input id="sw_amt" type="number" value="" placeholder="只记时间就不填"></div>'
     : '';
 
-  openSheet('<h2>结束计时</h2>'
+  openSheet(I18n.html('<h2>结束计时</h2>')
     +'<div class="hint">「'+esc(name)+'」计时 <b>'+fmtClockLong(ms)+'</b>。做多久算多久，不用凑整。</div>'
-    +'<div class="field"><label>实际时长（分钟）</label><input id="sw_min" type="number" value="'+mins+'" min="0"></div>'
+    +I18n.html('<div class="field"><label>实际时长（分钟）</label><input id="sw_min" type="number" value="')+mins+'" min="0"></div>'
     +longField
     +'<div class="ph-actions">'
-    +'<button class="btn primary block" id="sw_ok" style="margin-bottom:8px">'+icon('check')+' 记下并打卡</button>'
+    +'<button class="btn primary block" id="sw_ok" style="margin-bottom:8px">'+icon('check')+I18n.html(' 记下并打卡</button>')
     +'<button class="btn ghost block" id="sw_drop">这次不算，丢掉</button>'
     +'</div>');
 
@@ -899,7 +899,7 @@ function dropStopwatch(){
   STATE.timer = null;
   if(_timerTick){ clearInterval(_timerTick); _timerTick=null; }
   save(); closeSheet(); render(); renderTimerBar();
-  toast('丢掉了，没记录也没关系');
+  toast(I18n.t('丢掉了，没记录也没关系'));
   if(window.Pet && Pet.say) Pet.say('不算数就不算数，你动过就已经不一样了。');
 }
 
@@ -939,14 +939,14 @@ function notify(title, body){
    ⚠️ **不发鱼也不扣鱼**（他选的）：记录是如实记一笔，不是"做事"；这 app 也不惩罚。
    ⚠️ 它的价值不在当天，而在**周报**里 —— 有它才能看出这周是偏松还是偏紧（见 weekBalance）。 */
 var FUN_KINDS = {
-  fun:   {label:'娱乐', emoji:'🎈', hint:'放松心神'},
-  spree: {label:'放纵', emoji:'🍟', hint:'明知道有点过'}
+  fun:   {label:I18n.t('娱乐'), emoji:'🎈', hint:'放松心神'},
+  spree: {label:I18n.t('放纵'), emoji:'🍟', hint:'明知道有点过'}
 };
 /* 头一次用的时候给三个例子（照 master 自己举的），之后就换成他自己记过的 */
 var FUN_SEED = [
-  {text:'熬夜看番',     kind:'spree'},
-  {text:'吃一次肯德基', kind:'spree'},
-  {text:'玩一场游戏',   kind:'fun'}
+  {text:I18n.t('熬夜看番'),     kind:'spree'},
+  {text:I18n.t('吃一次肯德基'), kind:'spree'},
+  {text:I18n.t('玩一场游戏'),   kind:'fun'}
 ];
 function funToday(){
   var d = today();
@@ -989,7 +989,7 @@ var ACT = null;
 var ACT_WEEKS = {};
 var ACT_WEEK_TTL = 10 * 60000;
 
-var ACT_LABEL = { fun:'休闲娱乐', work:'工作学习', study:'学习充电', social:'社交沟通', other:'其他' };
+var ACT_LABEL = { fun:I18n.t('休闲娱乐'), work:'工作学习', study:'学习充电', social:'社交沟通', other:I18n.t('其他') };
 var ACT_COLOR = { fun:'#d6627a', work:'#3b6fb0', study:'#8b6dff', social:'#bf8a16', other:'#9a8f80' };
 var ACT_ORDER = ['fun', 'work', 'study', 'social', 'other'];
 
@@ -999,24 +999,24 @@ var APP_NAMES = {
   chrome:'Chrome', msedge:'Edge', firefox:'Firefox', brave:'Brave', opera:'Opera',
   code:'VS Code', devenv:'Visual Studio', idea64:'IntelliJ IDEA', pycharm64:'PyCharm',
   clion64:'CLion', goland64:'GoLand', webstorm64:'WebStorm', rider64:'Rider',
-  cursor:'Cursor', ue4editor:'UE 编辑器', unrealeditor:'UE 编辑器', unity:'Unity',
+  cursor:'Cursor', ue4editor:I18n.t('UE 编辑器'), unrealeditor:I18n.t('UE 编辑器'), unity:'Unity',
   blender:'Blender', photoshop:'Photoshop', illustrator:'Illustrator',
   matlab:'MATLAB', keil:'Keil', stm32cubemx:'STM32CubeMX', origin:'Origin',
   winword:'Word', excel:'Excel', powerpnt:'PowerPoint', wps:'WPS',
   notepad:'记事本', notepadpp:'Notepad++', typora:'Typora', obsidian:'Obsidian',
-  explorer:'文件管理器', applicationframehost:'（系统窗口）', systemsettings:'Windows 设置',
+  explorer:I18n.t('文件管理器'), applicationframehost:'（系统窗口）', systemsettings:I18n.t('Windows 设置'),
   windowsterminal:'Windows 终端', cmd:'命令提示符', conhost:'控制台',
   douyin:'抖音', bilibili:'哔哩哔哩', cloudmusic:'网易云音乐', qqmusic:'QQ 音乐',
   wechat:'微信', weixin:'微信', qq:'QQ', dingtalk:'钉钉', feishu:'飞书', lark:'飞书',
   telegram:'Telegram', discord:'Discord', steam:'Steam', steamwebhelper:'Steam',
   epicgameslauncher:'Epic', 'plain craft launcher 2':'PCL 启动器', java:'Java 程序',
-  landing:'着陆', electron:'Electron 应用', wutheringwaves:'鸣潮', 'client-win64-shipping':'游戏',
+  landing:I18n.t('着陆'), electron:I18n.t('Electron 应用'), wutheringwaves:'鸣潮', 'client-win64-shipping':'游戏',
   potplayermini64:'PotPlayer', potplayer:'PotPlayer', vlc:'VLC',
   acrobat:'Acrobat', 'acrord32':'Acrobat', sumatrapdf:'SumatraPDF',
   teamviewer:'TeamViewer', everything:'Everything', snipaste:'Snipaste'
 };
 /* 这些是"壳"进程，不是他在用的应用（跟手机的"主屏幕"一个性质） */
-var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|windowsterminal|landing|electron|着陆|explorer)$/i;
+var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|windowsterminal|landing|studytrail|学迹|electron|着陆|explorer)$/i;
 
 function appLabel(proc){
   var p = String(proc || '').trim();
@@ -1119,7 +1119,7 @@ function autoNameOf(proc, cat){
   var map = STATE.appNames || {};
   if(map[raw]) return map[raw];
   if(map[key]) return map[key];
-  if(/^(chrome|msedge|firefox|brave)$/.test(key)) return ({study:'学习资料',work:'查阅工作资料',fun:'浏览视频与娱乐',social:'网页交流'})[cat] || '浏览网页';
+  if(/^(chrome|msedge|firefox|brave)$/.test(key)) return ({study:'学习资料',work:'查阅工作资料',fun:I18n.t('浏览视频与娱乐'),social:'网页交流'})[cat] || '浏览网页';
   if(ACT_SUGGEST[key]) return ACT_SUGGEST[key];
   return ({work:'工作', study:'学习', fun:'玩', social:'聊天'})[cat] || appLabel(proc) || '这件事';
 }
@@ -1140,8 +1140,8 @@ function renderAsk(){
     + '<input id="askName" type="text" maxlength="20" value="' + esc(ASK.name) + '" placeholder="例如：写代码">'
     + '<div class="ask-hint">' + (ASK.known ? '按你上次的叫法填好了，改一下也行' : '确认一次就记住，下次直接用') + '</div>'
     + '<div class="ask-btns">'
-    +   '<button class="btn primary sm" data-act="askGo">记下来</button>'
-    +   '<button class="btn ghost sm" data-act="askSkip">这次不用</button>'
+    +   I18n.html('<button class="btn primary sm" data-act="askGo">记下来</button>')
+    +   I18n.html('<button class="btn ghost sm" data-act="askSkip">这次不用</button>')
     + '</div>';
   var inp = $('askName');
   if(inp){
@@ -1194,7 +1194,7 @@ function applyAsk(nm, inf){
   looseRecord(nm, mins, actCatToPet(inf.cat));   /* 写 loose + 鱼干池 + 记忆 + save，全在里面 */
   ASK = null; if(ASK_TIMER){ clearTimeout(ASK_TIMER); ASK_TIMER = null; }
   renderAsk();
-  toast('记下了：「' + nm + '」约 ' + fmtMin(mins));
+  toast(I18n.t('记下了：「') + nm + '」约 ' + fmtMin(mins));
 }
 /* 悬浮窗那边的回答（主进程转发过来的） */
 function onAskResult(r){
@@ -1263,7 +1263,7 @@ function onAppChanged(inf){
     } finally { _quietActivityRecord = false; }
     if(ACT.askNotify === true){
       if(hasAskWin()) window.landing.ask.show({ notify:true, appLabel:appLabel(pp), name:nm, minutes:mins });
-      else toast('已记下：「' + nm + '」约 ' + fmtMin(mins));
+      else toast(I18n.t('已记下：「') + nm + '」约 ' + fmtMin(mins));
     }
     return;
   }
@@ -1304,8 +1304,8 @@ function actMinutes(){
 }
 function fmtMin(m){
   m = Math.round(m || 0);
-  if(m < 60) return m + ' 分钟';
-  return Math.floor(m / 60) + ' 小时' + (m % 60 ? (m % 60) + ' 分' : '');
+  if(m < 60) return m + I18n.t(' 分钟');
+  return Math.floor(m / 60) + I18n.t(' 小时') + (m % 60 ? (m % 60) + I18n.t(' 分') : '');
 }
 /* 没有活动窗口时进程名是 Idle —— 直接写出来他看不懂 */
 function actProcLabel(p){
@@ -1321,15 +1321,15 @@ function fmtBytes(b){
 /* 今日页那张卡 */
 function renderActivityCard(){
   if(!ACT) return '';
-  var h = '<div class="card act-card"><div class="row between"><h2>应用时间</h2>'
-    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? '正在记录' : '已暂停') + '</span></div>'
-    + '<div class="row wrap" style="margin:12px 0"><button class="btn ghost sm" data-act="actHistory">查看与整理记录</button></div>';
+  var h = I18n.html('<div class="card act-card"><div class="row between"><h2>应用时间</h2>')
+    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? I18n.t('正在记录') : I18n.t('已暂停')) + '</span></div>'
+    + I18n.html('<div class="row wrap" style="margin:12px 0"><button class="btn ghost sm" data-act="actHistory">查看与整理记录</button></div>');
   if(!ACT.enabled){
-    h += '<div class="hint">已暂停。要开回来去「我的 → 活动记录」。</div></div>';
+    h += I18n.html('<div class="hint">已暂停。要开回来去「我的 → 活动记录」。</div></div>');
     return h;
   }
   if(!ACT.count){
-    h += '<div class="hint">刚开起来，还没采到数据 —— 一分钟内就会出现。</div></div>';
+    h += I18n.html('<div class="hint">刚开起来，还没采到数据 —— 一分钟内就会出现。</div></div>');
     return h;
   }
   var mins = actMinutes();
@@ -1340,7 +1340,7 @@ function renderActivityCard(){
     shown++;
     h += '<div class="act-bar" style="--c:' + ACT_COLOR[k] + '"><b>' + fmtMin(mins[k]) + '</b><span>' + ACT_LABEL[k] + '</span></div>';
   });
-  if(!shown) h += '<div class="hint">今天还没采到有效活动。</div>';
+  if(!shown) h += I18n.html('<div class="hint">今天还没采到有效活动。</div>');
   h += '</div>';
 
   /* 按应用排行（手机那种"应用使用时间"）—— 只列真在前台用过的，壳进程不算 */
@@ -1348,7 +1348,7 @@ function renderActivityCard(){
   var totalMin = rk.reduce(function(n,x){return n+x.minutes;},0);
   if(rk.length){
     var top = rk.slice(0, 5), maxMin = top[0].minutes || 1;
-    h += '<div class="app-head"><span>今天记录 <b>' + fmtMin(totalMin) + '</b></span>'
+    h += I18n.html('<div class="app-head"><span>今天记录 <b>') + fmtMin(totalMin) + '</b></span>'
       + (rk.length > 5 ? '<button class="btn ghost sm" data-act="actRank">看完整排行（' + rk.length + '）</button>' : '')
       + '</div><div class="app-rank">';
     top.forEach(function(x){
@@ -1360,19 +1360,19 @@ function renderActivityCard(){
     });
     h += '</div>';
   } else if(totalMin >= 1){
-    h += '<div class="hint">今天记录 ' + fmtMin(totalMin) + '，但都在系统窗口/桌面里。</div>';
+    h += I18n.html('<div class="hint">今天记录 ') + fmtMin(totalMin) + '，但都在系统窗口/桌面里。</div>';
   }
   if(ACT.last){
     h += '<div class="hint" style="margin-top:11px">刚才在：<b>' + esc(actProcLabel(ACT.last.proc)) + '</b>'
       + (ACT.last.title ? ' · ' + esc(String(ACT.last.title).slice(0, 44)) : '')
-      + ' <span class="cat ' + (ACT.last.cat || 'other') + '">' + (ACT_LABEL[ACT.last.cat] || '其他') + '</span></div>';
+      + ' <span class="cat ' + (ACT.last.cat || 'other') + '">' + (ACT_LABEL[ACT.last.cat] || I18n.t('其他')) + '</span></div>';
   }
   /* 截图状态：**必须一路显化** —— 这是会碰到隐私的功能，藏起来就是错的 */
   h += '<div class="act-shot">'
-    + '<span>' + (ACT.shotMin > 0 ? '每 ' + ACT.shotMin + ' 分钟截屏 · ' : '自动截屏已关闭 · ') + (ACT.shots || 0) + ' 张 · ' + fmtBytes(ACT.bytes) + '</span>'
-    + '<span>保留 ' + ACT.keepDays + ' 天 · 只存本机</span>'
-    + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
-    + '<button class="btn ghost sm" data-act="actToggle">暂停记录</button>'
+    + '<span>' + (ACT.shotMin > 0 ? I18n.t('每 ') + ACT.shotMin + I18n.t(' 分钟截屏 · ') : I18n.t('自动截屏已关闭 · ')) + (ACT.shots || 0) + I18n.t(' 张 · ') + fmtBytes(ACT.bytes) + '</span>'
+    + I18n.html('<span>保留 ') + ACT.keepDays + ' 天 · 只存本机</span>'
+    + I18n.html('<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="actToggle">暂停记录</button>')
     + '</div></div>';
   return h;
 }
@@ -1381,29 +1381,29 @@ function renderActivityCard(){
 function renderActivitySettings(){
   if(!ACT) return '';
   var mode = ACT.ask === false ? 'stats' : ACT.askConfirm === true ? 'ask' : ACT.askNotify === true ? 'notify' : 'silent';
-  return '<div class="card activity-settings"><div class="row between"><h2>应用时间记录</h2><span class="status-pill">'+(ACT.enabled ? '后台记录中' : '已暂停')+'</span></div>'
-    + '<p class="hint">自动统计前台应用的使用时间，保存在本机。安静模式无需确认，也不会弹出记录通知。</p>'
-    + '<div class="field"><label for="act_mode">记录方式</label><select id="act_mode">'
-    + [['silent','安静自动记录（推荐）'],['notify','自动记录，并显示通知'],['ask','每次记录前询问'],['stats','仅统计，不计入时间池']].map(function(x){return '<option value="'+x[0]+'"'+(mode===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div>'
-    + '<p class="hint">应用时间在「今日 → 应用时间」查看；自动记录也会进入周报和时间池。手动专注时避免重复计入时间池。</p>'
-    + '<details class="ui-fold"><summary>采样与截屏设置</summary><div class="settings-grid">'
-    + '<div class="field"><label for="act_sample">采样间隔 / 秒</label><input id="act_sample" type="number" min="10" max="600" value="'+ACT.sampleSec+'"></div>'
-    + '<div class="field"><label for="act_shot">自动截屏 / 分钟（0 为关闭）</label><input id="act_shot" type="number" min="0" max="120" value="'+ACT.shotMin+'"></div>'
-    + '<div class="field"><label for="act_keep">截图保留 / 天</label><input id="act_keep" type="number" min="1" max="365" value="'+ACT.keepDays+'"></div>'
-    + '<div class="field"><label for="act_cool">询问冷却 / 分钟</label><input id="act_cool" type="number" min="3" max="240" value="'+(ACT.askCoolMin||15)+'"></div></div>'
-    + '<p class="hint">冷却仅影响询问模式。关闭自动截屏后，仍然正常统计应用时间。</p>'
-    + '<div class="row wrap"><span class="hint">已有 '+(ACT.shots||0)+' 张截图 · '+fmtBytes(ACT.bytes)+'</span><button class="btn ghost sm" data-act="actFolder">打开文件夹</button><button class="btn ghost sm" data-act="actClearShots">清空截图</button></div></details>'
-    + '<div class="row wrap"><button class="btn primary sm" data-act="actSave">保存记录设置</button><button class="btn ghost sm" data-act="actToggle">'+(ACT.enabled?'暂停记录':'开始记录')+'</button><button class="btn ghost sm" data-act="actRank">应用排行</button><button class="btn ghost sm" data-act="actHistory">整理记录</button></div></div>';
+  return I18n.html('<div class="card activity-settings"><div class="row between"><h2>应用时间记录</h2><span class="status-pill">')+(ACT.enabled ? I18n.t('后台记录中') : I18n.t('已暂停'))+'</span></div>'
+    + I18n.html('<p class="hint">自动统计前台应用的使用时间，保存在本机。安静模式无需确认，也不会弹出记录通知。</p>')
+    + I18n.html('<div class="field"><label for="act_mode">记录方式</label><select id="act_mode">')
+    + [['silent',I18n.t('安静自动记录（推荐）')],['notify',I18n.t('自动记录，并显示通知')],['ask',I18n.t('每次记录前询问')],['stats',I18n.t('仅统计，不计入时间池')]].map(function(x){return '<option value="'+x[0]+'"'+(mode===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div>'
+    + I18n.html('<p class="hint">应用时间在「今日 → 应用时间」查看；自动记录也会进入周报和时间池。手动专注时避免重复计入时间池。</p>')
+    + I18n.html('<details class="ui-fold"><summary>采样与截屏设置</summary><div class="settings-grid">')
+    + I18n.html('<div class="field"><label for="act_sample">采样间隔 / 秒</label><input id="act_sample" type="number" min="10" max="600" value="')+ACT.sampleSec+'"></div>'
+    + I18n.html('<div class="field"><label for="act_shot">自动截屏 / 分钟（0 为关闭）</label><input id="act_shot" type="number" min="0" max="120" value="')+ACT.shotMin+'"></div>'
+    + I18n.html('<div class="field"><label for="act_keep">截图保留 / 天</label><input id="act_keep" type="number" min="1" max="365" value="')+ACT.keepDays+'"></div>'
+    + I18n.html('<div class="field"><label for="act_cool">询问冷却 / 分钟</label><input id="act_cool" type="number" min="3" max="240" value="')+(ACT.askCoolMin||15)+'"></div></div>'
+    + I18n.html('<p class="hint">冷却仅影响询问模式。关闭自动截屏后，仍然正常统计应用时间。</p>')
+    + I18n.html('<div class="row wrap"><span class="hint">已有 ')+(ACT.shots||0)+I18n.t(' 张截图 · ')+fmtBytes(ACT.bytes)+I18n.html('</span><button class="btn ghost sm" data-act="actFolder">打开文件夹</button><button class="btn ghost sm" data-act="actClearShots">清空截图</button></div></details>')
+    + I18n.html('<div class="row wrap"><button class="btn primary sm" data-act="actSave">保存记录设置</button><button class="btn ghost sm" data-act="actToggle">')+(ACT.enabled?I18n.t('暂停记录'):I18n.t('开始记录'))+I18n.html('</button><button class="btn ghost sm" data-act="actRank">应用排行</button><button class="btn ghost sm" data-act="actHistory">整理记录</button></div></div>');
 }
 
 function renderFunCard(){
   var todays = funToday();
   var recent = funRecent(4);
   var quick = recent.length ? recent : FUN_SEED;
-  var h = '<div class="card fun-card"><div class="row between"><h2>🎈 放开一下</h2>'
-    + '<span class="muted" style="font-size:12px">今天 '+todays.length+' 笔</span></div>'
-    + '<div class="hint">看番、肯德基、打一场游戏都算。<b>记下来不是认罪</b> —— '
-    + '是为了让周报看出你这周偏松还是偏紧。不发小鱼干，也不扣。</div>'
+  var h = I18n.html('<div class="card fun-card"><div class="row between"><h2>🎈 放开一下</h2>')
+    + I18n.html('<span class="muted" style="font-size:12px">今天 ')+todays.length+I18n.html(' 笔</span></div>')
+    + I18n.html('<div class="hint">看番、肯德基、打一场游戏都算。<b>记下来不是认罪</b> —— ')
+    + I18n.html('是为了让周报看出你这周偏松还是偏紧。不发小鱼干，也不扣。</div>')
     + '<div class="fun-quick">';
   quick.forEach(function(q){
     var k = FUN_KINDS[q.kind] ? q.kind : 'fun';
@@ -1411,9 +1411,9 @@ function renderFunCard(){
       + FUN_KINDS[k].emoji + ' ' + esc(q.text) + '</button>';
   });
   h += '</div>'
-    + '<div class="fun-inrow"><input id="funIn" maxlength="24" placeholder="刚干了什么…">'
-    + '<button class="btn ghost sm" data-act="funAdd" data-kind="fun">🎈 娱乐</button>'
-    + '<button class="btn ghost sm" data-act="funAdd" data-kind="spree">🍟 放纵</button>'
+    + I18n.html('<div class="fun-inrow"><input id="funIn" maxlength="24" placeholder="刚干了什么…">')
+    + I18n.html('<button class="btn ghost sm" data-act="funAdd" data-kind="fun">🎈 娱乐</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="funAdd" data-kind="spree">🍟 放纵</button>')
     + '</div>';
   if(todays.length){
     h += '<div class="fun-list">';
@@ -1473,7 +1473,7 @@ function looseRecord(name, minutes, category, recordDate){
   STATE.loose = STATE.loose || [];
   STATE.loose.push(rec);
   if(rec.date===today()) awardFish(m, rec.name);
-  addMemory('loose', '记了 '+m+' 分钟：'+rec.name, [catName(rec.category)]);
+  addMemory('loose', '记了 '+m+I18n.t(' 分钟：')+rec.name, [catName(rec.category)]);
   save();
   return rec;
 }
@@ -1481,7 +1481,7 @@ function looseDel(id){
   var r = (STATE.loose||[]).find(function(x){ return x.id===id; });
   STATE.loose = (STATE.loose||[]).filter(function(x){ return x.id!==id; });
   save(); render();
-  if(r) toast('删掉了「'+r.name+'」那 '+r.minutes+' 分钟（池子里的鱼不回收）');
+  if(r) toast('删掉了「'+r.name+'」那 '+r.minutes+I18n.t(' 分钟（池子里的鱼不回收）'));
 }
 
 /* 把这次花的时间倒进池子；满了就发鱼。返回发了多少条 */
@@ -1493,7 +1493,7 @@ function feedFishPool(minutes, reason){
   var n = 0;
   while(p.minutes >= POOL_MIN){ p.minutes -= POOL_MIN; n++; }
   if(!n) return 0;
-  return grantFish(n, (reason ? reason+' · ' : '')+'累计满 '+POOL_MIN+' 分钟'+(n>1?('×'+n):''));
+  return grantFish(n, (reason ? reason+' · ' : '')+'累计满 '+POOL_MIN+I18n.t(' 分钟')+(n>1?('×'+n):''));
 }
 function petState(){
   if(!STATE.pet) STATE.pet = {};
@@ -1524,7 +1524,7 @@ function grantFish(n, reason){
   p.fishLog = p.fishLog||[];
   p.fishLog.push({at:Date.now(), n:n, reason:reason});
   if(p.fishLog.length>400) p.fishLog.splice(0, p.fishLog.length-400);
-  addMemory('fish', '+'+n+' 条小鱼干 · '+reason, ['小鱼干']);
+  addMemory('fish', '+'+n+I18n.t(' 条小鱼干 · ')+reason, [I18n.t('小鱼干')]);
   petNotify('onFish', n, reason);
   return n;
 }
@@ -1553,14 +1553,14 @@ function awardWeeklyTap(w){
   if(!w) return 0;
   var cnt = (w.records||[]).filter(function(r){ return r.date===today(); }).length;
   if(cnt > 1) return 0;
-  return grantFish(1, w.name+' · 完成打卡');
+  return grantFish(1, w.name+I18n.t(' · 完成打卡'));
 }
 function addMemory(kind, text, tags){
   STATE.memories = STATE.memories||[];
   STATE.memories.push({id:uid('m'), at:Date.now(), kind:kind||'note', text:text, tags:tags||[]});
   if(STATE.memories.length>1000) STATE.memories.splice(0, STATE.memories.length-1000);
 }
-var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:'专注', fish:'小鱼干', milestone:'里程碑', note:'随手记', daily:'每日', rest:'休息', fun:'放开', loose:'临时'};
+var MEM_KIND = {chat:'对话', feed:'投喂', pet:'抚摸', task:'任务', timer:I18n.t('专注'), fish:I18n.t('小鱼干'), milestone:I18n.t('里程碑'), note:I18n.t('随手记'), daily:I18n.t('每日'), rest:'休息', fun:'放开', loose:'临时'};
 /* 宠物用工具能碰的东西（白名单）。'loose' 是「直接记一笔时长」—— 不建任务 */
 var PET_CATS = ['fun', 'work', 'life', 'growth'];
 
@@ -1611,7 +1611,7 @@ function takeRestDay(d){
   if(STATE.restDays.indexOf(d) >= 0) return false;   /* 一天只能记一次 */
   STATE.restDays.push(d);
   STATE.restDays.sort();
-  addMemory('rest', '给这天记了休息：'+d+(d===today()?'（今天）':'（补记）'), ['休息']);
+  addMemory('rest', '给这天记了休息：'+d+(d===today()?I18n.t('（今天）'):'（补记）'), ['休息']);
   save();
   petNotify('onRestDay', d);   /* 休息了就该回点血（失败也不能拦着记休息） */
   return true;
@@ -1644,10 +1644,10 @@ function softLandingCard(){
   var d = restStreakBeforeToday();
   return '<div class="card"><h2>🌤 回来了</h2>'
     + '<div class="hint">' + (d === 1 ? '昨天休息得怎么样？' : ('你歇了 ' + d + ' 天，欢迎回来。')) + '</div>'
-    + '<div class="hint">不用补昨天的，也不用追进度。今天挑一件最小的开始就行 —— 做了算数，不做也算数。</div>'
+    + I18n.html('<div class="hint">不用补昨天的，也不用追进度。今天挑一件最小的开始就行 —— 做了算数，不做也算数。</div>')
     + '<div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">'
-    + '<button class="btn primary sm" data-act="softLandOne">挑今天的一件事</button>'
-    + '<button class="btn ghost sm" data-act="softLandShowAll">看全部待办</button>'
+    + I18n.html('<button class="btn primary sm" data-act="softLandOne">挑今天的一件事</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="softLandShowAll">看全部待办</button>')
     + '</div></div>';
 }
 
@@ -1679,10 +1679,10 @@ function catVitality(){
 
 var CAT_LINES = {
   low:  ['我在呢。','不想动也没关系。','你来了就好。','先歇会儿，我不催。'],
-  mid:  ['今天的下一步是什么？','我在这儿等你。','慢慢来，一件就够。','倒出来会好受点。'],
-  high: ['你今天真不错。','能量满了。','要走下一步吗？','我看好你。']
+  mid:  [I18n.t('今天的下一步是什么？'),'我在这儿等你。',I18n.t('慢慢来，一件就够。'),I18n.t('倒出来会好受点。')],
+  high: [I18n.t('你今天真不错。'),'能量满了。','要走下一步吗？','我看好你。']
 };
-function catTierText(t){ return t==='low' ? '有点想你' : (t==='high' ? '精神十足' : '状态平稳'); }
+function catTierText(t){ return t==='low' ? I18n.t('有点想你') : (t==='high' ? I18n.t('精神十足') : I18n.t('状态平稳')); }
 function catSpeak(t){
   var arr = CAT_LINES[t] || CAT_LINES.mid;
   return arr[Math.floor(Math.random()*arr.length)];
@@ -1692,9 +1692,9 @@ function catSpeak(t){
 /* 倾倒台是「着陆」的第一步：把在脑子里空转的焦虑外化成字，才看得清下一步。
    它同时是伙伴活力的主要来源（catVitality 里今日倾倒 1 次 +12，上限 +24）。 */
 var DUMP_KINDS = [
-  {key:'do',   label:'要做的',   emoji:'🎯'},
-  {key:'drop', label:'可以放掉', emoji:'🍃'},
-  {key:'feel', label:'只是感受', emoji:'💭'}
+  {key:'do',   label:I18n.t('要做的'),   emoji:'🎯'},
+  {key:'drop', label:I18n.t('可以放掉'), emoji:'🍃'},
+  {key:'feel', label:I18n.t('只是感受'), emoji:'💭'}
 ];
 function dumpKindOf(k){ return DUMP_KINDS.find(function(x){return x.key===k;}) || null; }
 
@@ -1709,26 +1709,26 @@ function renderDumpCard(){
   var todayN = todayDumpCount();
 
   var h = '<div class="card dump-card" id="dumpCard">'
-    + '<div class="row between"><h2>'+icon('leaf')+' 倾倒台</h2>'
-    + '<span class="dump-count">'+(todayN ? ('今天倒出 '+todayN+' 条 · 小鱼干已到账') : '今天还没倒过')+'</span></div>'
-    + '<div class="hint">脑子里同时在转的事，先写下来。不用分类、不用有条理——写出来它就不在脑子里空转了。'
-    + '倒出来算数：每倒 1 次，小陆的活力 +12（每天最多算 2 次）。</div>'
-    + '<textarea id="dumpInput" class="dump-input" placeholder="现在最占脑子的那件事是…"></textarea>'
+    + '<div class="row between"><h2>'+icon('leaf')+I18n.html(' 倾倒台</h2>')
+    + '<span class="dump-count">'+(todayN ? (I18n.t('今天倒出 ')+todayN+I18n.t(' 条 · 小鱼干已到账')) : I18n.t('今天还没倒过'))+'</span></div>'
+    + I18n.html('<div class="hint">脑子里同时在转的事，先写下来。不用分类、不用有条理——写出来它就不在脑子里空转了。')
+    + I18n.html('倒出来算数：每倒 1 次，小陆的活力 +12（每天最多算 2 次）。</div>')
+    + I18n.html('<textarea id="dumpInput" class="dump-input" placeholder="现在最占脑子的那件事是…"></textarea>')
     + '<div class="dump-tools">'
-    + '<button class="btn primary sm" data-act="dumpAdd">'+icon('plus')+' 倒出来</button>'
-    + '<span class="dump-tip">写完再决定它是「要做的」「可以放掉」还是「只是感受」</span>'
+    + '<button class="btn primary sm" data-act="dumpAdd">'+icon('plus')+I18n.html(' 倒出来</button>')
+    + I18n.html('<span class="dump-tip">写完再决定它是「要做的」「可以放掉」还是「只是感受」</span>')
     + '</div>';
 
   if(!list.length){
-    h += '<div class="empty">倾倒台是空的。上面写点什么，哪怕只有一句。</div>';
+    h += I18n.html('<div class="empty">倾倒台是空的。上面写点什么，哪怕只有一句。</div>');
   } else {
     h += '<div class="dump-list">';
     list.slice(0,20).forEach(function(d){
       var k = dumpKindOf(d.kind);
-      var when = d.createdAt ? new Date(d.createdAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      var when = d.createdAt ? new Date(d.createdAt).toLocaleString(I18n.locale(),{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
       h += '<div class="dump-item'+(d.done?' is-done':'')+'">'
         + '<div class="dump-head">'
-        + '<span class="dump-chip'+(k?(' k-'+k.key):'')+'">'+(k ? k.emoji+' '+k.label : '未分类')+'</span>'
+        + '<span class="dump-chip'+(k?(' k-'+k.key):'')+'">'+(k ? k.emoji+' '+k.label : I18n.t('未分类'))+'</span>'
         + '<span class="dump-time">'+esc(when)+'</span>'
         + '<button class="dump-del" data-act="dumpDel" data-id="'+d.id+'" title="删掉这条">✕</button>'
         + '</div>'
@@ -1751,15 +1751,15 @@ function renderDumpCard(){
 function renderMoodCard(){
   var rec = STATE.weather.filter(function(x){ return x.date===today(); }).pop();
   var MOODS = [
-    {key:'sun',   emoji:'☀️', label:'晴', note:'状态不错'},
-    {key:'cloud', emoji:'⛅', label:'阴', note:'还行，有点钝'},
-    {key:'rain',  emoji:'🌧️', label:'雨', note:'有点乱'},
-    {key:'storm', emoji:'⛈️', label:'暴', note:'快撑不住了'}
+    {key:'sun',   emoji:'☀️', label:I18n.t('晴'), note:I18n.t('状态不错')},
+    {key:'cloud', emoji:'⛅', label:I18n.t('阴'), note:I18n.t('还行，有点钝')},
+    {key:'rain',  emoji:'🌧️', label:I18n.t('雨'), note:I18n.t('有点乱')},
+    {key:'storm', emoji:'⛈️', label:I18n.t('暴'), note:I18n.t('快撑不住了')}
   ];
   var h = '<div class="card mood-card">'
-    + '<div class="row between"><h2>'+icon('cloud')+' 情绪气象</h2>'
-    + '<span class="dump-count">'+(rec ? '今天记过了' : '还没记')+'</span></div>'
-    + '<div class="hint">不用解释，选一个就行。它会影响小陆今天的状态——你下雨的时候它不会催你。</div>'
+    + '<div class="row between"><h2>'+icon('cloud')+I18n.html(' 情绪气象</h2>')
+    + '<span class="dump-count">'+(rec ? I18n.t('今天记过了') : I18n.t('还没记'))+'</span></div>'
+    + I18n.html('<div class="hint">不用解释，选一个就行。它会影响小陆今天的状态——你下雨的时候它不会催你。</div>')
     + '<div class="mood-pick">';
   MOODS.forEach(function(m){
     var on = rec && rec.mood===m.key;
@@ -1769,7 +1769,7 @@ function renderMoodCard(){
   });
   h += '</div>';
   if(rec){
-    h += '<div class="mood-note-line">今天：'+esc((MOODS.find(function(m){return m.key===rec.mood;})||{}).note||'已记录')+'</div>';
+    h += I18n.html('<div class="mood-note-line">今天：')+esc((MOODS.find(function(m){return m.key===rec.mood;})||{}).note||I18n.t('已记录'))+'</div>';
   }
   return h+'</div>';
 }
@@ -1783,7 +1783,7 @@ var _wxBusy = false;
 
 /* WMO 天气码 → [图标, 中文]（Open-Meteo 用的就是这套码） */
 var WX_CODES = {
-  0:['☀️','晴'], 1:['🌤️','基本晴'], 2:['⛅','局部多云'], 3:['☁️','阴'],
+  0:['☀️',I18n.t('晴')], 1:['🌤️','基本晴'], 2:['⛅','局部多云'], 3:['☁️',I18n.t('阴')],
   45:['🌫️','雾'], 48:['🌫️','雾凇'],
   51:['🌦️','毛毛雨'], 53:['🌦️','毛毛雨'], 55:['🌦️','毛毛雨'],
   56:['🌧️','冻毛毛雨'], 57:['🌧️','冻毛毛雨'],
@@ -1827,7 +1827,7 @@ function renderWxBar(){
   if(!w.ok){
     return '<div class="wxbar"><span class="wx-emoji">🌡️</span>'
       + '<span class="wx-desc">天气没取到</span>'
-      + '<button class="wx-retry" data-act="wxRetry">重试</button></div>';
+      + I18n.html('<button class="wx-retry" data-act="wxRetry">重试</button></div>');
   }
   var cur = w.current || {}, d = w.daily || {};
   var info = wxInfo(cur.weather_code);
@@ -2019,7 +2019,7 @@ function todayCourses(){
    今日页那张卡只给「今天 + 本周要上的」，保持不变；想知道任意一周长什么样，
    从课表卡右上角的「各周课表」进来。 */
 var _schedWeek = 0;                       /* 0 = 没选过，打开时默认跳到本周 */
-var WEEK_NAMES = ['一','二','三','四','五','六','日'];
+var WEEK_NAMES = I18n.weekdays(true);
 /* 周数上限：优先信课表里写的最大周次，但不少于 16 也不少于当前周（别把后面的周切没了） */
 function schedMaxWeek(){
   var items = (STATE.schedule && STATE.schedule.items) || [];
@@ -2076,11 +2076,11 @@ function schedWeekHTML(w){
   var cur = currentWeek(), maxW = schedMaxWeek();
   var list = weekCourses(w), rows = schedPeriodRows();
   var mon = weekMonday(w);
-  var h = '<h2>📅 第 ' + w + ' 周课表'
+  var h = I18n.html('<h2>📅 第 ') + w + ' 周课表'
     + (w === cur ? ' <span class="wk-cur">本周</span>' : '') + '</h2>'
     + '<div class="hint" style="margin:0 0 12px">' + mdShort(mon) + ' – '
     + mdShort(new Date(mon.getTime() + 6 * 86400000))
-    + ' · 这周 ' + classPeriodsInWeek(w) + ' 节 · 约 ' + (classPeriodsInWeek(w) * CLASS_MIN_PER_PERIOD) + ' 分钟</div>';
+    + ' · 这周 ' + classPeriodsInWeek(w) + ' 节 · 约 ' + (classPeriodsInWeek(w) * CLASS_MIN_PER_PERIOD) + I18n.html(' 分钟</div>');
 
   /* 周选择条：有课的周实心，没课的周淡化 —— 一眼看出哪几周是空的 */
   h += '<div class="wk-bar">';
@@ -2092,7 +2092,7 @@ function schedWeekHTML(w){
   h += '</div>';
 
   if(!list.length){
-    h += '<div class="hint">第 ' + w + ' 周整周都没课。</div>';
+    h += I18n.html('<div class="hint">第 ') + w + ' 周整周都没课。</div>';
   } else {
     var maxP = periodRange(rows[rows.length - 1])[1];
     h += '<div class="wk-scroll"><div class="wk-table">';
@@ -2158,9 +2158,9 @@ function renderTodayCourses(){
   var s = STATE.schedule;
   if(!s || !s.items || !s.items.length){
     if(!_jwglNeedLogin) return '';
-    return '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
-      + '<button class="btn ghost sm" data-act="openSettings">去连接</button></div>'
-      + '<div class="hint">连上教务系统后，这里会显示今天的课。学号密码用系统加密存在本机，不上传、不进代码。</div></div>';
+    return I18n.html('<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>')
+      + I18n.html('<button class="btn ghost sm" data-act="openSettings">去连接</button></div>')
+      + I18n.html('<div class="hint">连上教务系统后，这里会显示今天的课。学号密码用系统加密存在本机，不上传、不进代码。</div></div>');
   }
   var w = currentWeek();
   var wMon = weekMonday(w), wSun = weekMonday(w); wSun.setDate(wSun.getDate() + 6);
@@ -2174,14 +2174,14 @@ function renderTodayCourses(){
      算法：今天全部课的节数 − 今天要上的节数（两边都已按节次去重），**不能拿门数相减** */
   var allP = classPeriodsOf((s.items || []).filter(function(c){ return c.weekday === dayOfWeek(); }));
   var offCnt = Math.max(0, allP - pCnt);
-  var h = '<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>'
+  var h = I18n.html('<div class="card sched-card"><div class="row between"><h2>📚 今天的课</h2>')
     + '<div class="row" style="gap:9px;align-items:center">'
-    + '<span class="muted" style="font-size:12px">第 ' + w + ' 周 · ' + mdShort(wMon) + '–' + mdShort(wSun) + ' · ' + pCnt + ' 节 · 约 ' + cMin + ' 分钟</span>'
+    + I18n.html('<span class="muted" style="font-size:12px">第 ') + w + ' 周 · ' + mdShort(wMon) + '–' + mdShort(wSun) + ' · ' + pCnt + ' 节 · 约 ' + cMin + I18n.html(' 分钟</span>')
     + '<button class="btn ghost sm" data-act="schedWeeks" title="看任意一周的完整课表">各周课表</button>'
     + '</div></div>';
   if(!list.length){
-    h += '<div class="hint">今天没课'
-      + (offCnt ? '（第 ' + w + ' 周不上的 ' + offCnt + ' 节已收起）' : '')
+    h += I18n.html('<div class="hint">今天没课')
+      + (offCnt ? I18n.t('（第 ') + w + ' 周不上的 ' + offCnt + ' 节已收起）' : '')
       + ' —— 那时间就都是你自己的。</div>';
   } else {
     h += '<div class="sched-grid">';
@@ -2189,15 +2189,15 @@ function renderTodayCourses(){
       var hue = courseHue(c.name);
       h += '<div class="sched-block" style="--bc:hsl(' + hue + ',62%,52%);'
         + '--bc-soft:hsla(' + hue + ',62%,52%,.13)">'
-        + '<div class="sb-per">第 ' + esc(c.periods) + ' 节</div>'
+        + I18n.html('<div class="sb-per">第 ') + esc(c.periods) + ' 节</div>'
         + '<div class="sb-name">' + esc(c.name) + '</div>'
         + (c.room ? '<div class="sb-room">📍 ' + esc(c.room) + '</div>' : '')
         + (c.teacher ? '<div class="sb-tea">👤 ' + esc(c.teacher) + '</div>' : '')
         + '</div>';
     });
     h += '</div>';
-    if(offCnt) h += '<div class="hint" style="margin-top:9px">本周（第 ' + w + ' 周）不上的 '
-      + offCnt + ' 节已收起 —— 只留今天真要去的。上课时间已算进今天的投入。</div>';
+    if(offCnt) h += I18n.html('<div class="hint" style="margin-top:9px">本周（第 ') + w + ' 周）不上的 '
+      + offCnt + I18n.html(' 节已收起 —— 只留今天真要去的。上课时间已算进今天的投入。</div>');
   }
   return h + '</div>';
 }
@@ -2205,11 +2205,11 @@ function renderTodayCourses(){
 /* --- 设置面板里的「教务系统」块 --- */
 function jwglPanelHTML(status){
   status = status || {};
-  var head = '<div class="field" style="margin-top:16px"><label>教务系统（查课表）</label>';
+  var head = I18n.html('<div class="field" style="margin-top:16px"><label>教务系统（查课表）</label>');
   if(_jwglCaptcha){
     return head
-      + '<div class="hint" style="margin:0 0 8px">学校要求验证码，填一次就行，之后应用会记住。'
-      + '凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。</div>'
+      + I18n.html('<div class="hint" style="margin:0 0 8px">学校要求验证码，填一次就行，之后应用会记住。')
+      + I18n.html('凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。</div>')
       + '<div class="jwgl-form">'
       + '<input id="jw_u" placeholder="学号" value="' + esc(status.username || '') + '">'
       + '<input id="jw_p" type="password" placeholder="密码">'
@@ -2219,34 +2219,34 @@ function jwglPanelHTML(status){
       + '</div></div>'
       + '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">'
       + '<button class="btn primary sm" data-act="jwglLogin">' + (_jwglBusy ? '登录中…' : '登录') + '</button>'
-      + '<button class="btn ghost sm" data-act="jwglCancel">取消</button>'
+      + I18n.html('<button class="btn ghost sm" data-act="jwglCancel">取消</button>')
       + '</div></div>';
   }
   if(status.hasCred){
     return head
-      + '<div class="hint" style="margin:0 0 8px">已保存账号 <b>' + esc(status.username || '') + '</b>'
-      + (status.loggedIn ? '，当前已连接。' : '，当前未连接（取课表时会自动重连，只有会话过期才需要重新登录）。')
+      + I18n.html('<div class="hint" style="margin:0 0 8px">已保存账号 <b>') + esc(status.username || '') + '</b>'
+      + (status.loggedIn ? '，当前已连接。' : I18n.t('，当前未连接（取课表时会自动重连，只有会话过期才需要重新登录）。'))
       + '</div>'
       + '<div class="row" style="gap:8px;flex-wrap:wrap">'
       + '<button class="btn ghost sm" data-act="jwglStartLogin">重新登录</button>'
       + '<button class="btn ghost sm" data-act="jwglSync">立即同步课表</button>'
-      + '<button class="btn danger sm" data-act="jwglLogout">断开并删除凭据</button>'
+      + I18n.html('<button class="btn danger sm" data-act="jwglLogout">断开并删除凭据</button>')
       + '</div></div>';
   }
   return head
-    + '<div class="hint" style="margin:0 0 8px">连上以后，今日页会显示今天的课。'
-    + '凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。</div>'
-    + '<button class="btn primary sm" data-act="jwglStartLogin">连接教务系统</button></div>';
+    + I18n.html('<div class="hint" style="margin:0 0 8px">连上以后，今日页会显示今天的课。')
+    + I18n.html('凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。</div>')
+    + I18n.html('<button class="btn primary sm" data-act="jwglStartLogin">连接教务系统</button></div>');
 }
 
 /* ================= 视图：今日 ================= */
 function viewToday(){
   if(window.Discipline){
     return Discipline.render() + renderMustCard()
-      + '<details class="ds-extra"><summary>今天的课表</summary>' + renderTodayCourses() + '</details>'
-      + '<details class="ds-extra"><summary>情绪、倾倒与生活记录</summary>'
+      + I18n.html('<details class="ds-extra"><summary>今天的课表</summary>') + renderTodayCourses() + '</details>'
+      + I18n.html('<details class="ds-extra"><summary>情绪、倾倒与生活记录</summary>')
       + renderMoodCard() + renderDumpCard() + renderFunCard() + '</details>'
-      + '<details class="ds-extra activity-overview"><summary>应用时间 <span>自动记录，随时查看</span></summary>' + renderActivityCard() + '</details>';
+      + I18n.html('<details class="ds-extra activity-overview"><summary>应用时间 <span>自动记录，随时查看</span></summary>') + renderActivityCard() + '</details>';
   }
   var h = '';
 
@@ -2260,7 +2260,7 @@ function viewToday(){
     +   '<div class="warp-head" data-warp><h2>把焦虑，</h2></div>'
     +   '<div class="hero-serif">变成下一步。</div>'
     + '</div>'
-    + '<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>'
+    + I18n.html('<p>当多线程压得你脑子打转，先着陆，再行动。外化焦虑、看清方向、每天只做最小的一步——不催你做更多，只帮你从空转里走出来。</p>')
     + '</div>';
   /* 天气条：一行轻环境信息，夹在 hero 和下面内容之间 */
   h += renderWxBar();
@@ -2280,16 +2280,16 @@ function viewToday(){
   /* 顶部第一块：休息中 / 休息完刚回来 —— 两者互斥，撑不住和刚缓过来要看到的东西不一样。
      ⚠️ 必须排在最前面：它比"今天还没动"更该被先看到。 */
   if(isRestToday()){
-    h += '<div class="card"><h2>🛋 今天休息</h2>'
-      + '<div class="hint">已经在账上了。今天不打卡也<b>不会断</b>连续天数，宠物也不掉心情。</div>'
-      + '<div class="hint">想动一动不用忍着 —— 打卡随时可以，多记一笔不亏。</div></div>';
+    h += I18n.html('<div class="card"><h2>🛋 今天休息</h2>')
+      + I18n.html('<div class="hint">已经在账上了。今天不打卡也<b>不会断</b>连续天数，宠物也不掉心情。</div>')
+      + I18n.html('<div class="hint">想动一动不用忍着 —— 打卡随时可以，多记一笔不亏。</div></div>');
   } else if(isSoftLanding()){
     h += softLandingCard();
   } else {
     /* ⚠️ 按钮放左边：右下角是悬浮的宠物挂件，卡片底部的右侧按钮会被它盖住（真踩过） */
     h += '<div class="card"><div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">'
-      + '<button class="btn ghost sm" data-act="restToday">今天休息</button>'
-      + '<span class="muted" style="font-size:12px"><b>今天撑不住？</b>记一天休息：连续天数冻结，宠物回点精力。</span>'
+      + I18n.html('<button class="btn ghost sm" data-act="restToday">今天休息</button>')
+      + I18n.html('<span class="muted" style="font-size:12px"><b>今天撑不住？</b>记一天休息：连续天数冻结，宠物回点精力。</span>')
       + '</div>'
       + '<div class="hint" style="margin-top:8px">休息是记账、不是跳过：一天只能记一次，记了不能撤。'
       + pastRestChips() + '</div></div>';
@@ -2308,20 +2308,20 @@ function viewToday(){
   if(dg && dg.categories){
     var cats = Object.keys(dg.categories).filter(function(k){ return dg.categories[k].length>0; });
     var top2 = cats.slice(0,2).map(function(k){ return k.replace(' /','').replace('/IoT',''); }).join(' / ');
-    var trendText = top2 ? top2 + ' · 按你的兴趣发现项目' : '日报已更新，可调整兴趣发现更多项目';
+    var trendText = top2 ? top2 + I18n.t(' · 按你的兴趣发现项目') : I18n.t('日报已更新，可调整兴趣发现更多项目');
     h+='<div class="push">'
       +'<div class="pulse"></div><div class="push-body">'
-      +'<div class="ptitle">📡 今日技术日报已送达</div>'
+      +I18n.html('<div class="ptitle">📡 今日技术日报已送达</div>')
       +'<div class="pbody">'+esc(trendText)+'</div>'
       +'</div>'
-      +'<div class="push-actions"><button class="btn ghost sm" data-act="goDigest">查看</button></div></div>';
+      +I18n.html('<div class="push-actions"><button class="btn ghost sm" data-act="goDigest">查看</button></div></div>');
   } else {
     h+='<div class="push">'
       +'<div class="pulse"></div><div class="push-body">'
-      +'<div class="ptitle">📡 技术日报待拉取</div>'
-      +'<div class="pbody">按你设置的兴趣和数据源发现项目，也可连接私有服务。</div>'
+      +I18n.html('<div class="ptitle">📡 技术日报待拉取</div>')
+      +I18n.html('<div class="pbody">按你设置的兴趣和数据源发现项目，也可连接私有服务。</div>')
       +'</div>'
-      +'<div class="push-actions"><button class="btn primary sm" data-act="refreshDigest">刷新</button></div></div>';
+      +I18n.html('<div class="push-actions"><button class="btn primary sm" data-act="refreshDigest">刷新</button></div></div>');
   }
 
   /* 情绪气象：选一个就行，影响小陆今天的状态 */
@@ -2334,13 +2334,13 @@ function viewToday(){
   var ot = STATE.oneThing;
   h += '<div class="card one-thing">';
   if(ot && ot.date===today()){
-    h += '<div class="muted">今天只承诺一件事</div>'
+    h += I18n.html('<div class="muted">今天只承诺一件事</div>')
       + '<div class="big">'+(ot.done ? '<span class="done-state">'+icon('check')+' 完成了 ✓</span>' : esc(ot.text))+'</div>'
       + (ot.done
         ? '<button class="btn ghost" data-act="changeOne">明天再来</button>'
-        : '<button class="btn primary" data-act="markOne">'+icon('check')+' 我做完了</button> <button class="btn ghost" data-act="changeOne">换一件</button>');
+        : '<button class="btn primary" data-act="markOne">'+icon('check')+I18n.html(' 我做完了</button> <button class="btn ghost" data-act="changeOne">换一件</button>'));
   } else {
-    h += '<div class="muted">今天还没有承诺</div>'
+    h += I18n.html('<div class="muted">今天还没有承诺</div>')
       + '<div class="big">挑最小的一件</div>'
       + '<button class="btn primary" data-act="newOne">'+icon('plus')+' 定一件</button>';
   }
@@ -2350,18 +2350,18 @@ function viewToday(){
      原来这张卡叫「快捷打卡」，挂的是日常/每周任务的打卡 + 正计时按钮 —— 任务没了，那些都得摘。
      但**池子必须留下并且显化**：「做了却没看见鱼」是这个项目最忌讳的失败模式。
      卡里只剩两块：今天攒到哪了、以及「临时记的」那几笔（可删）。 */
-  h += '<div class="card"><h2>今天的池子</h2><div class="hint">'
-    + '花的每一分钟都会攒进今天的池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟'
-    + '（零头当天清零）—— 今天已攒 <b class="pool-now">'+pp.minutes+'</b>/60 分钟'
-    + (pp.classMin ? '，另外<b>今天上课 '+pp.classPeriods+' 节（'+pp.classMin+' 分钟）</b>也已经算进去了' : '')
+  h += I18n.html('<div class="card"><h2>今天的池子</h2><div class="hint">')
+    + I18n.html('花的每一分钟都会攒进今天的池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟')
+    + I18n.html('（零头当天清零）—— 今天已攒 <b class="pool-now">')+pp.minutes+I18n.html('</b>/60 分钟')
+    + (pp.classMin ? I18n.html('，另外<b>今天上课 ')+pp.classPeriods+' 节（'+pp.classMin+I18n.html(' 分钟）</b>也已经算进去了') : '')
     + '。'
     + (lt.length ? '<br>⏱ <b>临时记的</b>：' + lt.map(function(r){
           /* ⑤：每笔按它的四类着色 —— 一眼看出今天的时间都花在哪类上 */
           return '<i class="cat-dot" style="background:'+catColor(r.category)+'" title="'+catName(r.category)+'"></i>'
-            + esc(r.name)+' '+r.minutes+' 分钟'
+            + esc(r.name)+' '+r.minutes+I18n.t(' 分钟')
             + '<button class="act-mini" data-act="looseDel" data-id="'+r.id+'" title="删掉这一笔">✕</button>';
         }).join('　') : '')
-    + '<br>换应用时右下角会问你一句「这件事记作什么」，确认后自动开始计时 —— 不用手动点。</div></div>';
+    + I18n.html('<br>换应用时右下角会问你一句「这件事记作什么」，确认后自动开始计时 —— 不用手动点。</div></div>');
 
   /* 放开一下：娱乐 / 放纵。放在「做了什么」之后、「想说什么」之前 */
   h += renderFunCard();
@@ -2387,42 +2387,42 @@ function weekBalance(o){
 
   if(funTotal === 0 && avg >= 300){                       /* 偏紧：一次口子都没留 */
     verdict = 'tight';
-    reasons.push('这周一次娱乐或放纵都没记，日均投入却有 ' + avg + ' 分钟');
+    reasons.push(I18n.t('这周一次娱乐或放纵都没记，日均投入却有 ') + avg + I18n.t(' 分钟'));
   } else if(moodAvg !== null && moodAvg <= 2.2 && avg >= 300){
     verdict = 'tight';
-    reasons.push('情绪大多落在阴/雨（均值 ' + moodAvg.toFixed(1) + '/4），日均投入还到 ' + avg + ' 分钟');
+    reasons.push('情绪大多落在阴/雨（均值 ' + moodAvg.toFixed(1) + I18n.t('/4），日均投入还到 ') + avg + I18n.t(' 分钟'));
   } else if((o.restDays || 0) === 0 && avg >= 360){
     verdict = 'tight';
-    reasons.push('日均投入 ' + avg + ' 分钟，但这周一天休息都没记');
+    reasons.push(I18n.t('日均投入 ') + avg + I18n.t(' 分钟，但这周一天休息都没记'));
   }
   else if(funTotal >= 5 && avg <= 180){                   /* 偏松：松的比紧的多 */
     verdict = 'loose';
-    reasons.push('娱乐+放纵记了 ' + funTotal + ' 笔，日均投入只有 ' + avg + ' 分钟');
+    reasons.push(I18n.t('娱乐+放纵记了 ') + funTotal + I18n.t(' 笔，日均投入只有 ') + avg + I18n.t(' 分钟'));
   } else if(spreeN >= 4){
     verdict = 'loose';
-    reasons.push('单是"放纵"就记了 ' + spreeN + ' 笔');
+    reasons.push(I18n.t('单是"放纵"就记了 ') + spreeN + I18n.t(' 笔'));
   }
   /* 自动采集也能判"偏松"（2026-10-09 master 选的"直接接进判断"）：
      不用他手动记 —— 采到一周娱乐 ≥5 小时、且**娱乐时长是投入的 2 倍以上**才算。
      用"倍数"而不是绝对阈值：5 小时游戏 + 3 小时学习不算松，5 小时游戏 + 0 投入才算。 */
   else if(o.autoFunMin >= 300 && o.autoFunMin >= 2 * (o.loadMin || 0)){
-    var _hm = function(m){ m = Math.round(m || 0); return m >= 60 ? (Math.round(m / 6) / 10) + ' 小时' : m + ' 分钟'; };
+    var _hm = function(m){ m = Math.round(m || 0); return m >= 60 ? (Math.round(m / 6) / 10) + I18n.t(' 小时') : m + I18n.t(' 分钟'); };
     verdict = 'loose';
-    reasons.push('自动记录到的休闲娱乐就有 ' + _hm(o.autoFunMin) + '，而本周投入只有 ' + _hm(o.loadMin || 0));
+    reasons.push(I18n.t('自动记录到的休闲娱乐就有 ') + _hm(o.autoFunMin) + I18n.t('，而本周投入只有 ') + _hm(o.loadMin || 0));
   }
 
   var tips = [];
   if(verdict === 'tight'){
     headline = '这周绷得有点紧';
-    tips = ['给下周排一件纯娱乐的事，写进任务里才算数（不然会被"忙"挤掉）',
-            '把每天的最小动作降到 15 分钟 —— 先别停，比做满更重要'];
+    tips = [I18n.t('给下周排一件纯娱乐的事，写进任务里才算数（不然会被"忙"挤掉）'),
+            I18n.t('把每天的最小动作降到 15 分钟 —— 先别停，比做满更重要')];
   } else if(verdict === 'loose'){
     headline = '这周放得有点开';
-    tips = ['挑一件最小的事，只定 15 分钟，今天就能做完',
-            '放纵不用戒，给它定个上限（比如一周两次），有边界反而更容易守住'];
+    tips = [I18n.t('挑一件最小的事，只定 15 分钟，今天就能做完'),
+            I18n.t('放纵不用戒，给它定个上限（比如一周两次），有边界反而更容易守住')];
   } else {
-    headline = '这周的松紧挺平衡';
-    tips = ['保持这个节奏就行，不用额外加码'];
+    headline = I18n.t('这周的松紧挺平衡');
+    tips = [I18n.t('保持这个节奏就行，不用额外加码')];
   }
   return {verdict:verdict, headline:headline, avg:avg, reasons:reasons, tips:tips,
           funN:funN, spreeN:spreeN, funTotal:funTotal, moodAvg:moodAvg};
@@ -2431,20 +2431,20 @@ function weekBalance(o){
 /* 规则生成的周报正文（AI 润色失败/没配 Key 时就用它） */
 function buildWeekSummary(o){
   var L = [];
-  var hm = function(min){ min = Math.round(min||0); return min >= 60 ? (Math.round(min/6)/10)+' 小时' : min+' 分钟'; };
+  var hm = function(min){ min = Math.round(min||0); return min >= 60 ? (Math.round(min/6)/10)+I18n.t(' 小时') : min+I18n.t(' 分钟'); };
   var cats = Object.keys(o.dStats || {}).map(function(k){ return {k:k, m:o.dStats[k].minutes||0}; })
     .filter(function(x){ return x.m > 0; }).sort(function(a,b){ return b.m - a.m; });
-  L.push('本周（'+mdShort(parseYmd(o.wk))+' 起，已过 '+o.days+' 天）总投入 '+hm(o.totalDailyMin)
-    + (o.classMin ? '，其中上课 '+hm(o.classMin) : '')+'。');
+  L.push(I18n.t('本周（')+mdShort(parseYmd(o.wk))+I18n.t(' 起，已过 ')+o.days+I18n.t(' 天）总投入 ')+hm(o.totalDailyMin)
+    + (o.classMin ? I18n.t('，其中上课 ')+hm(o.classMin) : '')+'。');
   if(cats.length){
     L.push('花时间最多的是「'+(catName(cats[0].k)||cats[0].k)+'」（'+hm(cats[0].m)+'）'
       + (cats[1] ? '，其次是「'+(catName(cats[1].k)||cats[1].k)+'」（'+hm(cats[1].m)+'）' : '')+'。');
   }
-  L.push('娱乐 '+(o.funS?o.funS.fun:0)+' 笔、放纵 '+(o.funS?o.funS.spree:0)+' 笔'
+  L.push(I18n.t('娱乐 ')+(o.funS?o.funS.fun:0)+I18n.t(' 笔、放纵 ')+(o.funS?o.funS.spree:0)+I18n.t(' 笔')
     + (o.funS && o.funS.total ? '（'+o.funS.items.slice(0,3).map(function(x){return x.text;}).join('、')+'）' : '')
     + '。');
   if(o.autoFunMin > 0){
-    L.push('屏幕时间上，自动记录到休闲娱乐 ' + hm(o.autoFunMin)
+    L.push(I18n.t('屏幕时间上，自动记录到休闲娱乐 ') + hm(o.autoFunMin)
       + (o.autoTop && o.autoTop.length
           ? '（' + o.autoTop.map(function(x){ return appLabel(x.proc) + ' ' + hm(x.ms / 60000); }).join('、') + '）'
           : '')
@@ -2454,7 +2454,7 @@ function buildWeekSummary(o){
   /* 两条建议合成一行（分成两行"可以试试"读起来很啰嗦） */
   if(o.bal.tips.length){
     var marks = ['①', '②', '③'];
-    L.push('可以试试：' + o.bal.tips.map(function(t, i){ return marks[i] + t; }).join('　'));
+    L.push(I18n.t('可以试试：') + o.bal.tips.map(function(t, i){ return marks[i] + t; }).join('　'));
   }
   return L;
 }
@@ -2519,10 +2519,10 @@ function generateWeeklyReport(wkArg){
 
     /* 温柔评语 */
     var comment='';
-    if(rate>=80) comment='状态很好，保持了健康的节奏';
-    else if(rate>=50) comment='稳中有进，继续加油';
+    if(rate>=80) comment=I18n.t('状态很好，保持了健康的节奏');
+    else if(rate>=50) comment=I18n.t('稳中有进，继续加油');
     else if(rate>0) comment='慢一点也行，你在往前走';
-    else comment='休息也是前进的一部分';
+    else comment=I18n.t('休息也是前进的一部分');
 
     dailyCards.push({date:d, tasksDone:tasksDone, tasksTotal:tasksTotal, load:loadMin, recharge:rechargeMin, rate:rate, mood:wObj?wObj.mood:null, comment:comment});
   }
@@ -2603,15 +2603,15 @@ function weekHasData(wk){
 function weekDigestLine(wk, label){
   var rpt = STATE.reports[wk] || generateWeeklyReport(wk);
   var f = rpt.fun || {fun:0, spree:0, items:[]};
-  var hm = function(m){ m = Math.round(m||0); return m >= 60 ? (Math.round(m/6)/10)+'小时' : m+'分钟'; };
+  var hm = function(m){ m = Math.round(m||0); return m >= 60 ? (Math.round(m/6)/10)+I18n.t('小时') : m+I18n.t('分钟'); };
   var cats = Object.keys(rpt.dailyStats||{}).map(function(k){ return {k:k, m:(rpt.dailyStats[k].minutes||0)}; })
     .filter(function(x){ return x.m > 0; }).sort(function(a,b){ return b.m - a.m; });
-  return '【'+label+'】投入 '+hm(rpt.summary.totalDailyMin)
+  return '【'+label+I18n.t('】投入 ')+hm(rpt.summary.totalDailyMin)
     + (rpt.classMin ? '（含上课 '+hm(rpt.classMin)+'）' : '')
-    + '，日均 '+rpt.summary.avgLoad+' 分钟'
+    + '，日均 '+rpt.summary.avgLoad+I18n.t(' 分钟')
     + (cats.length ? '；最花时间的是「'+(catName(cats[0].k)||cats[0].k)+'」'+hm(cats[0].m) : '')
-    + '；娱乐 '+f.fun+' 笔、放纵 '+f.spree+' 笔'
-    + ((rpt.autoFun && rpt.autoFun.min > 0) ? '（自动测得娱乐 '+hm(rpt.autoFun.min)+'）' : '')
+    + I18n.t('；娱乐 ')+f.fun+I18n.t(' 笔、放纵 ')+f.spree+I18n.t(' 笔')
+    + ((rpt.autoFun && rpt.autoFun.min > 0) ? I18n.t('（自动测得娱乐 ')+hm(rpt.autoFun.min)+'）' : '')
     + (f.items && f.items.length ? '（'+f.items.slice(0,4).map(function(x){ return x.text; }).join('、')+'）' : '')
     + '；结论：'+((rpt.balance && rpt.balance.headline) || '—')
     + ((rpt.balance && rpt.balance.tips && rpt.balance.tips.length) ? '；可以试：'+rpt.balance.tips[0] : '');
@@ -2629,7 +2629,7 @@ function petWeekContext(){
       /* ⚠️ mdShort 要的是 Date，而 addDays 返回的是 'YYYY-MM-DD' 字符串 —— 必须 parseYmd 一下 */
       out.push(weekDigestLine(last, '上周（'+mdShort(parseYmd(last))+'–'+mdShort(parseYmd(addDays(last,6)))+'）'));
     } else {
-      out.push('【上周】没有记录 —— 那周基本没打开过这个 app，别硬编内容。');
+      out.push(I18n.t('【上周】没有记录 —— 那周基本没打开过这个 app，别硬编内容。'));
     }
     out.push(weekDigestLine(cur, '本周至今（'+mdShort(parseYmd(cur))+' 起）'));
     return out.join('\n');
@@ -2649,25 +2649,25 @@ function aiWeeklySummary(force){
   var wk = weekKey();
   var rpt = STATE.reports[wk] || generateWeeklyReport(wk);
   if(_weeklyAiBusy) return;
-  if(!STATE.settings.aiKey){ if(force) toast('先配 AI（我在「我的 → 设置」里）'); return; }
+  if(!STATE.settings.aiKey){ if(force) toast(I18n.t('先配 AI（我在「我的 → 设置」里）')); return; }
   var f = rpt.fun || {fun:0, spree:0, items:[]};
-  var facts = '本周（已过 ' + (rpt.days||0) + ' 天）\n'
-    + '总投入 ' + rpt.summary.totalDailyMin + ' 分钟，其中上课 ' + (rpt.classMin||0) + ' 分钟\n'
-    + '日均投入 ' + rpt.summary.avgLoad + ' 分钟 · 完成率 ' + rpt.summary.completionRate + '%\n'
-    + '娱乐 ' + f.fun + ' 笔、放纵 ' + f.spree + ' 笔'
+  var facts = I18n.t('本周（已过 ') + (rpt.days||0) + ' 天）\n'
+    + I18n.t('总投入 ') + rpt.summary.totalDailyMin + I18n.t(' 分钟，其中上课 ') + (rpt.classMin||0) + I18n.t(' 分钟\n')
+    + I18n.t('日均投入 ') + rpt.summary.avgLoad + I18n.t(' 分钟 · 完成率 ') + rpt.summary.completionRate + '%\n'
+    + I18n.t('娱乐 ') + f.fun + I18n.t(' 笔、放纵 ') + f.spree + I18n.t(' 笔')
     + (f.items && f.items.length ? '（' + f.items.map(function(x){return x.text;}).join('、') + '）' : '') + '\n'
     + '规则给出的结论：' + (rpt.balance ? rpt.balance.headline : '') + '\n'
     + (rpt.summaryLines || []).join('\n');
   _weeklyAiBusy = true;
-  var prompt = '这是一个大学生这周的自助记录。请写一段「周报点评」：'
-    + '1) 先说事实（投入与娱乐/放纵的松紧）；2) 指出一个他可能没注意到的点；'
+  var prompt = I18n.t('这是一个大学生这周的自助记录。请写一段「周报点评」：')
+    + I18n.t('1) 先说事实（投入与娱乐/放纵的松紧）；2) 指出一个他可能没注意到的点；')
     + '3) 给一条下周可以试的具体建议。语气像朋友，不评判、不喊口号、不列长清单，120 字以内。\n\n' + facts;
   callAI([{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}]).then(function(r){
     _weeklyAiBusy = false;
     var rr = STATE.reports[wk] || generateWeeklyReport(wk);
     rr.aiTried = true;
     var txt = (r && !r.error && r.content) ? String(r.content).slice(0, 400) : '';
-    if(!txt) console.warn('[app] 周报 AI 润色失败：', (r && r.error) || '空回复');
+    if(!txt) console.warn(I18n.t('[app] 周报 AI 润色失败：'), (r && r.error) || '空回复');
     rr.aiText = txt;
     save();
     if(CUR_TAB === 'weekly') render();
@@ -2675,7 +2675,7 @@ function aiWeeklySummary(force){
     _weeklyAiBusy = false;
     var rr = STATE.reports[wk] || generateWeeklyReport(wk);
     rr.aiTried = true; save();
-    console.warn('[app] 周报 AI 润色异常：', e);
+    console.warn(I18n.t('[app] 周报 AI 润色异常：'), e);
   });
 }
 
@@ -2685,19 +2685,19 @@ function viewWeekly(){
      有了就不重复拉（ensureActWeek 内部判 TTL / _loading），所以不会转圈。 */
   ensureActWeek(wk);
   var rpt = generateWeeklyReport();
-  var h = '<div class="mod-head"><div class="kicker">这一周的足迹</div><div class="warp-head" data-warp><h2>周报</h2></div>'
-    + '<p>看看时间去了哪里，也看看自己已经走了多远。</p></div>';
-  h += '<div class="week-period">本周复盘 <span>'+mdShort(parseYmd(wk))+' — '+mdShort(parseYmd(today()))+'</span><small>根据记录自动整理</small></div>';
+  var h = I18n.html('<div class="mod-head"><div class="kicker">这一周的足迹</div><div class="warp-head" data-warp><h2>周报</h2></div>')
+    + I18n.html('<p>看看时间去了哪里，也看看自己已经走了多远。</p></div>');
+  h += I18n.html('<div class="week-period">本周复盘 <span>')+mdShort(parseYmd(wk))+' — '+mdShort(parseYmd(today()))+I18n.html('</span><small>根据记录自动整理</small></div>');
 
   /* 本周概况三数字 */
-  h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)" data-count="'+rpt.summary.completionRate+'" data-decimals="0" data-suffix="%">0</div><div class="stat-label">完成率</div></div>'
-    + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)" data-count="'+rpt.summary.avgLoad+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">日均投入(分钟)</div></div>'
-    + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+'" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div></div>'
+  h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)" data-count="'+rpt.summary.completionRate+I18n.html('" data-decimals="0" data-suffix="%">0</div><div class="stat-label">完成率</div></div>')
+    + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)" data-count="'+rpt.summary.avgLoad+I18n.html('" data-decimals="0" data-suffix="">0</div><div class="stat-label">日均投入(分钟)</div></div>')
+    + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+I18n.html('" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div></div>')
     + '</div>';
   /* 课表占的时间也算进去了，得说出来 —— 不然「完成率」没动而「投入」变高，他会以为哪里算错了 */
   if(rpt.classMin > 0){
-    h += '<div class="hint" style="text-align:center;margin:-4px 0 14px">其中<b>上课 '+rpt.classPeriods+' 节 · '+rpt.classMin+' 分钟</b>'
-      + '（周一到今天，按课表占用计 45 分钟/节）—— 已归进「学习成长」。</div>';
+    h += I18n.html('<div class="hint" style="text-align:center;margin:-4px 0 14px">其中<b>上课 ')+rpt.classPeriods+' 节 · '+rpt.classMin+I18n.html(' 分钟</b>')
+      + I18n.html('（周一到今天，按课表占用计 45 分钟/节）—— 已归进「学习成长」。</div>');
   }
 
   /* ---- 综合总结：这周偏松还是偏紧 + 娱乐放纵明细 + 下一步（2026-09-23 加）----
@@ -2705,8 +2705,8 @@ function viewWeekly(){
      所以这里只**提方案**，绝不自动改他的任务。 */
   var bal = rpt.balance || {verdict:'ok', headline:'', tips:[], reasons:[]};
   var vClass = bal.verdict === 'tight' ? 'tight' : (bal.verdict === 'loose' ? 'loose' : 'ok');
-  var vLabel = bal.verdict === 'tight' ? '偏紧' : (bal.verdict === 'loose' ? '偏松' : '平衡');
-  h += '<div class="card sum-card"><div class="row between"><h2>🧭 综合总结</h2>'
+  var vLabel = bal.verdict === 'tight' ? I18n.t('偏紧') : (bal.verdict === 'loose' ? I18n.t('偏松') : I18n.t('平衡'));
+  h += I18n.html('<div class="card sum-card"><div class="row between"><h2>🧭 综合总结</h2>')
     + '<span class="sum-verdict v-'+vClass+'">'+vLabel+'</span></div>';
   h += '<div class="sum-body">';
   (rpt.summaryLines || []).forEach(function(line, i){
@@ -2716,22 +2716,22 @@ function viewWeekly(){
   /* 娱乐 / 放纵明细 */
   var fs = rpt.fun || {fun:0, spree:0, total:0, items:[]};
   var af = rpt.autoFun || {min:0, top:[]};
-  h += '<div class="sum-fun"><span class="sum-fl k-fun">🎈 娱乐 '+fs.fun+' 笔</span>'
-    + '<span class="sum-fl k-spree">🍟 放纵 '+fs.spree+' 笔</span>'
-    + (af.min > 0 ? '<span class="sum-fl k-auto" title="按前台窗口采样自动算的，不用你记">🖥 自动测得娱乐 '
-        + (af.min >= 60 ? (Math.round(af.min/6)/10)+' 小时' : af.min+' 分钟') + '</span>' : '')
+  h += I18n.html('<div class="sum-fun"><span class="sum-fl k-fun">🎈 娱乐 ')+fs.fun+I18n.html(' 笔</span>')
+    + I18n.html('<span class="sum-fl k-spree">🍟 放纵 ')+fs.spree+I18n.html(' 笔</span>')
+    + (af.min > 0 ? I18n.html('<span class="sum-fl k-auto" title="按前台窗口采样自动算的，不用你记">🖥 自动测得娱乐 ')
+        + (af.min >= 60 ? (Math.round(af.min/6)/10)+I18n.t(' 小时') : af.min+I18n.t(' 分钟')) + '</span>' : '')
     + (fs.items.length ? '<span class="sum-fi">'+fs.items.slice(0,6).map(function(x){return esc(x.text)+'('+mdShort(parseYmd(x.date))+')';}).join('、')+'</span>'
-       : '<span class="sum-fi">还没有手动娱乐记录，应用使用时间会自动统计。</span>')
+       : I18n.html('<span class="sum-fi">还没有手动娱乐记录，应用使用时间会自动统计。</span>'))
     + '</div>';
   /* AI 润色：没配 Key 就完全依赖上面的规则正文 */
   if(rpt.aiText){
-    h += '<div class="sum-ai"><span class="sum-ai-tag">AI 读了一遍</span>'+esc(rpt.aiText)+'</div>';
+    h += I18n.html('<div class="sum-ai"><span class="sum-ai-tag">AI 读了一遍</span>')+esc(rpt.aiText)+'</div>';
   } else if(STATE.settings.aiKey){
-    h += '<div class="sum-ai pending" id="sumAiBox">让 AI 把这段总结说得更像人话…</div>';
+    h += I18n.html('<div class="sum-ai pending" id="sumAiBox">让 AI 把这段总结说得更像人话…</div>');
   }
   h += '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:11px">'
-    + '<button class="btn ghost sm" data-act="aiSummary">'+(rpt.aiText ? '换 AI 重说一遍' : '让 AI 说两句')+'</button>'
-    + '<span class="muted" style="font-size:11.5px;align-self:center">建议只是建议，加不加进任务你定。</span>'
+    + '<button class="btn ghost sm" data-act="aiSummary">'+(rpt.aiText ? I18n.t('换 AI 重说一遍') : I18n.t('让 AI 说两句'))+'</button>'
+    + I18n.html('<span class="muted" style="font-size:11.5px;align-self:center">建议只是建议，加不加进任务你定。</span>')
     + '</div></div>';
 
   /* 「每周任务」那张双目标卡随任务模块删掉了（2026-10-13）。
@@ -2739,12 +2739,12 @@ function viewWeekly(){
   var wkFish = (petState().fishLog||[]).filter(function(x){ return x.n > 0 && ymd(new Date(x.at||0)) >= wk; })
     .reduce(function(a,x){ return a+(x.n||0); }, 0);
   if(wkFish > 0){
-    h += '<div class="card"><h2>🐟 本周小鱼干</h2><div class="hint">这周一共赚到 <b>'+wkFish+'</b> 条。'
-      + '每满 60 分钟投入换 1 条，零头当天清零 —— 攒着可以换玩具、装扮，或者兑换你给自己定的现实奖励。</div></div>';
+    h += I18n.html('<div class="card"><h2>🐟 本周小鱼干</h2><div class="hint">这周一共赚到 <b>')+wkFish+'</b> 条。'
+      + I18n.html('每满 60 分钟投入换 1 条，零头当天清零 —— 攒着可以换玩具、装扮，或者兑换你给自己定的现实奖励。</div></div>');
   }
 
   /* 心情轨迹 */
-  h += '<div class="card"><h2>心情轨迹</h2><div class="row" style="gap:16px;justify-content:center;margin-top:10px">';
+  h += I18n.html('<div class="card"><h2>心情轨迹</h2><div class="row" style="gap:16px;justify-content:center;margin-top:10px">');
   var moodEmoji={sun:'😊',cloud:'🙂',rain:'☁️',storm:'😫'};
   rpt.moodTrack.forEach(function(m){
     h += '<div style="text-align:center"><div style="font-size:22px">'+(moodEmoji[m.mood]||'·')+'</div><div class="muted" style="font-size:11px;margin-top:2px">'+m.date.slice(5)+'</div></div>';
@@ -2775,7 +2775,7 @@ function viewWeekly(){
         + '<text x="16" y="9" font-size="11" fill="var(--ink)" font-family="Inter,sans-serif">'+catName(d.k)+' '+Math.round(d.pct*100)+'%</text>'
         + '</g>';
     });
-    h += '<div class="card"><h2>本周投入分布</h2>'
+    h += I18n.html('<div class="card"><h2>本周投入分布</h2>')
       + '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px">'
       + '<svg width="'+svgW+'" height="'+svgH+'" viewBox="0 0 '+svgW+' '+svgH+'" style="overflow:visible">'
       + '<circle cx="'+cx+'" cy="'+cy+'" r="'+hole+'" fill="var(--bg)"/>'
@@ -2796,15 +2796,15 @@ function viewWeekly(){
   }
 
   /* 每日卡片 */
-  h += '<div class="card"><h2>每日回顾</h2>';
+  h += I18n.html('<div class="card"><h2>每日回顾</h2>');
   rpt.dailyCards.forEach(function(dc){
     var barColor = dc.rate>=80 ? 'var(--green)' : dc.rate>=50 ? 'var(--amber)' : 'var(--red)';
     var moodE={sun:'😊',cloud:'🙂',rain:'☁️',storm:'😫'};
     h += '<div class="day-card">'
-      + '<div class="dc-head"><strong>'+dc.date.slice(5)+'</strong> <span class="muted">必做 '+dc.tasksDone+'/'+dc.tasksTotal+'</span>'
+      + '<div class="dc-head"><strong>'+dc.date.slice(5)+I18n.html('</strong> <span class="muted">必做 ')+dc.tasksDone+'/'+dc.tasksTotal+'</span>'
       + '<span style="margin-left:auto;font-size:18px">'+(moodE[dc.mood]||'')+'</span>'
       + '<span style="color:'+(dc.rate>=80?'var(--green)':dc.rate>=50?'var(--amber)':'var(--red)')+';font-weight:800;margin-left:8px">'+dc.rate+'%</span></div>'
-      + '<div class="dc-stats"><span>投入 '+dc.load+'min</span></div>'
+      + I18n.html('<div class="dc-stats"><span>投入 ')+dc.load+'min</span></div>'
       + '<div class="dc-bar"><div style="width:'+dc.rate+'%;background:'+barColor+'"></div></div>'
       + '<div class="dc-comment">'+dc.comment+'</div>'
       + '</div>';
@@ -2815,7 +2815,7 @@ function viewWeekly(){
 }
 
 /* ================= 视图：陪伴（保持不变） ================= */
-var SYSTEM_PROMPT = '你是「着陆」的陪伴者。用户是一个多线程压身（实习/考研/科研/比赛）的年轻人，常"有想法不干事"。你的风格：温柔、不评判、不催促。先接住情绪，再用一两个问题或一句拆解，帮他把想法变成"今天能迈的最小一步"。不要长篇说教，每次回复控制在 120 字内。';
+var SYSTEM_PROMPT = I18n.t('你是「着陆」的陪伴者。用户是一个多线程压身（实习/考研/科研/比赛）的年轻人，常"有想法不干事"。你的风格：温柔、不评判、不催促。先接住情绪，再用一两个问题或一句拆解，帮他把想法变成"今天能迈的最小一步"。不要长篇说教，每次回复控制在 120 字内。');
 
 /* --- AI 调用：地址/Key/模型支持**两套** ---
    which='main'（默认）→ 全局那套：陪伴页、周报点评、近三日跟进
@@ -2847,8 +2847,13 @@ function aiWhere(c){
    ⚠️ 有 tool_calls 时 content 可能是空的 —— 别再把空串兜成 '(空)'，那是给纯聊天用的。 */
 function callAI(messages, which, opts){
   opts = opts || {};
+  var replyLanguage=I18n.locale()==='ja'?'Japanese':I18n.locale()==='en'?'English':'Simplified Chinese';
+  var localeInstruction='\nUse '+replyLanguage+' for natural-language replies unless the user requests another language. Keep tool names, JSON property names and required schemas unchanged.';
+  messages=messages.map(function(m){return Object.assign({},m);});
+  if(messages[0]&&messages[0].role==='system')messages[0].content+=localeInstruction;
+  else messages.unshift({role:'system',content:localeInstruction});
   var c = aiConfig(which);
-  if(!c.baseUrl || !c.key){ return Promise.resolve({error:'未配置 AI：去「我的→设置」填写'}); }
+  if(!c.baseUrl || !c.key){ return Promise.resolve({error:I18n.t('未配置 AI：去「我的→设置」填写')}); }
   var local = isLocalUrl(c.baseUrl);
   var url = c.baseUrl.replace(/\/+$/,'')+'/chat/completions';
   var payload = {
@@ -2912,37 +2917,37 @@ var PET_TOOLS = [
     description:'开始给某事计时。只有他表达「现在就要开始做某事 / 想玩一会X」时才用；只是聊到某个游戏、问建议、陈述过去，都不要用。',
     parameters:{ type:'object', properties:{
       name:{type:'string', description:'要计时的事，用他原话，如「玩一会杀戮尖塔」'},
-      category:{type:'string', enum:PET_CATS, description:'归到哪一类：休闲娱乐 fun / 工作学习 work / 生活品质 life / 素养提高 growth'}
+      category:{type:'string', enum:PET_CATS, description:I18n.t('归到哪一类：休闲娱乐 fun / 工作学习 work / 生活品质 life / 素养提高 growth')}
     }, required:['name'] } } },
   { type:'function', function:{
     name:'record_time',
     description:'记一笔**已经花掉**的时间（他没在计时，事后跟你说）。只有他说了自己花了多久时才用；他没说时长就别猜、用 no_action 问他一句。',
     parameters:{ type:'object', properties:{
-      name:{type:'string', description:'做什么花掉的时间，如「打了两小时游戏」'},
-      minutes:{type:'number', description:'分钟数，必须换算成分钟'},
+      name:{type:'string', description:I18n.t('做什么花掉的时间，如「打了两小时游戏」')},
+      minutes:{type:'number', description:I18n.t('分钟数，必须换算成分钟')},
       category:{type:'string', enum:PET_CATS, description:'归类'}
     }, required:['name','minutes'] } } },
   { type:'function', function:{
     name:'stop_timer',
-    description:'结束当前正在跑的计时。只有他明确说「玩完了 / 停了吧 / 不做了 / 结束」时才用。',
+    description:I18n.t('结束当前正在跑的计时。只有他明确说「玩完了 / 停了吧 / 不做了 / 结束」时才用。'),
     parameters:{ type:'object', properties:{} } } },
   { type:'function', function:{
     name:'rest_today',
-    description:'把今天记成休息日（连续天数冻结）。**只有他明确要求记休息日时才用**（如「今天想休息一天」「帮我记成休息日」「今天不干了」）。只是感叹累、心情不好、想吐槽时**不要**用，那种情况用 no_action。',
+    description:I18n.t('把今天记成休息日（连续天数冻结）。**只有他明确要求记休息日时才用**（如「今天想休息一天」「帮我记成休息日」「今天不干了」）。只是感叹累、心情不好、想吐槽时**不要**用，那种情况用 no_action。'),
     parameters:{ type:'object', properties:{
       reason:{type:'string', description:'他的理由，直接引用原话，可空'}
     }, required:[] } } },
   { type:'function', function:{
     name:'query_today',
-    description:'查今天的情况：有什么课、今天攒了多少时间、刚才在用什么程序。他问今天怎么样、今天有课吗时用。',
+    description:I18n.t('查今天的情况：有什么课、今天攒了多少时间、刚才在用什么程序。他问今天怎么样、今天有课吗时用。'),
     parameters:{ type:'object', properties:{} } } },
   { type:'function', function:{
     name:'query_week',
-    description:'查这一周和上周的投入、娱乐放纵笔数、松紧结论。他问最近怎么样、上周干了什么、是不是太松了时用。',
+    description:I18n.t('查这一周和上周的投入、娱乐放纵笔数、松紧结论。他问最近怎么样、上周干了什么、是不是太松了时用。'),
     parameters:{ type:'object', properties:{} } } },
   { type:'function', function:{
     name:'no_action',
-    description:'这次不需要动手时用它：闲聊、提问、感叹、安慰、聊到某件事但没让他做事。拿不准但没有任何明确的「现在开始 / 记一笔 / 结束 / 记休息日」意图时，用这个。',
+    description:I18n.t('这次不需要动手时用它：闲聊、提问、感叹、安慰、聊到某件事但没让他做事。拿不准但没有任何明确的「现在开始 / 记一笔 / 结束 / 记休息日」意图时，用这个。'),
     parameters:{ type:'object', properties:{} } } }
 ];
 
@@ -2950,7 +2955,7 @@ function runPetTool(name, args){
   args = args || {};
   /* no_action 是「这次不用动手」的显式选项 —— 因为 tool_choice 用了 required，
      模型必须二选一，这样它就没法「嘴上说做了、其实没调」。 */
-  if(name === 'no_action') return {ok:true, noop:true, say:'（这次不用动手，正常回话就好）'};
+  if(name === 'no_action') return {ok:true, noop:true, say:I18n.t('（这次不用动手，正常回话就好）')};
   var cat = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'life';
   try{
     switch(name){
@@ -2959,10 +2964,10 @@ function runPetTool(name, args){
         if(!n1) return {ok:false, say:'他没说清要计时做什么，问他一句。'};
         var c1 = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'life';
         if(STATE.timer && !STATE.timer.finished){
-          return {ok:false, say:'现在已经有一条计时在跑（'+(STATE.timer.name||'另一件事')+'）。先问他要不要结束那条，别自己停。'};
+          return {ok:false, say:'现在已经有一条计时在跑（'+(STATE.timer.name||'另一件事')+I18n.t('）。先问他要不要结束那条，别自己停。')};
         }
         startStopwatch('loose', null, {name:n1, category:c1});
-        return {ok:true, say:'已经开始计时：'+n1+'（'+catName(c1)+'）。结束的时候按「结束」就按实际时长记下，进今天的池子和周报。'};
+        return {ok:true, say:'已经开始计时：'+n1+'（'+catName(c1)+I18n.t('）。结束的时候按「结束」就按实际时长记下，进今天的池子和周报。')};
       }
       case 'record_time': {
         var n2 = String(args.name||'').trim().slice(0,30);
@@ -2970,28 +2975,28 @@ function runPetTool(name, args){
         if(!n2 || !m2) return {ok:false, say:'缺名字或时长，没记。问他一句到底做了多久。'};
         var c2 = (PET_CATS.indexOf(args.category) >= 0) ? args.category : 'life';
         looseRecord(n2, m2, c2);
-        toast('记下了：'+n2+' '+m2+' 分钟');
-        return {ok:true, say:'记下了：'+n2+' '+m2+' 分钟（'+catName(c2)+'），已经进今天的池子和周报。'};
+        toast(I18n.t('记下了：')+n2+' '+m2+I18n.t(' 分钟'));
+        return {ok:true, say:I18n.t('记下了：')+n2+' '+m2+I18n.t(' 分钟（')+catName(c2)+I18n.t('），已经进今天的池子和周报。')};
       }
       case 'stop_timer': {
         if(!STATE.timer || STATE.timer.finished) return {ok:false, say:'现在没有在跑的计时，跟他说一声就行。'};
         if(!timerIsStopwatch()) return {ok:false, say:'在跑的是倒计时，他没让停就别动。'};
         var ms0 = timerElapsedMs();
-        var tn = STATE.timer.name || '一段专注';
-        if(ms0 < SW_MIN_MS){ dropStopwatch(); return {ok:true, say:'才不到 1 分钟，这段没记。'}; }
+        var tn = STATE.timer.name || I18n.t('一段专注');
+        if(ms0 < SW_MIN_MS){ dropStopwatch(); return {ok:true, say:I18n.t('才不到 1 分钟，这段没记。')}; }
         var used = Math.round(ms0/60000);
         commitStopwatchRecord(used);
-        return {ok:true, say:'结束了「'+tn+'」，记下 '+used+' 分钟。'};
+        return {ok:true, say:I18n.t('结束了「')+tn+I18n.t('」，记下 ')+used+I18n.t(' 分钟。')};
       }
       case 'query_today': {
         var out = [];
         var wk = currentWeek();
         var cs = todayCourses();
         out.push(cs.length
-          ? ('今天第 '+wk+' 周有 '+cs.length+' 节课：' + cs.map(function(c){
+          ? (I18n.t('今天第 ')+wk+' 周有 '+cs.length+' 节课：' + cs.map(function(c){
               return c.name+'（第'+c.periods+'节'+(c.room?(' '+c.room):'')+'）'; }).join('；'))
-          : ('今天第 '+wk+' 周没课'));
-        out.push('今天的时间池子攒了 '+poolProgress().minutes+' 分钟');
+          : (I18n.t('今天第 ')+wk+' 周没课'));
+        out.push(I18n.t('今天的时间池子攒了 ')+poolProgress().minutes+I18n.t(' 分钟'));
         if(typeof ACT !== 'undefined' && ACT && ACT.last && ACT.last.proc){
           out.push('刚才在用的程序：'+ACT.last.proc+(ACT.last.title?('（'+String(ACT.last.title).slice(0,40)+'）'):''));
         }
@@ -3003,7 +3008,7 @@ function runPetTool(name, args){
     }
     return {ok:false, say:'这个动作不在允许清单里，什么都别做，就当没听懂。'};
   }catch(e){
-    return {ok:false, say:'执行出错了：'+(e && e.message)+'。什么都别改，如实跟他说。'};
+    return {ok:false, say:I18n.t('执行出错了：')+(e && e.message)+'。什么都别改，如实跟他说。'};
   }
 }
 
@@ -3028,28 +3033,28 @@ function cmpRestore(){
 }
 
 function viewCompanion(){
-  var h = '<div class="mod-head"><div class="kicker">给自己一点空间</div><div class="warp-head" data-warp><h2>陪伴</h2></div>'
-    + '<p>不用组织好语言。此刻的感受，可以慢慢说。</p></div>';
-  h += '<div class="card"><h2>'+icon('chat')+' AI 陪伴</h2>'
-    + '<div class="hint">对话保存在本机作为上下文；发送时，相关内容会交给你配置的 AI。'
-    + (STATE.settings.aiKey?'':'<span style="color:var(--amber)"> 未配置 AI → 设置</span>')+'</div>'
-    + '<button class="btn ghost sm" data-act="followup3">'+icon('refresh')+' 近三日跟进</button></div>'
+  var h = I18n.html('<div class="mod-head"><div class="kicker">给自己一点空间</div><div class="warp-head" data-warp><h2>陪伴</h2></div>')
+    + I18n.html('<p>不用组织好语言。此刻的感受，可以慢慢说。</p></div>');
+  h += '<div class="card"><h2>'+icon('chat')+I18n.html(' AI 陪伴</h2>')
+    + I18n.html('<div class="hint">对话保存在本机作为上下文；发送时，相关内容会交给你配置的 AI。')
+    + (STATE.settings.aiKey?'':I18n.html('<span style="color:var(--amber)"> 未配置 AI → 设置</span>'))+'</div>'
+    + '<button class="btn ghost sm" data-act="followup3">'+icon('refresh')+I18n.html(' 近三日跟进</button></div>')
     + '<div class="card"><div class="cmp-bub" id="cmpBub"></div>'
-    + '<div class="companion-input"><textarea id="aiInput" aria-label="想说的话" placeholder="今天怎么样？有什么让你分心，或者有一点开心的事…"></textarea>'
-    + '<button class="btn primary" data-act="sendAI" aria-label="发送消息"> '+icon('send')+'</button></div></div>';
+    + I18n.html('<div class="companion-input"><textarea id="aiInput" aria-label="想说的话" placeholder="今天怎么样？有什么让你分心，或者有一点开心的事…"></textarea>')
+    + I18n.html('<button class="btn primary" data-act="sendAI" aria-label="发送消息"> ')+icon('send')+'</button></div></div>';
   var p0 = petState();
-  h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
-    + '<div class="hint">初华会陪着你。桌面上的她也能帮你开始学习、保存断点和切换页面。</div>'
-    + '<div class="pet-mini"><span>🐟 小鱼干 <b>'+(p0.fish||0)+'</b></span>'
-    + '<span>🍚 饱食 <b>'+(p0.hunger==null?'—':Math.round(p0.hunger))+'</b></span>'
-    + '<span>💗 亲密 <b>'+(p0.intimacy==null?'—':Math.round(p0.intimacy))+'</b></span></div>'
+  h += '<div class="card"><h2>'+icon('user')+I18n.html(' 着陆伙伴</h2>')
+    + I18n.html('<div class="hint">初华会陪着你。桌面上的她也能帮你开始学习、保存断点和切换页面。</div>')
+    + I18n.html('<div class="pet-mini"><span>🐟 小鱼干 <b>')+(p0.fish||0)+'</b></span>'
+    + I18n.html('<span>🍚 饱食 <b>')+(p0.hunger==null?'—':Math.round(p0.hunger))+'</b></span>'
+    + I18n.html('<span>💗 亲密 <b>')+(p0.intimacy==null?'—':Math.round(p0.intimacy))+'</b></span></div>'
     + '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">'
-    + '<button class="btn primary sm" data-act="petPage">🐾 伙伴详情与设定</button>'
-    + '<button class="btn ghost sm" data-act="petFeed">🐟 喂它</button>'
-    + '<button class="btn ghost sm" data-act="petPat">🤚 抚摸</button>'
-    + '<button class="btn ghost sm" data-act="petChat">💬 说说话</button>'
-    + '<button class="btn ghost sm" data-act="petShop">🛒 商城</button>'
-    + '<button class="btn ghost sm" data-act="petMem">📖 记忆库</button>'
+    + I18n.html('<button class="btn primary sm" data-act="petPage">🐾 伙伴详情与设定</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="petFeed">🐟 喂它</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="petPat">🤚 抚摸</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="petChat">💬 说说话</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="petShop">🛒 商城</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="petMem">📖 记忆库</button>')
     + '</div></div>';
   return h;
 }
@@ -3065,23 +3070,23 @@ function bindMeActions(){
 
 /* ================= 视图：伙伴（详情与设定，内容由 pet.js 渲染） ================= */
 function viewPet(){
-  return '<div class="mod-head"><div class="kicker">一起，把日子过好</div>'
-    + '<div class="warp-head" data-warp><h2>伙伴</h2></div>'
-    + '<p>和初华打个招呼，或让她陪你读一会书。每一点投入，都会成为你们共同的回忆。</p></div>'
-    + '<div id="petPage"><div class="empty">正在唤醒…</div></div>';
+  return I18n.html('<div class="mod-head"><div class="kicker">一起，把日子过好</div>')
+    + I18n.html('<div class="warp-head" data-warp><h2>伙伴</h2></div>')
+    + I18n.html('<p>和初华打个招呼，或让她陪你读一会书。每一点投入，都会成为你们共同的回忆。</p></div>')
+    + I18n.html('<div id="petPage"><div class="empty">正在唤醒…</div></div>');
 }
 
 function viewMe(){
-  var h = '<div class="mod-head"><div class="kicker">按照你的节奏</div><div class="warp-head" data-warp><h2>我的</h2></div>'
-    + '<p>管理记录、调整偏好，也给走过的日子留一份备份。</p></div>';
-  h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">开机自启、课表与 AI 连接，都可以在这里调整。</div>'
-    + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
+  var h = I18n.html('<div class="mod-head"><div class="kicker">按照你的节奏</div><div class="warp-head" data-warp><h2>我的</h2></div>')
+    + I18n.html('<p>管理记录、调整偏好，也给走过的日子留一份备份。</p></div>');
+  h += '<div class="card"><h2>'+icon('cog')+I18n.html(' 设置</h2><div class="hint">开机自启、课表与 AI 连接，都可以在这里调整。</div>')
+    + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+I18n.html(' 打开设置面板</button></div>');
 
   /* 情绪气象 SVG */
   var wData = STATE.weather.slice(-7);
   var moodMap = {sun:4, cloud:3, rain:2, storm:1};
   var moodColors = {sun:'#e0a93b', cloud:'#7a8a99', rain:'#4f86c6', storm:'#7c6fd6'};
-  var moodLabels = {sun:'晴', cloud:'阴', rain:'雨', storm:'暴'};
+  var moodLabels = {sun:I18n.t('晴'), cloud:I18n.t('阴'), rain:I18n.t('雨'), storm:I18n.t('暴')};
   var svgW2=600, svgH2=160, pad2=30;
   var chartW2=svgW2-pad2*2, chartH2=svgH2-pad2*2;
   var pts2='';
@@ -3103,19 +3108,19 @@ function viewMe(){
       var c=moodColors[w.mood]||'#7a8a99';
       return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+c+'" stroke="#fff" stroke-width="1.5"/>'
         + '<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="Inter,sans-serif">'+(moodLabels[w.mood]||'?')+'</text>';
-    }).join(''):'<text x="'+svgW2/2+'" y="'+svgH2/2+'" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="Inter,sans-serif">暂无记录，去「今日」选心情</text>')
+    }).join(''):'<text x="'+svgW2/2+'" y="'+svgH2/2+I18n.html('" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="Inter,sans-serif">暂无记录，去「今日」选心情</text>'))
     + '</svg>';
   var _ppNow = poolProgress();
   h += renderActivitySettings();
-  h += '<div class="card"><h2>数据概览</h2>'
-    + '<div class="row" style="gap:24px;flex-wrap:wrap"><div>必做：<b>'+mustTodayStats().done+'/'+mustActive().length+'</b> 今天</div>'
-    + '<div>倾倒：<b>'+STATE.dumps.length+'</b> 条</div>'
-    + '<div>情绪记录：<b>'+STATE.weather.length+'</b> 天</div>'
-    + '<div>休息日：<b>'+restTotal()+'</b> 天</div>'
-    + '<div>小鱼干：<b>'+petState().fish+'</b> 条</div>'
-    + '<div>今日攒时：<b>'+_ppNow.minutes+'/60</b> 分钟'
+  h += I18n.html('<div class="card"><h2>数据概览</h2>')
+    + I18n.html('<div class="row" style="gap:24px;flex-wrap:wrap"><div>必做：<b>')+mustTodayStats().done+'/'+mustActive().length+I18n.html('</b> 今天</div>')
+    + I18n.html('<div>倾倒：<b>')+STATE.dumps.length+I18n.html('</b> 条</div>')
+    + I18n.html('<div>情绪记录：<b>')+STATE.weather.length+I18n.html('</b> 天</div>')
+    + I18n.html('<div>休息日：<b>')+restTotal()+I18n.html('</b> 天</div>')
+    + I18n.html('<div>小鱼干：<b>')+petState().fish+I18n.html('</b> 条</div>')
+    + I18n.html('<div>今日攒时：<b>')+_ppNow.minutes+I18n.html('/60</b> 分钟')
       + (_ppNow.classMin ? '（含上课 '+_ppNow.classMin+'）' : '') + '</div>'
-    + '<div>记忆库：<b>'+STATE.memories.length+'</b> 条</div></div>'
+    + I18n.html('<div>记忆库：<b>')+STATE.memories.length+I18n.html('</b> 条</div></div>')
     + svgMood + '</div>';
 
   /* 宠物数值总览：精力 / 心情 / 灵性 三维度 + 已解锁的小动作（B 档养成反馈） */
@@ -3123,16 +3128,16 @@ function viewMe(){
 
   /* 记忆库（与伙伴的对话也归档到这里） */
   var mems = STATE.memories.slice(-10).reverse();
-  h += '<div class="card"><div class="row between"><h2>'+icon('spark')+' 记忆库</h2>'
-    + '<button class="btn ghost sm" data-act="petMem">'+icon('edit')+' 全部 '+STATE.memories.length+' 条</button></div>'
-    + '<div class="hint">你做的事、和伙伴说过的话，都会归到这里。它不是待办清单，是你走过的痕迹。</div>';
+  h += '<div class="card"><div class="row between"><h2>'+icon('spark')+I18n.html(' 记忆库</h2>')
+    + '<button class="btn ghost sm" data-act="petMem">'+icon('edit')+I18n.t(' 全部 ')+STATE.memories.length+I18n.html(' 条</button></div>')
+    + I18n.html('<div class="hint">你做的事、和伙伴说过的话，都会归到这里。它不是待办清单，是你走过的痕迹。</div>');
   if(!mems.length){
-    h += '<div class="empty">还没有记忆。去右下角的伙伴那儿说句话吧。</div>';
+    h += I18n.html('<div class="empty">还没有记忆。去右下角的伙伴那儿说句话吧。</div>');
   } else {
     h += '<div class="mem-list">';
     mems.forEach(function(m){
-      h += '<div class="mem-item"><span class="mem-kind k-'+(m.kind||'note')+'">'+(MEM_KIND[m.kind]||'记录')+'</span>'
-        + '<div class="mem-body">'+esc(m.text)+'<span class="mem-time">'+new Date(m.at).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</span></div></div>';
+      h += '<div class="mem-item"><span class="mem-kind k-'+(m.kind||'note')+'">'+(MEM_KIND[m.kind]||I18n.t('记录'))+'</span>'
+        + '<div class="mem-body">'+esc(m.text)+'<span class="mem-time">'+new Date(m.at).toLocaleString(I18n.locale(),{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</span></div></div>';
     });
     h += '</div>';
   }
@@ -3140,34 +3145,34 @@ function viewMe(){
 
   /* 数据管理：备份 / 恢复 / 重置。桌面版走系统文件对话框，网页版退回浏览器下载。 */
   var isDesk = !!(window.landing && window.landing.data);
-  h += '<div class="card"><h2>'+icon('cog')+' 数据管理</h2>'
+  h += '<div class="card"><h2>'+icon('cog')+I18n.html(' 数据管理</h2>')
     + '<div class="hint">'+(isDesk
-        ? '记录默认保存在本机；使用 AI 时会发送相关内容。换电脑或重装前，请先导出备份。'
-        : '所有数据只存在这个浏览器的本地存储里。换电脑前先导出备份。')+'</div>'
+        ? I18n.t('记录默认保存在本机；使用 AI 时会发送相关内容。换电脑或重装前，请先导出备份。')
+        : I18n.t('所有数据只存在这个浏览器的本地存储里。换电脑前先导出备份。'))+'</div>'
     + '<div class="row" style="gap:8px;flex-wrap:wrap">'
-    + '<button class="btn primary sm" id="me_export">'+icon('send')+' 导出备份</button>'
-    + '<button class="btn ghost sm" id="me_import">'+icon('refresh')+' 导回备份</button>'
-    + '<button class="btn ghost sm" data-act="openSettings">'+icon('cog')+' 设置面板</button>'
-    + (isDesk ? '<button class="btn ghost sm" data-act="openDataDir">打开数据文件夹</button>' : '')
+    + '<button class="btn primary sm" id="me_export">'+icon('send')+I18n.html(' 导出备份</button>')
+    + '<button class="btn ghost sm" id="me_import">'+icon('refresh')+I18n.html(' 导回备份</button>')
+    + '<button class="btn ghost sm" data-act="openSettings">'+icon('cog')+I18n.html(' 设置面板</button>')
+    + (isDesk ? I18n.html('<button class="btn ghost sm" data-act="openDataDir">打开数据文件夹</button>') : '')
     + '</div>'
     + '<div class="muted" style="font-size:12px;margin-top:10px" id="meDataPath">'
-    + '松散时长 '+(STATE.loose||[]).length+' 笔 · 倾倒 '+STATE.dumps.length
+    + I18n.t('松散时长 ')+(STATE.loose||[]).length+I18n.t(' 笔 · 倾倒 ')+STATE.dumps.length
     + '</div></div>';
 
   /* 树洞：只在桌面版里有（借助 preload 暴露的本地存储），
      网页里没有 window.landing 就整块不显示，而不是留一个必然报错的入口。 */
   if(window.landing && window.landing.feed){
-    h += '<div class="card"><h2>'+icon('people')+' 树洞</h2>'
-      + '<div class="hint">写点不敢对别人说的。它只存在<b>这台电脑</b>上，不上传、不联网、没有别人能看见——'
-      + '说出来的意义在于说出来本身。</div>'
-      + '<div class="field"><textarea id="postBody" placeholder="今天着陆了吗？还是还在飘着？"></textarea></div>'
+    h += '<div class="card"><h2>'+icon('people')+I18n.html(' 树洞</h2>')
+      + I18n.html('<div class="hint">写点不敢对别人说的。它只存在<b>这台电脑</b>上，不上传、不联网、没有别人能看见——')
+      + I18n.html('说出来的意义在于说出来本身。</div>')
+      + I18n.html('<div class="field"><textarea id="postBody" placeholder="今天着陆了吗？还是还在飘着？"></textarea></div>')
       + '<div class="row between" style="flex-wrap:wrap;gap:8px">'
-      + '<button class="btn primary" data-act="postCommunity">'+icon('send')+' 写进去</button>'
+      + '<button class="btn primary" data-act="postCommunity">'+icon('send')+I18n.html(' 写进去</button>')
       + '<div class="row" style="gap:8px">'
-      + '<button class="btn ghost sm" data-act="loadCommunity">'+icon('refresh')+' 刷新</button>'
-      + '<button class="btn ghost sm" data-act="clearCommunity">清空</button>'
+      + '<button class="btn ghost sm" data-act="loadCommunity">'+icon('refresh')+I18n.html(' 刷新</button>')
+      + I18n.html('<button class="btn ghost sm" data-act="clearCommunity">清空</button>')
       + '</div></div>'
-      + '<div id="posts" class="feed-list"><div class="empty">加载中…</div></div></div>';
+      + I18n.html('<div id="posts" class="feed-list"><div class="empty">加载中…</div></div></div>');
   }
 
   return h;
@@ -3176,20 +3181,20 @@ function viewMe(){
 
 
 /* ================= 渲染入口 ================= */
-var TAB_TITLE = {today:'今日行动',weekly:'周报',digest:'日报',companion:'陪伴',pet:'伙伴',shop:'商城',me:'我的'};
+var TAB_TITLE = {today:I18n.t('今日行动'),weekly:I18n.t('周报'),digest:I18n.t('日报'),companion:I18n.t('陪伴'),pet:I18n.t('伙伴'),shop:I18n.t('商城'),me:I18n.t('我的')};
 
 /* 出错兜底：单个视图抛异常不应该让整个应用白屏，其它模块仍然能用 */
 function renderErrorView(tab, err){
   var detail = (err && (err.stack || err.message)) || String(err);
-  return '<div class="mod-head"><div class="kicker">出错了</div>'
-    + '<div class="warp-head" data-warp><h2>这一页没渲染出来</h2></div>'
-    + '<p>其它模块还能用。你的数据都在本地，没有丢。可以先切到别的栏目，或者把下面的报错贴给我。</p></div>'
+  return I18n.html('<div class="mod-head"><div class="kicker">出错了</div>')
+    + I18n.html('<div class="warp-head" data-warp><h2>这一页没渲染出来</h2></div>')
+    + I18n.html('<p>其它模块还能用。你的数据都在本地，没有丢。可以先切到别的栏目，或者把下面的报错贴给我。</p></div>')
     + '<div class="card"><h2>'+icon('warn')+' 「'+esc(TAB_TITLE[tab]||tab)+'」渲染失败</h2>'
-    + '<div class="hint">错误信息：</div>'
+    + I18n.html('<div class="hint">错误信息：</div>')
     + '<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;max-height:280px">'+esc(detail)+'</pre>'
     + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
-    + '<button class="btn primary sm" data-act="retryRender">重试这一页</button>'
-    + '<button class="btn ghost sm" data-act="goToday">回今日</button>'
+    + I18n.html('<button class="btn primary sm" data-act="retryRender">重试这一页</button>')
+    + I18n.html('<button class="btn ghost sm" data-act="goToday">回今日</button>')
     + '</div></div>';
 }
 
@@ -3203,10 +3208,10 @@ function viewShop(){
   try{
     body = (window.Pet && Pet.shopHTML) ? Pet.shopHTML() : null;
   }catch(err){
-    console.error('[着陆] 商城渲染失败：', err);
+    console.error(I18n.t('[着陆] 商城渲染失败：'), err);
   }
   if(body === null){
-    body = '<div class="hint">商城还在装货，稍等一下…</div>';
+    body = I18n.html('<div class="hint">商城还在装货，稍等一下…</div>');
     if(_shopRetry < 10){
       _shopRetry++;
       setTimeout(function(){ if(CUR_TAB==='shop') render(); }, 300);
@@ -3214,9 +3219,9 @@ function viewShop(){
   }else{
     _shopRetry = 0;
   }
-  return '<div class="mod-head"><div class="kicker">小鱼干换来的</div>'
-    + '<div class="warp-head" data-warp><h2>商城</h2></div>'
-    + '<p>给伙伴选份小礼物，也为自己存一个期待。每累计 60 分钟获得 1 条小鱼干，零头当日清零。</p></div>'
+  return I18n.html('<div class="mod-head"><div class="kicker">小鱼干换来的</div>')
+    + I18n.html('<div class="warp-head" data-warp><h2>商城</h2></div>')
+    + I18n.html('<p>给伙伴选份小礼物，也为自己存一个期待。每累计 60 分钟获得 1 条小鱼干，零头当日清零。</p></div>')
     + '<div class="card" id="shopPage">' + body + '</div>';
 }
 /* 独立页用的是挂件那套 data-pact，但挂件的事件是绑在它自己面板上的（够不到这里），
@@ -3251,7 +3256,7 @@ function render(){
   try{
     html = views[CUR_TAB]();
   }catch(err){
-    console.error('[着陆] 渲染「'+CUR_TAB+'」失败：', err);
+    console.error(I18n.t('[着陆] 渲染「')+CUR_TAB+'」失败：', err);
     html = renderErrorView(CUR_TAB, err);
   }
   $('view').innerHTML = html;
@@ -3347,8 +3352,8 @@ var _sheetReturnFocus = null;
 function openSheet(html, cls){
   if($('sheet').classList.contains('hidden')) _sheetReturnFocus=document.activeElement;
   var s=$('sheet');
-  s.innerHTML='<div class="sheet'+(cls?' '+cls:'')+'" role="dialog" aria-modal="true" tabindex="-1"><button class="sheet-close" data-act="closeSheet" aria-label="关闭弹窗">×</button>'+html+'</div>';
-  var title=s.querySelector('h2'); if(title){title.id=title.id||'sheet-title';s.firstElementChild.setAttribute('aria-labelledby',title.id);} else s.firstElementChild.setAttribute('aria-label','着陆');
+  s.innerHTML='<div class="sheet'+(cls?' '+cls:'')+I18n.html('" role="dialog" aria-modal="true" tabindex="-1"><button class="sheet-close" data-act="closeSheet" aria-label="关闭弹窗">×</button>')+html+'</div>';
+  var title=s.querySelector('h2'); if(title){title.id=title.id||'sheet-title';s.firstElementChild.setAttribute('aria-labelledby',title.id);} else s.firstElementChild.setAttribute('aria-label',I18n.t('着陆'));
   $('app').inert=true; document.body.classList.add('sheet-open');
   s.classList.remove('hidden');
   s.classList.add('show');
@@ -3388,25 +3393,25 @@ var App = {
   markOne:function(){
     if(STATE.oneThing && STATE.oneThing.date===today()){
       STATE.oneThing.done=true;
-      grantFish(1, '完成今天一件：'+(STATE.oneThing.text||'').slice(0,20));
-      addMemory('daily', '今天一件完成：「'+(STATE.oneThing.text||'')+'」', ['今天一件']);
+      grantFish(1, I18n.t('完成今天一件：')+(STATE.oneThing.text||'').slice(0,20));
+      addMemory('daily', I18n.t('今天一件完成：「')+(STATE.oneThing.text||'')+'」', [I18n.t('今天一件')]);
       /* 今天一件若是从某条倾倒缩出来的，顺手把那一条标成处理完 */
       if(STATE.oneThing.dumpId){
         var d=STATE.dumps.find(function(x){return x.id===STATE.oneThing.dumpId;});
         if(d){ d.done=true; if(!d.kind) d.kind='do'; }
       }
-      save(); render(); toast('完成了，今天稳了 ✓ · +1 🐟');
+      save(); render(); toast(I18n.t('完成了，今天稳了 ✓ · +1 🐟'));
     }
   },
   changeOne:function(){ STATE.oneThing=null; save(); render(); },
   newOne:function(){
-    openSheet('<h2>今天只承诺一件</h2><div class="hint">挑最小、最不添焦虑的那件。</div>'
-      + '<div class="field"><textarea id="o_text" placeholder="比如：打开书看 10 分钟"></textarea></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="o_save">定下</button></div>');
+    openSheet(I18n.html('<h2>今天只承诺一件</h2><div class="hint">挑最小、最不添焦虑的那件。</div>')
+      + I18n.html('<div class="field"><textarea id="o_text" placeholder="比如：打开书看 10 分钟"></textarea></div>')
+      + I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn primary" id="o_save">定下</button></div>'));
     $('o_save').addEventListener('click',function(){
       var v=$('o_text').value.trim(); if(!v){toast('写点什么');return;}
       if(window.Discipline && !Discipline.captureOne(v)) return;
-      STATE.oneThing={date:today(),text:v,done:false}; save(); closeSheet(); render(); toast('今天就这一件');
+      STATE.oneThing={date:today(),text:v,done:false}; save(); closeSheet(); render(); toast(I18n.t('今天就这一件'));
     });
   },
 
@@ -3414,7 +3419,7 @@ var App = {
   funAdd:function(kind){
     var inp = $('funIn');
     var v = inp ? (inp.value || '').trim() : '';
-    if(!v){ toast('写一句就行，比如「熬夜看番」'); if(inp) inp.focus(); return; }
+    if(!v){ toast(I18n.t('写一句就行，比如「熬夜看番」')); if(inp) inp.focus(); return; }
     App._funPush(v, kind);
   },
   funQuick:function(text, kind){
@@ -3432,14 +3437,14 @@ var App = {
     var inp = $('funIn'); if(inp) inp.value = '';
     save(); render();
     var inp2 = $('funIn'); if(inp2) inp2.focus();
-    toast(FUN_KINDS[k].emoji + ' 记下了：' + text);
+    toast(FUN_KINDS[k].emoji + I18n.t(' 记下了：') + text);
   },
   funDel:function(id){
     STATE.fun = (STATE.fun || []).filter(function(r){ return r.id !== id; });
     save(); render();
   },
   aiSummary:function(){
-    if(!STATE.settings.aiKey){ toast('先配 AI（我在「我的 → 设置」里）'); return; }
+    if(!STATE.settings.aiKey){ toast(I18n.t('先配 AI（我在「我的 → 设置」里）')); return; }
     var r = STATE.reports[weekKey()];
     if(r){ r.aiTried = false; }        /* 手动要一次就允许重跑 */
     toast('让 AI 读一遍…');
@@ -3453,13 +3458,13 @@ var App = {
     var before = todayDumpCount();
     STATE.dumps.push({id:uid('d'), text:v, createdAt:Date.now(), kind:null, done:false});
     /* 倾倒本身就是进展——记进痕迹，不要求分类 */
-    addMemory('note', '倾倒：'+v.slice(0,60), ['倾倒台']);
+    addMemory('note', I18n.t('倾倒：')+v.slice(0,60), [I18n.t('倾倒台')]);
     var gainFish = before<2;
     if(gainFish) grantFish(1, '倾倒焦虑：'+v.slice(0,20));
     save(); render();
     /* render 之后 DOM 被重建，焦点要重新给回去 */
     var ta2=$('dumpInput'); if(ta2) ta2.focus();
-    toast(gainFish ? '倒出来了 ✓ · +1 🐟' : '倒出来了 ✓');
+    toast(gainFish ? I18n.t('倒出来了 ✓ · +1 🐟') : I18n.t('倒出来了 ✓'));
   },
   dumpKind:function(id, kind){
     var d=STATE.dumps.find(function(x){return x.id===id;}); if(!d) return;
@@ -3479,10 +3484,10 @@ var App = {
   dumpStart:function(id){
     var d=STATE.dumps.find(function(x){return x.id===id;}); if(!d) return;
     openSheet('<h2>就做这一小步</h2>'
-      + '<div class="hint">从刚才倒出来的那件事里，只挑<b>今天能做完的最小一步</b>。写「打开资料看 10 分钟」比写「学完 RTOS」有用得多。</div>'
+      + I18n.html('<div class="hint">从刚才倒出来的那件事里，只挑<b>今天能做完的最小一步</b>。写「打开资料看 10 分钟」比写「学完 RTOS」有用得多。</div>')
       + '<div class="dump-quote">'+esc(d.text)+'</div>'
-      + '<div class="field"><label>今天这一件</label><input id="ds_text" value="" placeholder="打开 RTOS 教程看前 10 分钟"></div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
+      + I18n.html('<div class="field"><label>今天这一件</label><input id="ds_text" value="" placeholder="打开 RTOS 教程看前 10 分钟"></div>')
+      + I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>')
       + '<button class="btn primary" id="ds_save">就它了</button></div>');
     var inp=$('ds_text'); if(inp) inp.focus();
     $('ds_save').addEventListener('click',function(){
@@ -3490,8 +3495,8 @@ var App = {
       if(window.Discipline && !Discipline.captureOne(v,d.id)) return;
       STATE.oneThing={date:today(),text:v,done:false,dumpId:d.id};
       if(!d.kind) d.kind='do';
-      addMemory('daily', '把「'+d.text.slice(0,30)+'」缩成了今天一件：「'+v+'」', ['今天一件']);
-      save(); closeSheet(); render(); toast('今天就这一件');
+      addMemory('daily', I18n.t('把「')+d.text.slice(0,30)+I18n.t('」缩成了今天一件：「')+v+'」', [I18n.t('今天一件')]);
+      save(); closeSheet(); render(); toast(I18n.t('今天就这一件'));
     });
   },
 
@@ -3504,11 +3509,11 @@ var App = {
     var first = !exist;
     /* 记情绪本身也算一次「着陆」，一天只算一次，避免刷 */
     if(first){
-      grantFish(1, '记下今天的情绪');
-      addMemory('note', '今天的情绪：'+({sun:'晴',cloud:'阴',rain:'雨',storm:'暴'}[mood]||mood), ['情绪']);
+      grantFish(1, I18n.t('记下今天的情绪'));
+      addMemory('note', I18n.t('今天的情绪：')+({sun:I18n.t('晴'),cloud:I18n.t('阴'),rain:I18n.t('雨'),storm:I18n.t('暴')}[mood]||mood), ['情绪']);
     }
     save(); render();
-    toast(first ? '记下了 ✓ · +1 🐟' : '改好了');
+    toast(first ? I18n.t('记下了 ✓ · +1 🐟') : '改好了');
   },
 
   /* --- 每日必做 --- */
@@ -3517,12 +3522,12 @@ var App = {
   mustManage:function(){ App.mustManageRender(); },
   mustManageRender:function(){
     var all = STATE.mustDos||[];
-    if(!all.length){ toast('还没有必做项，先加一条'); return; }
-    openSheet('<h2>每日必做 · 管理</h2>'
-      + '<div class="hint">改名、开关、删除，还有最近 7 天。被关掉的项也在下面。</div>'
+    if(!all.length){ toast(I18n.t('还没有必做项，先加一条')); return; }
+    openSheet(I18n.html('<h2>每日必做 · 管理</h2>')
+      + I18n.html('<div class="hint">改名、开关、删除，还有最近 7 天。被关掉的项也在下面。</div>')
       + all.map(renderMustItemCard).join('')
-      + '<div class="sheet-actions"><button class="btn primary" data-act="newMustManage">'+icon('plus')+' 加一条</button>'
-      + '<button class="btn ghost" data-act="closeSheet">关闭</button></div>');
+      + '<div class="sheet-actions"><button class="btn primary" data-act="newMustManage">'+icon('plus')+I18n.html(' 加一条</button>')
+      + I18n.html('<button class="btn ghost" data-act="closeSheet">关闭</button></div>'));
   },
   newMustManage:function(){ App.openMustForm(null, true); },
   /* 点一下打勾并写 ts（打卡时刻）；已打过 → 再点就是撤销。
@@ -3534,7 +3539,7 @@ var App = {
 
     if(idx >= 0){
       m.records.splice(idx,1);
-      save(); render(); mustSheetRefresh(); toast('已撤销今天的打卡');
+      save(); render(); mustSheetRefresh(); toast(I18n.t('已撤销今天的打卡'));
       return;
     }
     var ts = Date.now();
@@ -3543,7 +3548,7 @@ var App = {
     m.records.sort(function(a,b){ return a.date<b.date ? -1 : 1; });
     save(); render(); mustSheetRefresh();
     var st = mustTodayStats();
-    toast('已打卡 '+clockOf(ts)+' ✓'+(st.done===st.total ? ' · 今天全清了' : ' · 还差 '+(st.total-st.done)+' 件'));
+    toast(I18n.t('已打卡 ')+clockOf(ts)+' ✓'+(st.done===st.total ? I18n.t(' · 今天全清了') : I18n.t(' · 还差 ')+(st.total-st.done)+I18n.t(' 件')));
   },
 
   newMust:function(){ App.openMustForm(null); },
@@ -3551,18 +3556,18 @@ var App = {
 
   toggleMust:function(id){
     var m = STATE.mustDos.find(function(x){return x.id===id;}); if(!m) return;
-    m.enabled = !m.enabled; save(); render(); mustSheetRefresh(); toast(m.enabled?'已启用':'已关闭');
+    m.enabled = !m.enabled; save(); render(); mustSheetRefresh(); toast(m.enabled?'已启用':I18n.t('已关闭'));
   },
 
   openMustForm:function(id, fromManage){
     var m = id ? STATE.mustDos.find(function(x){return x.id===id;}) : null;
     var isEdit = !!m;
-    openSheet('<h2>'+(isEdit?'编辑':'新建')+'必做</h2>'
-      + '<div class="hint">每天都要做的那一件，短一点、具体一点。建议总共不超过 3 条。</div>'
+    openSheet('<h2>'+(isEdit?I18n.t('编辑'):'新建')+I18n.html('必做</h2>')
+      + I18n.html('<div class="hint">每天都要做的那一件，短一点、具体一点。建议总共不超过 3 条。</div>')
       + '<div class="field"><label>名称</label><input id="mu_name" value="'+esc(m?m.name:'')+'" placeholder="如：吃维生素 / 记账 / 背 30 个词"></div>'
-      + '<div class="hint">打卡时会自动记下<b>完成时刻</b>（几点几分），不用你填。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
-      + '<button class="btn primary" id="mu_save">'+(isEdit?'保存':'创建')+'</button></div>');
+      + I18n.html('<div class="hint">打卡时会自动记下<b>完成时刻</b>（几点几分），不用你填。</div>')
+      + I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>')
+      + '<button class="btn primary" id="mu_save">'+(isEdit?I18n.t('保存'):'创建')+'</button></div>');
     $('mu_save').addEventListener('click',function(){
       var name = $('mu_name').value.trim();
       if(!name){ toast('写个名字'); return; }
@@ -3570,20 +3575,20 @@ var App = {
       else{ STATE.mustDos.push({id:uid('mu'), name:name, enabled:true, records:[], createdAt:today()}); }
       save(); render();
       if(fromManage) App.mustManageRender(); else closeSheet();   /* 从管理弹层进来的 → 存完回管理弹层 */
-      toast(isEdit?'已更新':'已加入必做');
+      toast(isEdit?'已更新':I18n.t('已加入必做'));
     });
   },
 
   delMust:function(id){
     var m = STATE.mustDos.find(function(x){return x.id===id;}); if(!m) return;
-    openSheet('<h2>删除必做？</h2><div class="hint">「'+esc(m.name)+'」及其 '+m.records.length+' 次打卡记录将被删除。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>'
-      + '<button class="btn danger" id="mu_del">确认删除</button></div>');
+    openSheet(I18n.html('<h2>删除必做？</h2><div class="hint">「')+esc(m.name)+'」及其 '+m.records.length+I18n.html(' 次打卡记录将被删除。</div>')
+      + I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button>')
+      + I18n.html('<button class="btn danger" id="mu_del">确认删除</button></div>'));
     $('mu_del').addEventListener('click',function(){
       STATE.mustDos = STATE.mustDos.filter(function(x){return x.id!==id;});
       save(); render();
-      if((STATE.mustDos||[]).length){ App.mustManageRender(); toast('已删除'); }
-      else { closeSheet(); toast('已删除，必做项清空了'); }
+      if((STATE.mustDos||[]).length){ App.mustManageRender(); toast(I18n.t('已删除')); }
+      else { closeSheet(); toast(I18n.t('已删除，必做项清空了')); }
     });
   },
 
@@ -3608,16 +3613,16 @@ var App = {
      系统壳进程单独折叠在最后（写出来但不计入"真在用"） */
   actHistory:function(){
     var list=(STATE.loose||[]).slice(-100).reverse();
-    var h='<h2>时间记录</h2><p class="hint">最近 100 笔记录。可以修改名称与分类，或移除误记的条目；已获得的小鱼干不回收。</p><div class="activity-history">';
-    if(!list.length) h+='<div class="empty">还没有记录。着陆在后台运行时，会自动记下应用使用时间。</div>';
-    list.forEach(function(r){h+='<article><div><b>'+esc(r.name)+'</b><span>'+esc(r.date)+' · '+fmtMin(r.minutes)+' · '+catName(r.category)+(r.auto?' · 自动':'')+'</span></div><button class="btn ghost sm" data-act="actEdit" data-id="'+esc(r.id)+'">调整</button></article>';});
-    openSheet(h+'</div><div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">关闭</button></div>');
+    var h=I18n.html('<h2>时间记录</h2><p class="hint">最近 100 笔记录。可以修改名称与分类，或移除误记的条目；已获得的小鱼干不回收。</p><div class="activity-history">');
+    if(!list.length) h+=I18n.html('<div class="empty">还没有记录。着陆在后台运行时，会自动记下应用使用时间。</div>');
+    list.forEach(function(r){h+='<article><div><b>'+esc(r.name)+'</b><span>'+esc(r.date)+' · '+fmtMin(r.minutes)+' · '+catName(r.category)+(r.auto?I18n.t(' · 自动'):'')+'</span></div><button class="btn ghost sm" data-act="actEdit" data-id="'+esc(r.id)+'">调整</button></article>';});
+    openSheet(h+I18n.html('</div><div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">关闭</button></div>'));
   },
   actEdit:function(id){
     var r=(STATE.loose||[]).find(function(x){return x.id===id;});if(!r)return;
-    openSheet('<h2>调整这笔记录</h2><p class="hint">'+esc(r.date)+' · '+fmtMin(r.minutes)+'</p><div class="field"><label for="record-name">记录名称</label><input id="record-name" maxlength="30" value="'+esc(r.name)+'"></div><div class="field"><label for="record-category">分类</label><select id="record-category">'+CATEGORIES.map(function(c){return '<option value="'+c.key+'"'+(r.category===c.key?' selected':'')+'>'+c.label+'</option>';}).join('')+'</select></div><div class="sheet-actions"><button class="btn ghost" id="record-back">返回</button><button class="btn danger" id="record-remove">移除误记</button><button class="btn primary" id="record-save">保存调整</button></div>');
+    openSheet(I18n.html('<h2>调整这笔记录</h2><p class="hint">')+esc(r.date)+' · '+fmtMin(r.minutes)+I18n.html('</p><div class="field"><label for="record-name">记录名称</label><input id="record-name" maxlength="30" value="')+esc(r.name)+'"></div><div class="field"><label for="record-category">分类</label><select id="record-category">'+CATEGORIES.map(function(c){return '<option value="'+c.key+'"'+(r.category===c.key?' selected':'')+'>'+c.label+'</option>';}).join('')+I18n.html('</select></div><div class="sheet-actions"><button class="btn ghost" id="record-back">返回</button><button class="btn danger" id="record-remove">移除误记</button><button class="btn primary" id="record-save">保存调整</button></div>'));
     $('record-back').onclick=App.actHistory;
-    $('record-save').onclick=function(){var name=$('record-name').value.trim();if(!name){toast('填写一个记录名称');$('record-name').focus();return;}r.name=name;r.category=$('record-category').value;save();render();App.actHistory();toast('这笔记录已更新');};
+    $('record-save').onclick=function(){var name=$('record-name').value.trim();if(!name){toast(I18n.t('填写一个记录名称'));$('record-name').focus();return;}r.name=name;r.category=$('record-category').value;save();render();App.actHistory();toast(I18n.t('这笔记录已更新'));};
     $('record-remove').onclick=function(){looseDel(id);App.actHistory();};
   },
   actRank:function(){
@@ -3628,12 +3633,12 @@ var App = {
     var idle = all.filter(function(x){ return x.idle; });
     var total = ACT.totalMin || 0;
     var top = real.length ? real[0].minutes : 1;
-    var h = '<h2>今天各用了多久</h2>'
+    var h = I18n.html('<h2>今天各用了多久</h2>')
       + '<div class="hint">按 <b>前台窗口</b>采样算的（每 ' + (ACT.sampleSec || 60) + ' 秒一次）——'
       + '只算"你正在用的那个"，后台挂着的不算，跟手机的口径一致。'
-      + '共记录 <b>' + fmtMin(total) + '</b>。</div>';
+      + I18n.html('共记录 <b>') + fmtMin(total) + '</b>。</div>';
     if(!real.length){
-      h += '<div class="hint">今天还没有可统计的应用（' + (total > 0 ? '只有桌面/系统窗口' : '还没采到数据') + '）。</div>';
+      h += I18n.html('<div class="hint">今天还没有可统计的应用（') + (total > 0 ? '只有桌面/系统窗口' : '还没采到数据') + '）。</div>';
     } else {
       h += '<div class="app-rank">';
       real.forEach(function(x){
@@ -3647,28 +3652,28 @@ var App = {
     }
     if(shell.length || idle.length){
       var other = [];
-      if(shell.length) other.push('系统窗口/桌面 ' + shell.reduce(function(a, x){ return a + x.minutes; }, 0) + ' 分');
-      if(idle.length) other.push('没在用程序 ' + idle.reduce(function(a, x){ return a + x.minutes; }, 0) + ' 分');
+      if(shell.length) other.push('系统窗口/桌面 ' + shell.reduce(function(a, x){ return a + x.minutes; }, 0) + I18n.t(' 分'));
+      if(idle.length) other.push('没在用程序 ' + idle.reduce(function(a, x){ return a + x.minutes; }, 0) + I18n.t(' 分'));
       h += '<div class="hint" style="margin-top:10px">另有 <b>'
         + (shell.concat(idle).reduce(function(a, x){ return a + x.minutes; }, 0))
-        + ' 分钟</b>不是"在用某个软件"：' + other.join(' · ') + '（开着机但没在操作）</div>';
+        + I18n.html(' 分钟</b>不是"在用某个软件"：') + other.join(' · ') + '（开着机但没在操作）</div>';
     }
     h += '<div class="hint" style="margin-top:8px">⚠️ 采样是每 ' + (ACT.sampleSec || 60)
-      + ' 秒一次，来回切窗口切得快时会少算一点（想要更准可以在「我的 → 活动记录」把采样间隔调小）。</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">关闭</button></div>';
+      + I18n.html(' 秒一次，来回切窗口切得快时会少算一点（想要更准可以在「我的 → 活动记录」把采样间隔调小）。</div>')
+      + I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">关闭</button></div>');
     openSheet(h);
   },
 
   actToggle:function(){
     if(!ACT || !window.landing || !window.landing.activity) return;
     window.landing.activity.setPref({ enabled: !ACT.enabled }).then(function(s){
-      ACT = s; render(); toast(s.enabled ? '开始记录活动' : '已暂停活动记录');
+      ACT = s; render(); toast(s.enabled ? I18n.t('开始记录活动') : I18n.t('已暂停活动记录'));
     });
   },
   actAskToggle:function(){
     if(!ACT || !window.landing || !window.landing.activity) return;
     window.landing.activity.setPref({ ask: !ACT.ask }).then(function(s){
-      ACT = s; render(); toast(s.ask ? '切走后会问一句刚才那段记作什么' : '不再自动询问');
+      ACT = s; render(); toast(s.ask ? '切走后会问一句刚才那段记作什么' : I18n.t('不再自动询问'));
     });
   },
   /* 确认方式切换：弹窗问 ↔ 不用确认直接记（2026-10-14，master 要的自动化档） */
@@ -3677,7 +3682,7 @@ var App = {
     var to = (ACT.askConfirm === false);        /* true = 改回「弹窗问」 */
     window.landing.activity.setPref({ askConfirm: to }).then(function(s){
       ACT = s; render();
-      toast(to ? '改回弹窗问：切走后会先问你' : '全自动：切走后直接记，只弹「已记下」通知');
+      toast(to ? '改回弹窗问：切走后会先问你' : I18n.t('全自动：切走后直接记，只弹「已记下」通知'));
     });
   },
   actFolder:function(){
@@ -3686,7 +3691,7 @@ var App = {
   actClearShots:function(){
     if(!window.landing || !window.landing.activity) return;
     window.landing.activity.clearShots().then(function(r){
-      toast('清空了 ' + (r.files || 0) + ' 张截图，收回 ' + fmtBytes(r.freed || 0));
+      toast(I18n.t('清空了 ') + (r.files || 0) + I18n.t(' 张截图，收回 ') + fmtBytes(r.freed || 0));
       return window.landing.activity.get();
     }).then(function(s){ ACT = s; render(); });
   },
@@ -3704,7 +3709,7 @@ var App = {
       shotMin:   num('act_shot',   0,  0, 120),
       keepDays:  num('act_keep',  14,  1, 365),
       askCoolMin:num('act_cool',  15,  3, 240)
-    }).then(function(s){ ACT = s; askClose(); render(); toast('记录设置已保存'); }).catch(function(e){toast('保存失败：'+e.message);});
+    }).then(function(s){ ACT = s; askClose(); render(); toast(I18n.t('记录设置已保存')); }).catch(function(e){toast(I18n.t('保存失败：')+e.message);});
   },
   /* --- 换应用自动计时（2026-10-13）--- */
   askGo:function(){
@@ -3724,12 +3729,12 @@ var App = {
     if(takeRestDay(today())){
       /* 2026-10-09 起给 5 秒撤销（原本刻意没入口，但宠物也能记这一条之后，
          一次误判就会白冻一天连击 —— 有撤销才敢让它动手） */
-      toastAction('今天记成休息日了。连续天数冻结，宠物也回点血。', '撤销', function(){
+      toastAction(I18n.t('今天记成休息日了。连续天数冻结，宠物也回点血。'), I18n.t('撤销'), function(){
         STATE.restDays = (STATE.restDays||[]).filter(function(x){ return x !== today(); });
-        save(); render(); toast('撤掉了，今天不算休息日');
+        save(); render(); toast(I18n.t('撤掉了，今天不算休息日'));
       }, 6000);
     }
-    else toast('今天已经记过了');
+    else toast(I18n.t('今天已经记过了'));
     render();
   },
   looseDel:function(id){ looseDel(id); },
@@ -3741,7 +3746,7 @@ var App = {
       CUR_TAB='today'; render();
       var el = document.querySelector('.one-thing');
       if(el) el.scrollIntoView({block:'center', behavior:'smooth'});
-      toast('今天的一件事已经定好了，去做它就行');
+      toast(I18n.t('今天的一件事已经定好了，去做它就行'));
       return;
     }
     App.newOne();
@@ -3775,16 +3780,16 @@ var App = {
     if(_cmpSay && _cmpSay.typing) return;
     if(!STATE.settings.aiKey){ toast('先配置 AI'); CUR_TAB='me'; render(); App.openSettings(); return; }
     var since=addDays(today(),-3);
-    var dumps=STATE.dumps.filter(function(d){ return ymd(new Date(d.createdAt||0))>=since; }).map(function(d){return '【'+(d.kind||'未分类')+'】'+d.text;});
+    var dumps=STATE.dumps.filter(function(d){ return ymd(new Date(d.createdAt||0))>=since; }).map(function(d){return '【'+(d.kind||I18n.t('未分类'))+'】'+d.text;});
     var weather=STATE.weather.filter(function(w){return w.date>=since;}).map(function(w){return w.date+' '+w.mood+(w.note?'：'+w.note:'');});
-    var ot=(STATE.oneThing && STATE.oneThing.date>=since) ? ('今天一件：'+STATE.oneThing.text+(STATE.oneThing.done?'（已完成）':'（未完成）')) : '(无)';
+    var ot=(STATE.oneThing && STATE.oneThing.date>=since) ? (I18n.t('今天一件：')+STATE.oneThing.text+(STATE.oneThing.done?'（已完成）':'（未完成）')) : '(无)';
     /* 今日一件可能来自倾倒台，把原始那条也带上，AI 才看得懂前后文 */
     var fromDump=(STATE.oneThing && STATE.oneThing.date>=since && STATE.oneThing.dumpId)
       ? (STATE.dumps.find(function(d){return d.id===STATE.oneThing.dumpId;})||{}).text : '';
-    var prompt='这是用户近三天的记录，请生成一份温柔的「跟进日报」：1)一句话接住他现在的状态；2)指出一个小进展；3)给一个明天可以迈的最小一步。控制在150字内。\n倾倒台：'+(dumps.join('\n')||'（无）')+'\n情绪：'+(weather.join('\n')||'（无）')+'\n'+ot+(fromDump?('\n它来自这条倾倒：'+fromDump):'');
+    var prompt=I18n.t('这是用户近三天的记录，请生成一份温柔的「跟进日报」：1)一句话接住他现在的状态；2)指出一个小进展；3)给一个明天可以迈的最小一步。控制在150字内。\n倾倒台：')+(dumps.join('\n')||'（无）')+'\n情绪：'+(weather.join('\n')||'（无）')+'\n'+ot+(fromDump?(I18n.t('\n它来自这条倾倒：')+fromDump):'');
     /* 兼容：老库里 community 字段还在，只是不再有入口 */
     STATE.community = STATE.community || {nick:''};
-    STATE.companion.messages.push({role:'user',content:'【近三日跟进】请生成我的日报',ts:Date.now()});
+    STATE.companion.messages.push({role:'user',content:I18n.t('【近三日跟进】请生成我的日报'),ts:Date.now()});
     var msgs=[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}];
     save();
     cmpSay('它正在想…', true);
@@ -3804,14 +3809,14 @@ var App = {
   loadCommunity:function(){
     var box=$('posts'); if(!box) return;
     if(!(window.landing && window.landing.feed)){
-      box.innerHTML='<div class="empty">这个版本没有树洞。</div>';
+      box.innerHTML=I18n.html('<div class="empty">这个版本没有树洞。</div>');
       return;
     }
     window.landing.feed.list().then(function(posts){
       posts = posts||[];
-      if(!posts.length){ box.innerHTML='<div class="empty">树洞还空着。写第一句吧。</div>'; return; }
+      if(!posts.length){ box.innerHTML=I18n.html('<div class="empty">树洞还空着。写第一句吧。</div>'); return; }
       box.innerHTML=posts.slice(0,60).map(function(p){
-        var when = p.at ? new Date(p.at).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : (p.date||'');
+        var when = p.at ? new Date(p.at).toLocaleString(I18n.locale(),{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : (p.date||'');
         return '<div class="post"><div class="head"><span>'+esc(p.nick||'匿名')+'</span><span>'+esc(when)+'</span></div>'
           + '<div class="body">'+esc(p.body||'')+'</div></div>';
       }).join('');
@@ -3821,24 +3826,24 @@ var App = {
   postCommunity:function(){
     var ta=$('postBody'); if(!ta) return;
     var v=ta.value.trim(); if(!v){ toast('写点什么'); return; }
-    if(!(window.landing && window.landing.feed)){ toast('这个版本没有树洞'); return; }
+    if(!(window.landing && window.landing.feed)){ toast(I18n.t('这个版本没有树洞')); return; }
     window.landing.feed.post({body:v}).then(function(r){
       if(r && r.ok){
         ta.value='';
         /* 写进树洞也算一次「着陆」，记进痕迹 */
-        addMemory('note', '树洞：'+v.slice(0,50), ['树洞']);
-        grantFish(1, '写进树洞');
-        save(); render(); toast('写进去了 ✓ · +1 🐟');
+        addMemory('note', I18n.t('树洞：')+v.slice(0,50), [I18n.t('树洞')]);
+        grantFish(1, I18n.t('写进树洞'));
+        save(); render(); toast(I18n.t('写进去了 ✓ · +1 🐟'));
       } else {
-        toast('没写成：'+((r&&r.error)||'未知原因'));
+        toast('没写成：'+((r&&r.error)||I18n.t('未知原因')));
       }
     }).catch(function(e){ toast('失败：'+e.message); });
   },
 
   clearCommunity:function(){
     if(!(window.landing && window.landing.feed)) return;
-    if(!confirm('清空树洞里的全部内容？不可恢复。')) return;
-    window.landing.feed.clear().then(function(){ App.loadCommunity(); toast('已清空'); });
+    if(!confirm(I18n.t('清空树洞里的全部内容？不可恢复。'))) return;
+    window.landing.feed.clear().then(function(){ App.loadCommunity(); toast(I18n.t('已清空')); });
   },
 
   openDataDir:function(){
@@ -3851,14 +3856,15 @@ var App = {
   exportData:function(){
     var json;
     try{ json=JSON.stringify(STATE,null,2); }
-    catch(err){ toast('导出失败：'+err.message); return; }
+    catch(err){ toast(I18n.t('导出失败：')+err.message); return; }
 
-    if(window.landing && window.landing.data){
-      window.landing.data.save(json).then(function(r){
-        if(r && r.ok) toast('已导出到 '+r.filePath);
-        else if(r && r.canceled) toast('已取消');
-        else toast('导出失败：'+((r&&r.error)||'未知原因'));
-      }).catch(function(e){ toast('导出失败：'+e.message); });
+    var fileBridge=window.landing&&window.landing.data;
+    if(fileBridge){
+      fileBridge.save(json).then(function(r){
+        if(r && r.ok) toast(I18n.t('已导出到 ')+r.filePath);
+        else if(r && r.canceled) toast(I18n.t('已取消'));
+        else toast(I18n.t('导出失败：')+((r&&r.error)||I18n.t('未知原因')));
+      }).catch(function(e){ toast(I18n.t('导出失败：')+e.message); });
       return;
     }
 
@@ -3866,21 +3872,21 @@ var App = {
       var blob=new Blob([json],{type:'application/json'});
       var url=URL.createObjectURL(blob);
       var a=document.createElement('a');
-      a.href=url; a.download='着陆备份-'+today()+'.json';
+      a.href=url; a.download=I18n.t('着陆备份-')+today()+'.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); },4000);
-      toast('已导出备份文件');
-    }catch(err){ toast('导出失败：'+err.message); }
+      toast(I18n.t('已导出备份文件'));
+    }catch(err){ toast(I18n.t('导出失败：')+err.message); }
   },
 
   importData:function(){
     var apply=function(text){
       var obj;
       try{ obj=JSON.parse(text); }
-      catch(err){ toast('导入失败：不是有效的 JSON'); return; }
+      catch(err){ toast(I18n.t('导入失败：不是有效的 JSON')); return; }
       /* 任务模块删掉后不能再拿 longTasks 当"是不是着陆备份"的凭据了 ——
          换成"保留字段里命中任意一个就算数"，这样**旧备份也还能导回来**。 */
-      if(!obj||typeof obj!=='object'||!(obj.mustDos||obj.loose||obj.weather||obj.dumps||obj.timer||obj.longTasks)){ toast('导入失败：不是着陆的备份文件'); return; }
+      if(!obj||typeof obj!=='object'||!(obj.mustDos||obj.loose||obj.weather||obj.dumps||obj.timer||obj.longTasks)){ toast(I18n.t('导入失败：不是着陆的备份文件')); return; }
       /* 必须就地改 STATE：内部所有函数都闭包引用同一个对象，
          整个替换掉会让它们继续看旧对象，导入等于没导。 */
       var keep = STATE;
@@ -3888,15 +3894,16 @@ var App = {
       Object.keys(obj).forEach(function(k){ keep[k] = obj[k]; });
       migrate(); save(); closeSheet(); render();
       if(STATE.timer && !STATE.timer.finished) ensureTimerTick();
-      toast('已导回备份');
+      toast(I18n.t('已导回备份'));
     };
 
-    if(window.landing && window.landing.data){
-      window.landing.data.open().then(function(r){
+    var fileBridge=window.landing&&window.landing.data;
+    if(fileBridge){
+      fileBridge.open().then(function(r){
         if(r && r.ok) apply(r.json);
-        else if(r && r.canceled) toast('已取消');
-        else toast('导入失败：'+((r&&r.error)||'未知原因'));
-      }).catch(function(e){ toast('导入失败：'+e.message); });
+        else if(r && r.canceled) toast(I18n.t('已取消'));
+        else toast(I18n.t('导入失败：')+((r&&r.error)||I18n.t('未知原因')));
+      }).catch(function(e){ toast(I18n.t('导入失败：')+e.message); });
       return;
     }
 
@@ -3980,7 +3987,7 @@ var App = {
       _jwglNeedLogin = false;
       save();
       refreshJwglStatus();
-      toast('已断开，凭据已删除');
+      toast(I18n.t('已断开，凭据已删除'));
       if(CUR_TAB === 'today') render();
       App.openSettings();
     });
@@ -3994,7 +4001,7 @@ var App = {
   schedWeeks:function(w){
     var s = STATE.schedule;
     if(!s || !s.items || !s.items.length){
-      toast('课表还没拉到 —— 先去设置里连一下教务系统');
+      toast(I18n.t('课表还没拉到 —— 先去设置里连一下教务系统'));
       return;
     }
     w = (+w) || _schedWeek || currentWeek();
@@ -4006,58 +4013,58 @@ var App = {
   /* --- 设置 --- */
   openSettings:function(){
     var s=STATE.settings;
-    openSheet('<h2>'+icon('cog')+' 设置</h2>'
-      + '<div class="field"><label>GitHub Token（可选，提升日报拉取限额）</label><input id="s_gh" type="password" value="'+esc(s.githubToken||'')+'" placeholder="不填也能拉取日报"></div>'
-      + '<div class="field"><label>教学周起点（第 1 周的周一）</label>'
-      +   '<div class="hint" style="margin:0 0 8px">用来算「今天是第几周」，直接决定课表按周次怎么过滤。'
-      +   '按现在这个起点，本周是第 <b>'+currentWeek()+'</b> 周（'+mdShort(weekMonday(currentWeek()))+' 起）。'
-      +   '跟开学周对不上就改这里。</div>'
+    openSheet('<h2>'+icon('cog')+I18n.html(' 设置</h2>')
+      + I18n.html('<div class="field"><label>GitHub Token（可选，提升日报拉取限额）</label><input id="s_gh" type="password" value="')+esc(s.githubToken||'')+I18n.html('" placeholder="不填也能拉取日报"></div>')
+      + I18n.html('<div class="field"><label>教学周起点（第 1 周的周一）</label>')
+      +   I18n.html('<div class="hint" style="margin:0 0 8px">用来算「今天是第几周」，直接决定课表按周次怎么过滤。')
+      +   I18n.html('按现在这个起点，本周是第 <b>')+currentWeek()+I18n.html('</b> 周（')+mdShort(weekMonday(currentWeek()))+I18n.t(' 起）。')
+      +   I18n.html('跟开学周对不上就改这里。</div>')
       +   '<input id="s_term" type="date" value="'+esc(ymd(termStart()))+'">'
       + '</div>'
-      + '<div class="field"><label>AI 接口（陪伴、周报点评、近三日跟进）</label>'
-      +   '<div class="hint" style="margin:0 0 8px">现在接的是 <b>DeepSeek</b>：点一下按钮自动填地址和模型，'
-      +   '只粘 Key 就行。填完记得点「测试连接」，能省掉后面一堆莫名其妙的报错。</div>'
+      + I18n.html('<div class="field"><label>AI 接口（陪伴、周报点评、近三日跟进）</label>')
+      +   I18n.html('<div class="hint" style="margin:0 0 8px">现在接的是 <b>DeepSeek</b>：点一下按钮自动填地址和模型，')
+      +   I18n.html('只粘 Key 就行。填完记得点「测试连接」，能省掉后面一堆莫名其妙的报错。</div>')
       +   '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'
-      +     '<button class="btn ghost sm" id="s_ai_ds">用 DeepSeek</button>'
-      +     '<button class="btn ghost sm" id="s_ai_oai">用 OpenAI</button>'
+      +     I18n.html('<button class="btn ghost sm" id="s_ai_ds">用 DeepSeek</button>')
+      +     I18n.html('<button class="btn ghost sm" id="s_ai_oai">用 OpenAI</button>')
       +   '</div>'
       +   '<input id="s_base" value="'+esc(s.aiBaseUrl||'')+'" placeholder="https://api.deepseek.com/v1">'
       +   '<input id="s_key" type="password" value="'+esc(s.aiKey||'')+'" placeholder="sk-…（API Key）" style="margin-top:8px">'
       +   '<input id="s_model" value="'+esc(s.aiModel||'')+'" placeholder="deepseek-chat" style="margin-top:8px">'
       +   '<div class="row" style="gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap">'
-      +     '<button class="btn ghost sm" id="s_ai_test">测试连接</button>'
+      +     I18n.html('<button class="btn ghost sm" id="s_ai_test">测试连接</button>')
       +     '<span id="s_ai_tip" class="muted" style="font-size:12px"></span>'
       +   '</div>'
-      +   '<div class="hint" style="margin-top:6px">Key 存在本机浏览器存储里（明文）。'
-      +   '它是你自己的机器、自己的 key，但导出的备份文件别随手发给别人。</div>'
+      +   I18n.html('<div class="hint" style="margin-top:6px">Key 存在本机浏览器存储里（明文）。')
+      +   I18n.html('它是你自己的机器、自己的 key，但导出的备份文件别随手发给别人。</div>')
       + '</div>'
       /* --- 伙伴单独一套：让它走本地 Ollama，云端那份留给周报点评 --- */
-      + '<div class="field"><label>伙伴单独用哪套 AI（可留空）</label>'
-      +   '<div class="hint">留空时共用上方的 AI。也可以单独填写服务地址和模型；使用本地服务前，请先启动服务并确认模型可用。</div>'
+      + I18n.html('<div class="field"><label>伙伴单独用哪套 AI（可留空）</label>')
+      +   I18n.html('<div class="hint">留空时共用上方的 AI。也可以单独填写服务地址和模型；使用本地服务前，请先启动服务并确认模型可用。</div>')
       +   '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'
-      +     '<button class="btn ghost sm" id="s_pet_ollama">用本地 Ollama</button>'
-      +     '<button class="btn ghost sm" id="s_pet_clear">跟上面共用</button>'
+      +     I18n.html('<button class="btn ghost sm" id="s_pet_ollama">用本地 Ollama</button>')
+      +     I18n.html('<button class="btn ghost sm" id="s_pet_clear">跟上面共用</button>')
       +   '</div>'
       +   '<input id="s_pet_base" value="'+esc(s.petAiBaseUrl||'')+'" placeholder="http://127.0.0.1:11434/v1">'
-      +   '<input id="s_pet_key" type="password" value="'+esc(s.petAiKey||'')+'" placeholder="ollama（它不校验，随便填个非空的）" style="margin-top:8px">'
-      +   '<input id="s_pet_model" value="'+esc(s.petAiModel||'')+'" placeholder="pet-cpu:1.5b（或 ollama list 里的任意名字）" style="margin-top:8px">'
+      +   '<input id="s_pet_key" type="password" value="'+esc(s.petAiKey||'')+I18n.html('" placeholder="ollama（它不校验，随便填个非空的）" style="margin-top:8px">')
+      +   '<input id="s_pet_model" value="'+esc(s.petAiModel||'')+I18n.html('" placeholder="pet-cpu:1.5b（或 ollama list 里的任意名字）" style="margin-top:8px">')
       +   '<div class="row" style="gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap">'
-      +     '<button class="btn ghost sm" id="s_pet_test">测试伙伴 AI</button>'
+      +     I18n.html('<button class="btn ghost sm" id="s_pet_test">测试伙伴 AI</button>')
       +     '<span id="s_pet_tip" class="muted" style="font-size:12px"></span>'
       +   '</div>'
       + '</div>'
-      + '<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="s_reset">清空全部数据</button><button class="btn primary" id="s_save">保存</button></div>'
+      + I18n.html('<div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">取消</button><button class="btn danger" id="s_reset">清空全部数据</button><button class="btn primary" id="s_save">保存</button></div>')
       + '<div class="row between" style="margin-top:14px;gap:10px;flex-wrap:wrap">'
-      + '<button class="btn ghost sm" id="s_export">导出备份</button>'
-      + '<button class="btn ghost sm" id="s_import">导入备份</button>'
+      + I18n.html('<button class="btn ghost sm" id="s_export">导出备份</button>')
+      + I18n.html('<button class="btn ghost sm" id="s_import">导入备份</button>')
       + '</div>'
-      + '<div class="field" style="margin-top:14px"><label>后台常驻</label>'
-      +   '<div class="hint" style="margin:0 0 8px">关掉窗口只是缩到右下角托盘，程序继续跑、计时照常走（托盘悬停能看到剩余时间）。要彻底退出：右键托盘图标 → 退出着陆。</div>'
-      +   '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" id="s_autostart">开机自动启动：读取中…</button>'
-      +   '<button class="btn ghost sm" id="s_closepref">关闭窗口时：读取中…</button></div>'
+      + I18n.html('<div class="field" style="margin-top:14px"><label>后台常驻</label>')
+      +   I18n.html('<div class="hint" style="margin:0 0 8px">关掉窗口只是缩到右下角托盘，程序继续跑、计时照常走（托盘悬停能看到剩余时间）。要彻底退出：右键托盘图标 → 退出着陆。</div>')
+      +   I18n.html('<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn ghost sm" id="s_autostart">开机自动启动：读取中…</button>')
+      +   I18n.html('<button class="btn ghost sm" id="s_closepref">关闭窗口时：读取中…</button></div>')
       + '</div>'
       + jwglPanelHTML(_jwglStatus)
-      + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
+      + I18n.html('<div class="ver">着陆 v')+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
 
     if(window.UI) UI.polishSettings();
 
@@ -4068,19 +4075,19 @@ var App = {
         asBtn.disabled = true;
         function autoLaunchLabel(on){
           asBtn.dataset.on = on ? '1' : '0';
-          asBtn.textContent = '开机自动启动：'+(on ? '已开启' : '已关闭');
+          asBtn.textContent = I18n.t('开机自动启动：')+(on ? I18n.t('已开启') : I18n.t('已关闭'));
         }
-        window.landing.autoLaunch.get().then(autoLaunchLabel).catch(function(error){asBtn.textContent='开机自动启动：读取失败，点击重试';toast(error.message||'读取开机自启失败');}).finally(function(){asBtn.disabled=false;});
+        window.landing.autoLaunch.get().then(autoLaunchLabel).catch(function(error){asBtn.textContent=I18n.t('开机自动启动：读取失败，点击重试');toast(error.message||'读取开机自启失败');}).finally(function(){asBtn.disabled=false;});
         asBtn.onclick = function(){
           var next = asBtn.dataset.on !== '1';
-          asBtn.disabled=true;asBtn.textContent='正在'+(next?'开启':'关闭')+'开机自启…';
+          asBtn.disabled=true;asBtn.textContent='正在'+(next?'开启':I18n.t('关闭'))+'开机自启…';
           window.landing.autoLaunch.set(next).then(function(applied){
             autoLaunchLabel(applied);
-            toast(applied ? '开机自启已开（启动后待在托盘里，不弹窗）' : '开机自启已关');
-          }).catch(function(error){autoLaunchLabel(asBtn.dataset.on==='1');toast(error.message||'设置开机自启失败，请重试');}).finally(function(){asBtn.disabled=false;});
+            toast(applied ? '开机自启已开（启动后待在托盘里，不弹窗）' : I18n.t('开机自启已关'));
+          }).catch(function(error){autoLaunchLabel(asBtn.dataset.on==='1');toast(error.message||I18n.t('设置开机自启失败，请重试'));}).finally(function(){asBtn.disabled=false;});
         };
       } else {
-        asBtn.textContent = '开机自动启动：仅桌面版可用';
+        asBtn.textContent = I18n.t('开机自动启动：仅桌面版可用');
         asBtn.disabled = true;
       }
     }
@@ -4093,13 +4100,13 @@ var App = {
     if(dsBtn) dsBtn.onclick = function(){
       $('s_base').value = 'https://api.deepseek.com/v1';
       $('s_model').value = 'deepseek-chat';
-      aiTip('已填 DeepSeek —— 粘上 Key 点「测试连接」');
+      aiTip(I18n.t('已填 DeepSeek —— 粘上 Key 点「测试连接」'));
       $('s_key').focus();
     };
     if(oaiBtn) oaiBtn.onclick = function(){
       $('s_base').value = 'https://api.openai.com/v1';
       $('s_model').value = 'gpt-4o-mini';
-      aiTip('已填 OpenAI —— 粘上 Key 点「测试连接」');
+      aiTip(I18n.t('已填 OpenAI —— 粘上 Key 点「测试连接」'));
       $('s_key').focus();
     };
     /* 本地 Ollama：地址固定走环回，Key 随便填（它不校验，但本 app 要求非空） */
@@ -4107,11 +4114,11 @@ var App = {
       $('s_pet_base').value = 'http://127.0.0.1:11434/v1';
       $('s_pet_key').value = $('s_pet_key').value.trim() || 'ollama';
       $('s_pet_model').value = $('s_pet_model').value.trim() || 'pet-cpu:1.5b';
-      petTip('已填本地 Ollama —— 点「测试伙伴 AI」（要先装好 Ollama 并 pull 过模型）');
+      petTip(I18n.t('已填本地 Ollama —— 点「测试伙伴 AI」（要先装好 Ollama 并 pull 过模型）'));
     };
     if(petClearBtn) petClearBtn.onclick = function(){
       ['s_pet_base','s_pet_key','s_pet_model'].forEach(function(id){ var e = $(id); if(e) e.value = ''; });
-      petTip('已清空 —— 伙伴改回跟上面那套共用');
+      petTip(I18n.t('已清空 —— 伙伴改回跟上面那套共用'));
     };
     /* 连接测试：两套共用一段逻辑，只是读的输入框和提示位置不同。
        ⚠️ 也要设超时，否则对方"接了不回"会让按钮永远停在「连接中…」（2026-09-24 加）。 */
@@ -4147,7 +4154,7 @@ var App = {
         if(timer) clearTimeout(timer);
         btn.disabled = false;
         var to = e && (e.name === 'AbortError' || /abort/i.test(String(e.message||'')));
-        tip(to ? '✗ 60 秒没回话：本地模型可能在加载或已崩，退出 Ollama 再打开一次试试'
+        tip(to ? I18n.t('✗ 60 秒没回话：本地模型可能在加载或已崩，退出 Ollama 再打开一次试试')
                : '✗ 连不上：' + (e && e.message) + '（本地模型没启动 / 断网 / 地址写错都这样）');
       });
     }
@@ -4158,7 +4165,7 @@ var App = {
     if(petTestBtn) petTestBtn.onclick = function(){
       /* 留空 = 共用主 AI，那就测主 AI */
       var b = $('s_pet_base').value.trim();
-      if(!b){ petTip('留空即共用上面那套，直接测「测试连接」就行'); return; }
+      if(!b){ petTip(I18n.t('留空即共用上面那套，直接测「测试连接」就行')); return; }
       testConn(petTestBtn, b, $('s_pet_key').value.trim(),
                $('s_pet_model').value.trim(), petTip, 'pet-cpu:1.5b');
     };
@@ -4176,13 +4183,13 @@ var App = {
       var tv=($('s_term')||{}).value;
       if(tv){ var td=parseYmd(tv); if(!isNaN(td.getTime())) STATE.termStart=ymd(mondayOf(td)); }
       save(); closeSheet();
-      toast('已保存 · 现在是第 '+currentWeek()+' 周');
+      toast(I18n.t('已保存 · 现在是第 ')+currentWeek()+' 周');
       render();
     };
     $('s_reset').onclick=function(){
-      if(confirm('确定清空全部数据？任务、倾倒、情绪、伙伴和记忆都会没，不可恢复。')){
+      if(confirm(I18n.t('确定清空全部数据？任务、倾倒、情绪、伙伴和记忆都会没，不可恢复。'))){
         localStorage.removeItem(APP_CONFIG.storageKey);
-        STATE=blankState(); save(); render(); closeSheet(); toast('已清空，从零开始');
+        STATE=blankState(); save(); render(); closeSheet(); toast(I18n.t('已清空，从零开始'));
       }
     };
     $('s_export').onclick=App.exportData;
@@ -4191,21 +4198,21 @@ var App = {
     /* 关窗偏好：点 × 是"每次问我 / 直接缩托盘 / 直接退出" */
     var cpBtn = $('s_closepref');
     if(cpBtn){
-      var cpLabel = {ask:'每次问我', tray:'缩到托盘', quit:'直接退出'};
+      var cpLabel = {ask:'每次问我', tray:I18n.t('缩到托盘'), quit:I18n.t('直接退出')};
       if(window.landing && window.landing.closePref){
-        window.landing.closePref.get().then(function(v){ cpBtn.textContent = '关闭窗口时：'+(cpLabel[v]||cpLabel.ask); });
+        window.landing.closePref.get().then(function(v){ cpBtn.textContent = I18n.t('关闭窗口时：')+(cpLabel[v]||cpLabel.ask); });
         cpBtn.onclick = function(){
           window.landing.closePref.get().then(function(v){
             /* 点一下按 问我 → 托盘 → 退出 → 问我 循环 */
             var next = v==='ask' ? 'tray' : (v==='tray' ? 'quit' : 'ask');
             return window.landing.closePref.set(next);
           }).then(function(applied){
-            cpBtn.textContent = '关闭窗口时：'+(cpLabel[applied]||cpLabel.ask);
-            toast('关闭窗口时：'+(cpLabel[applied]||cpLabel.ask));
+            cpBtn.textContent = I18n.t('关闭窗口时：')+(cpLabel[applied]||cpLabel.ask);
+            toast(I18n.t('关闭窗口时：')+(cpLabel[applied]||cpLabel.ask));
           });
         };
       } else {
-        cpBtn.textContent = '关闭窗口时：仅桌面版可设';
+        cpBtn.textContent = I18n.t('关闭窗口时：仅桌面版可设');
         cpBtn.disabled = true;
       }
     }
@@ -4217,14 +4224,14 @@ var App = {
     if(window.landing.closePromptOpened) window.landing.closePromptOpened();  /* 告诉主进程"弹层出来了，别走兜底超时" */
     var running = !!(STATE.timer && !STATE.timer.finished);
     var task = timerTask();
-    openSheet('<h2>要关掉着陆吗？</h2>'
+    openSheet(I18n.html('<h2>要关掉着陆吗？</h2>')
       + '<div class="hint">关掉窗口有两种方式，你说了算。</div>'
-      + (running ? '<div class="hint" style="color:var(--terracotta-d)">「'+esc(task?task.name:(STATE.timer.name||'专注'))+'」正在计时 —— 选托盘就继续走，选退出会按暂停存好、下次打开接着算。</div>' : '')
+      + (running ? '<div class="hint" style="color:var(--terracotta-d)">「'+esc(task?task.name:(STATE.timer.name||I18n.t('专注')))+I18n.html('」正在计时 —— 选托盘就继续走，选退出会按暂停存好、下次打开接着算。</div>') : '')
       + '<div class="wk-pick">'
-      +   '<button class="wk-choice" id="cc_tray"><b>最小化到托盘</b><span>计时继续跑，点右下角图标随时回来</span></button>'
-      +   '<button class="wk-choice" id="cc_quit"><b>彻底退出</b><span>关掉程序，下次打开再继续</span></button>'
+      +   I18n.html('<button class="wk-choice" id="cc_tray"><b>最小化到托盘</b><span>计时继续跑，点右下角图标随时回来</span></button>')
+      +   I18n.html('<button class="wk-choice" id="cc_quit"><b>彻底退出</b><span>关掉程序，下次打开再继续</span></button>')
       + '</div>'
-      + '<label class="ck-row"><input type="checkbox" id="cc_remember"> 记住我的选择，以后不再问</label>'
+      + I18n.html('<label class="ck-row"><input type="checkbox" id="cc_remember"> 记住我的选择，以后不再问</label>')
       + '<div class="sheet-actions"><button class="btn ghost" id="cc_cancel">再想想</button></div>');
 
     /* ⚠️ 必须先读勾选框再 closeSheet()：关掉弹层后 #cc_remember 就没了（踩过） */
@@ -4424,7 +4431,7 @@ function init(){
      却一条鱼没见着，就会以为没生效）。只在真发了鱼的那天提示一次。 */
   if(classFishToday > 0){
     setTimeout(function(){
-      toast('今天 '+classPeriodsOn(today())+' 节课也算投入 · +'+classFishToday+' 🐟');
+      toast(I18n.t('今天 ')+classPeriodsOn(today())+I18n.t(' 节课也算投入 · +')+classFishToday+' 🐟');
     }, 1600);
   }
   /* 深链：#tab=me 之类的锚点可以直接打开对应模块（键名必须出现在 TAB_TITLE 里） */
@@ -4474,7 +4481,7 @@ function init(){
     tr.finished = true;
     save();
     setTimeout(function(){
-      toast('你没开应用这会儿，计时已经结束了');
+      toast(I18n.t('你没开应用这会儿，计时已经结束了'));
       openTimerFinishSheet(false);
     }, 700);
   } else if(tr && !tr.finished){

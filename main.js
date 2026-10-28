@@ -17,6 +17,9 @@ const os = require('os');
 const http = require('http');
 const https = require('https');
 const digestNetwork = require('./digest-network.cjs');
+const localeCore=require('./i18n-core.js');
+let activeLanguage;
+const I18n=localeCore.create(require('./locales.js'),()=>{if(activeLanguage)return activeLanguage;try{return JSON.parse(fs.readFileSync(path.join(app.getPath('userData'),'data','prefs.json'),'utf8')).language||'zh-CN';}catch(e){return 'zh-CN';}});
 
 /* ---------- 单实例：第二次启动就把已有窗口顶到前面，别再开一个 ---------- */
 const gotLock = app.requestSingleInstanceLock();
@@ -48,27 +51,27 @@ if (process.platform === 'win32') app.setAppUserModelId('com.landing.app');
 const DATA_DIR = path.join(app.getPath('userData'), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'window-state.json');
 const FEED_FILE = path.join(DATA_DIR, 'feed.json');
-const BACKUP_DIR = path.join(app.getPath('documents'), '着陆备份');
+const BACKUP_DIR = path.join(app.getPath('documents'), '着陆备份'); // Keep the existing backup location across languages.
 
 /* Digest credentials are scoped to a provider and its exact API base URL. */
 const DIGEST_CREDENTIALS = path.join(DATA_DIR, 'digest-credentials.json');
 function digestCredentials() {
   try { return JSON.parse(fs.readFileSync(DIGEST_CREDENTIALS, 'utf8')); }
-  catch (e) { if (e.code === 'ENOENT') return {}; throw new Error('日报凭据文件无法读取，请恢复备份后重试'); }
+  catch (e) { if (e.code === 'ENOENT') return {}; throw new Error(I18n.t('日报凭据文件无法读取，请恢复备份后重试')); }
 }
 function digestSender(event) {
-  if (!event.senderFrame || !event.senderFrame.url.startsWith('file://') || !/\/index\.html(?:[?#]|$)/.test(event.senderFrame.url)) throw new Error('不允许的日报请求来源');
+  if (!event.senderFrame || !event.senderFrame.url.startsWith('file://') || !/\/index\.html(?:[?#]|$)/.test(event.senderFrame.url)) throw new Error(I18n.t('不允许的日报请求来源'));
 }
 ipcMain.handle('digest:configure', (event, config) => {
   digestSender(event);
   const src = digestNetwork.source(config || {});
   const token = String(config.token || '').trim();
   if (/[\r\n]/.test(token) || token.length > 4096) throw new Error('令牌格式不正确');
-  if (token && config.clearToken) throw new Error('请只选择填写新令牌或清除令牌中的一种操作');
+  if (token && config.clearToken) throw new Error(I18n.t('请只选择填写新令牌或清除令牌中的一种操作'));
   if (token || config.clearToken) {
     const credentials = digestCredentials();
     if (token) {
-      if (!safeStorage.isEncryptionAvailable()) throw new Error('此系统暂时无法加密保存令牌');
+      if (!safeStorage.isEncryptionAvailable()) throw new Error(I18n.t('此系统暂时无法加密保存令牌'));
       credentials[src.key] = safeStorage.encryptString(token).toString('base64');
     } else delete credentials[src.key];
     ensureDataDir();
@@ -208,8 +211,8 @@ ipcMain.handle('data:save', async (e, payload) => {
   const json = String((payload && payload.json) || '');
   const stamp = todayStr();
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: '导出着陆备份',
-    defaultPath: path.join(app.getPath('documents'), '着陆备份-' + stamp + '.json'),
+    title: I18n.t('导出着陆备份'),
+    defaultPath: path.join(app.getPath('documents'), I18n.t('着陆备份-') + stamp + '.json'),
     filters: [{ name: 'JSON 备份', extensions: ['json'] }]
   });
   if (canceled || !filePath) return { ok: false, canceled: true };
@@ -224,7 +227,7 @@ ipcMain.handle('data:save', async (e, payload) => {
 ipcMain.handle('data:open', async (e) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: '导回着陆备份',
+    title: I18n.t('导回着陆备份'),
     properties: ['openFile'],
     filters: [{ name: 'JSON 备份', extensions: ['json'] }]
   });
@@ -499,7 +502,7 @@ ipcMain.handle('jwgl:schedule', async (e, opts) => {
       return {
         ok: false, needLogin: true, hasCred: !!cred,
         username: cred ? cred.username : '',
-        error: '还没连接教务系统'
+        error: I18n.t('还没连接教务系统')
       };
     }
   }
@@ -547,8 +550,8 @@ ipcMain.handle('jwgl:logout', () => {
 /* 菜单项在渲染进程里直接叫 window.App / window.Landing 的公开方法，
    不额外建一套 IPC 事件通道——这些函数本来就是给 UI 用的。 */
 const TABS = [
-  ['今日', 'today'], ['周报', 'weekly'], ['日报', 'digest'], ['陪伴', 'companion'],
-  ['伙伴', 'pet'], ['商城', 'shop'], ['我的', 'me']
+  [I18n.t('今日'), 'today'], [I18n.t('周报'), 'weekly'], [I18n.t('日报'), 'digest'], [I18n.t('陪伴'), 'companion'],
+  [I18n.t('伙伴'), 'pet'], [I18n.t('商城'), 'shop'], [I18n.t('我的'), 'me']
 ];
 
 function runInRenderer(js) {
@@ -562,59 +565,59 @@ function buildMenu() {
 
   const template = [
     {
-      label: '应用',
+      label: I18n.t('应用'),
       submenu: [
-        { label: '关于着陆', click: showAbout },
+        { label: I18n.t('关于着陆'), click: showAbout },
         { type: 'separator' },
-        { label: '设置…', accelerator: 'CmdOrCtrl+,', click: () => runInRenderer('window.App && App.openSettings()') },
-        { label: '导出备份…', click: () => runInRenderer('window.App && App.exportData()') },
-        { label: '导回备份…', click: () => runInRenderer('window.App && App.importData()') },
+        { label: I18n.t('设置…'), accelerator: 'CmdOrCtrl+,', click: () => runInRenderer('window.App && App.openSettings()') },
+        { label: I18n.t('导出备份…'), click: () => runInRenderer('window.App && App.exportData()') },
+        { label: I18n.t('导回备份…'), click: () => runInRenderer('window.App && App.importData()') },
         {
-          label: '打开数据文件夹',
+          label: I18n.t('打开数据文件夹'),
           click: () => shell.openPath(app.getPath('userData'))
         },
         { type: 'separator' },
-        { role: 'quit', label: '退出' }
+        { role: 'quit', label: I18n.t('退出') }
       ]
     },
     {
-      label: '编辑',
+      label: I18n.t('编辑'),
       submenu: [
-        { role: 'undo', label: '撤销' }, { role: 'redo', label: '重做' },
+        { role: 'undo', label: I18n.t('撤销') }, { role: 'redo', label: I18n.t('重做') },
         { type: 'separator' },
-        { role: 'cut', label: '剪切' }, { role: 'copy', label: '复制' },
-        { role: 'paste', label: '粘贴' }, { role: 'selectAll', label: '全选' }
+        { role: 'cut', label: I18n.t('剪切') }, { role: 'copy', label: I18n.t('复制') },
+        { role: 'paste', label: I18n.t('粘贴') }, { role: 'selectAll', label: I18n.t('全选') }
       ]
     },
     {
-      label: '视图',
+      label: I18n.t('视图'),
       submenu: TABS.map(([label, key], i) => ({
-        label,
+        label:I18n.t(I18n.original(label)),
         accelerator: 'CmdOrCtrl+' + (i + 1),
         click: () => runInRenderer('window.Landing && Landing.tab(' + JSON.stringify(key) + ')')
       })).concat([
         { type: 'separator' },
-        { role: 'reload', label: '重新加载' },
-        { role: 'resetZoom', label: '恢复缩放' },
-        { role: 'zoomIn', label: '放大' },
-        { role: 'zoomOut', label: '缩小' },
+        { role: 'reload', label: I18n.t('重新加载') },
+        { role: 'resetZoom', label: I18n.t('恢复缩放') },
+        { role: 'zoomIn', label: I18n.t('放大') },
+        { role: 'zoomOut', label: I18n.t('缩小') },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: '全屏' }
-      ]).concat(isDev ? [{ type: 'separator' }, { role: 'toggleDevTools', label: '开发者工具' }] : [])
+        { role: 'togglefullscreen', label: I18n.t('全屏') }
+      ]).concat(isDev ? [{ type: 'separator' }, { role: 'toggleDevTools', label: I18n.t('开发者工具') }] : [])
     },
     {
-      label: '帮助',
+      label: I18n.t('帮助'),
       submenu: [
         {
-          label: '小陆不见了？把它叫回来',
+          label: I18n.t('小陆不见了？把它叫回来'),
           click: () => runInRenderer(
             'window.Pet && Pet.show && Pet.show(); window.Landing && Landing.tab("pet")'
           )
         },
-        { label: '收起 / 展开小陆', click: () => runInRenderer('window.Pet && Pet.toggleCollapse && Pet.toggleCollapse()') },
+        { label: I18n.t('收起 / 展开小陆'), click: () => runInRenderer('window.Pet && Pet.toggleCollapse && Pet.toggleCollapse()') },
         { type: 'separator' },
         {
-          label: '项目主页',
+          label: I18n.t('项目主页'),
           click: () => shell.openExternal('https://github.com/bydashuaibi/landing')
         }
       ]
@@ -627,13 +630,13 @@ function showAbout() {
   const win = BrowserWindow.getAllWindows()[0];
   dialog.showMessageBox(win, {
     type: 'info',
-    title: '关于着陆',
-    message: '着陆 · 把焦虑变成下一步',
+    title: I18n.t('关于着陆'),
+    message: I18n.t('着陆 · 把焦虑变成下一步'),
     detail: '版本 ' + app.getVersion() + '\nElectron ' + process.versions.electron
       + ' / Chromium ' + process.versions.chrome
-      + '\n\n存档保存在本机：\n' + app.getPath('userData')
-      + '\n\n主动使用 AI 时，相关文字会发送到你配置的接口；学习画面只在点击「识别画面」后发送。',
-    buttons: ['好']
+      + I18n.t('\n\n存档保存在本机：\n') + app.getPath('userData')
+      + I18n.t('\n\n主动使用 AI 时，相关文字会发送到你配置的接口；学习画面只在点击「识别画面」后发送。'),
+    buttons: [I18n.t('好')]
   });
 }
 
@@ -658,6 +661,15 @@ function writePrefs(patch) {
   try { fs.writeFileSync(PREFS_FILE, JSON.stringify(next, null, 2)); } catch (e) {}
   return next;
 }
+function localeSender(event){return event.senderFrame===event.sender.mainFrame&&/^file:/.test(event.senderFrame.url)&&/\/(index|desktop-pet|desktop-pet-settings|pet-skins-window|ask)\.html(?:[?#]|$)/.test(event.senderFrame.url);}
+ipcMain.on('language:get',event=>{event.returnValue=localeSender(event)?I18n.locale():'zh-CN';});
+ipcMain.handle('language:set',(event,value)=>{
+  if(!localeSender(event)||!['zh-CN','en','ja'].includes(value))throw Error('Unsupported language');
+  writePrefs({language:value});activeLanguage=value;buildMenu();
+  if(tray){tray.destroy();tray=null;createTray();}
+  setImmediate(()=>{for(const win of BrowserWindow.getAllWindows())if(!win.isDestroyed())win.webContents.send('language:changed',value);});
+  return value;
+});
 function getCloseAction() {
   const v = readPrefs().closeAction;
   return (v === 'tray' || v === 'quit') ? v : 'ask';
@@ -681,19 +693,19 @@ function createTray() {
   try {
     tray = new Tray(trayIcon());
   } catch (err) {
-    console.error('[tray] 托盘创建失败，退回「关窗即退出」：', err.message);
+    console.error(I18n.t('[tray] 托盘创建失败，退回「关窗即退出」：'), err.message);
     return;
   }
-  tray.setToolTip('着陆 · 在后台待着（计时照常走）');
+  tray.setToolTip(I18n.t('着陆 · 在后台待着（计时照常走）'));
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '显示主窗口', click: showMainWindow },
-    { label: '显示桌宠 / 恢复互动', click: () => desktopPet && desktopPet.show() },
-    { label: '桌宠设置…', click: () => desktopPet && desktopPet.openSettings() },
-    { label: '结束当前计时', click: () => runInRenderer('window.App && App.timerFinish()') },
+    { label: I18n.t('显示主窗口'), click: showMainWindow },
+    { label: I18n.t('显示桌宠 / 恢复互动'), click: () => desktopPet && desktopPet.show() },
+    { label: I18n.t('桌宠设置…'), click: () => desktopPet && desktopPet.openSettings() },
+    { label: I18n.t('结束当前计时'), click: () => runInRenderer('window.App && App.timerFinish()') },
     { type: 'separator' },
-    { label: '打开数据文件夹', click: () => shell.openPath(app.getPath('userData')) },
+    { label: I18n.t('打开数据文件夹'), click: () => shell.openPath(app.getPath('userData')) },
     { type: 'separator' },
-    { label: '退出着陆', click: () => { isQuitting = true; app.quit(); } }
+    { label: I18n.t('退出着陆'), click: () => { isQuitting = true; app.quit(); } }
   ]));
   /* 左键点图标：开着就收起、藏着就叫回来（和大多数常驻软件一致） */
   tray.on('click', () => {
@@ -710,8 +722,8 @@ function trayHintOnce() {
     fs.writeFileSync(TRAY_HINT_FILE, new Date().toISOString());
     if (tray && process.platform === 'win32') {
       tray.displayBalloon({
-        title: '着陆缩到托盘了',
-        content: '窗口关了，但计时还在走。点右下角的小图标就能叫回来；要彻底退出就右键它。'
+        title: I18n.t('着陆缩到托盘了'),
+        content: I18n.t('窗口关了，但计时还在走。点右下角的小图标就能叫回来；要彻底退出就右键它。')
       });
     }
   } catch (e) {}
@@ -758,13 +770,13 @@ function askCloseChoice() {
 
 /* 开机自启：打包后 execPath 就是应用本体；开发态跑的是 electron.exe，得把工程目录当参数带上 */
 const autoLaunch = require('./auto-launch.cjs')(app);
-function autoLaunchSender(e) { if (!mainWindow || e.sender !== mainWindow.webContents) throw new Error('请从着陆主窗口设置开机自启'); }
+function autoLaunchSender(e) { if (!mainWindow || e.sender !== mainWindow.webContents) throw new Error(I18n.t('请从着陆主窗口设置开机自启')); }
 ipcMain.handle('app:getAutoLaunch', e => { autoLaunchSender(e); return autoLaunch.get(); });
 ipcMain.handle('app:setAutoLaunch', (e,on) => { autoLaunchSender(e); return autoLaunch.set(!!on); });
 
 /* 渲染进程把「现在在计什么」推给托盘，鼠标悬停就能看见，不用打开窗口 */
 ipcMain.on('tray:hint', (e, text) => {
-  if (tray && !tray.isDestroyed()) tray.setToolTip('着陆 · ' + (text || '在后台待着'));
+  if (tray && !tray.isDestroyed()) tray.setToolTip(I18n.t('着陆 · ') + (text || I18n.t('在后台待着')));
 });
 
 /* 关窗偏好：设置面板可以查看 / 改回「每次问我」 */
@@ -1035,7 +1047,7 @@ function actPush() {
    ⚠️ 跟截图没关系：真正知道"他在用哪个程序"的是 sampleForeground 这条线。
    只在**进程名真的变了**、且不在冷却期、且不是壳进程时才推 —— 免得切个输入法就被问一次。 */
 /* landing / electron 也算「自己」—— 他在着陆里点来点去的时候不该被问「你在做什么」 */
-const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|landing|electron|着陆|explorer|idle)$/i;
+const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|landing|studytrail|学迹|electron|着陆|explorer|idle)$/i;
 let _lastProc = '';
 let _lastProcAt = 0;    /* 当前这个进程**从什么时候开始**在前台 —— 算"上一段待了多久" */
 let _lastTitle = '';
@@ -1223,7 +1235,7 @@ ipcMain.handle('learning:displays', (event) => {
   return screen.getAllDisplays().map((d, i) => ({ id: String(d.id), name: d.label || ('屏幕 ' + (i + 1)), primary: d.id === screen.getPrimaryDisplay().id }));
 });
 ipcMain.handle('learning:capture', async (event, displayId) => {
-  if (!mainWindow || event.sender !== mainWindow.webContents) return { error: '只能在着陆主窗口截取学习画面' };
+  if (!mainWindow || event.sender !== mainWindow.webContents) return { error: I18n.t('只能在着陆主窗口截取学习画面') };
   if (learningCaptureBusy) return { error: '正在截取画面，请稍等' };
   const displays = screen.getAllDisplays();
   const display = displayId == null ? screen.getDisplayMatching(mainWindow.getBounds()) : displays.find(d => String(d.id) === String(displayId));
@@ -1244,9 +1256,9 @@ ipcMain.handle('learning:capture', async (event, displayId) => {
       const thumb = image.resize({ width: Math.min(480, size.width) });
       frames.push({ image: 'data:image/jpeg;base64,' + image.toJPEG(78).toString('base64'), thumbnail: 'data:image/jpeg;base64,' + thumb.toJPEG(60).toString('base64'), at: Date.now(), width: size.width, height: size.height });
     }
-    return { frames, displayId: String(display.id), displayName: display.label || '学习屏幕' };
+    return { frames, displayId: String(display.id), displayName: display.label || I18n.t('学习屏幕') };
   } catch (error) {
-    return { error: error.message || '截屏失败，请重试' };
+    return { error: error.message || I18n.t('截屏失败，请重试') };
   } finally {
     learningCaptureBusy = false;
     if (!isQuitting) visible.forEach(w => { if (!w.isDestroyed()) w.showInactive(); });
@@ -1358,7 +1370,7 @@ function createWindow() {
     show: false,
     backgroundColor: '#cbcfb8',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
-    title: '着陆 · 每天一点，慢慢做到',
+    title: I18n.t('着陆 · 每天一点，慢慢做到'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1436,10 +1448,10 @@ function createWindow() {
   /* 渲染进程崩溃 / 加载失败时给个能看懂的说法，而不是留一个白窗口 */
   mainWindow.webContents.on('render-process-gone', (e, details) => {
     dialog.showMessageBox(mainWindow, {
-      type: 'error', title: '着陆',
-      message: '界面进程意外退出了',
+      type: 'error', title: I18n.t('着陆'),
+      message: I18n.t('界面进程意外退出了'),
       detail: '原因：' + (details && details.reason) + '\n你的数据没有丢，重开一次即可。',
-      buttons: ['重新加载', '退出']
+      buttons: [I18n.t('重新加载'), I18n.t('退出')]
     }).then(r => {
       if (r.response === 0 && mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
       else app.quit();
@@ -1448,7 +1460,7 @@ function createWindow() {
 
   mainWindow.webContents.on('did-fail-load', (e, code, desc, url, isMainFrame) => {
     if (!isMainFrame) return;
-    dialog.showErrorBox('着陆加载失败', code + ' ' + desc + '\n' + url);
+    dialog.showErrorBox(I18n.t('着陆加载失败'), code + ' ' + desc + '\n' + url);
   });
 }
 
@@ -1459,8 +1471,8 @@ app.whenReady().then(() => {
   buildMenu();
   createWindow();
   createTray();          /* 有托盘 = 关窗口只是藏起来，程序继续在后台跑 */
-  petSkinManager = require('./pet-skins.cjs')({getMain:()=>mainWindow,getDesktop:()=>desktopPet?desktopPet.getWindows():[],showDesktop:()=>desktopPet&&desktopPet.show(),desktopStatus:()=>desktopPet?desktopPet.status():{enabled:false,visible:false}});
-  desktopPet = require('./desktop-pet.cjs')({ getMain: () => mainWindow, showMain: showMainWindow, readPrefs, writePrefs, openSkins:()=>petSkinManager.open(),autoLaunch,closeBehavior:{get:getCloseAction,set:value=>writePrefs({closeAction:value})} });
+  petSkinManager = require('./pet-skins.cjs')({i18n:I18n,getMain:()=>mainWindow,getDesktop:()=>desktopPet?desktopPet.getWindows():[],showDesktop:()=>desktopPet&&desktopPet.show(),desktopStatus:()=>desktopPet?desktopPet.status():{enabled:false,visible:false}});
+  desktopPet = require('./desktop-pet.cjs')({ i18n:I18n, getMain: () => mainWindow, showMain: showMainWindow, readPrefs, writePrefs, openSkins:()=>petSkinManager.open(),autoLaunch,closeBehavior:{get:getCloseAction,set:value=>writePrefs({closeAction:value})} });
   if(process.argv.includes('--pet-skins'))petSkinManager.open();
   if(process.argv.includes('--desktop-pet'))desktopPet.show();
   if(process.argv.includes('--pet-settings'))desktopPet.openSettings();
