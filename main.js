@@ -9,7 +9,7 @@
  *   · window.open / 页面内跳转一律拦截，外链交给系统浏览器
  *   · 渲染进程里的网络请求只允许它真正需要的域名（GitHub API + 用户自配的 AI 接口）
  */
-const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage, safeStorage, net } = require('electron');
+const { app, BrowserWindow, shell, session, ipcMain, Menu, dialog, screen, Tray, nativeImage, safeStorage, net, powerMonitor } = require('electron');
 const { JwglClient } = require('./jwgl');
 const path = require('path');
 const fs = require('fs');
@@ -23,7 +23,10 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, args) => {
+    if(args.includes('--pet-settings')&&desktopPet){desktopPet.openSettings();return;}
+    if(args.includes('--desktop-pet')&&desktopPet){desktopPet.show();return;}
+    if(args.includes('--pet-skins')&&petSkinManager){petSkinManager.open();return;}
     const win = mainWindow;
     if (win) {
       if (win.isMinimized()) win.restore();
@@ -684,6 +687,8 @@ function createTray() {
   tray.setToolTip('着陆 · 在后台待着（计时照常走）');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '显示主窗口', click: showMainWindow },
+    { label: '显示桌宠 / 恢复互动', click: () => desktopPet && desktopPet.show() },
+    { label: '桌宠设置…', click: () => desktopPet && desktopPet.openSettings() },
     { label: '结束当前计时', click: () => runInRenderer('window.App && App.timerFinish()') },
     { type: 'separator' },
     { label: '打开数据文件夹', click: () => shell.openPath(app.getPath('userData')) },
@@ -752,27 +757,10 @@ function askCloseChoice() {
 }
 
 /* 开机自启：打包后 execPath 就是应用本体；开发态跑的是 electron.exe，得把工程目录当参数带上 */
-function autoLaunchArgs() {
-  return app.isPackaged ? ['--hidden'] : [path.resolve(__dirname), '--hidden'];
-}
-
-ipcMain.handle('app:getAutoLaunch', () => {
-  try { return !!app.getLoginItemSettings().openAtLogin; } catch (e) { return false; }
-});
-
-ipcMain.handle('app:setAutoLaunch', (e, on) => {
-  try {
-    app.setLoginItemSettings({
-      openAtLogin: !!on,
-      openAsHidden: true,                 /* macOS 用 */
-      path: process.execPath,
-      args: autoLaunchArgs()
-    });
-    return !!app.getLoginItemSettings().openAtLogin;
-  } catch (err) {
-    return false;
-  }
-});
+const autoLaunch = require('./auto-launch.cjs')(app);
+function autoLaunchSender(e) { if (!mainWindow || e.sender !== mainWindow.webContents) throw new Error('请从着陆主窗口设置开机自启'); }
+ipcMain.handle('app:getAutoLaunch', e => { autoLaunchSender(e); return autoLaunch.get(); });
+ipcMain.handle('app:setAutoLaunch', (e,on) => { autoLaunchSender(e); return autoLaunch.set(!!on); });
 
 /* 渲染进程把「现在在计什么」推给托盘，鼠标悬停就能看见，不用打开窗口 */
 ipcMain.on('tray:hint', (e, text) => {
@@ -823,6 +811,7 @@ ipcMain.on('window:retract', () => {
 /* ---------- 建窗 ---------- */
 let mainWindow = null;
 let desktopPet = null;
+let petSkinManager = null;
 
 /* 当前窗口可见吗（最小化也算不可见）。
    **这是渲染进程判断可见性的唯一权威来源** —— 原因见 createWindow 里那段说明。 */
@@ -855,7 +844,7 @@ const ACTIVITY_DIR = path.join(app.getPath('userData'), 'activity');
    确认后自动开始计时（master：「每次点计时有点麻烦」）。
    askConfirm 是 2026-10-14 加的：master 要「不用我确认，只告知，实现自动化」，
    但选择权在他 —— false = 不弹窗问，按建议名直接落账 + 弹一个几秒就收的「已记下」通知。 */
-const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 5, keepDays: 14, ask: true, askConfirm: true, askCoolMin: 15 };
+const ACT_DEFAULTS = { enabled: true, sampleSec: 60, shotMin: 0, keepDays: 14, ask: true, askConfirm: false, askNotify: false, askCoolMin: 15 };
 
 function actPrefs() {
   return Object.assign({}, ACT_DEFAULTS, readPrefs().activity || {});
@@ -872,9 +861,9 @@ function setActPrefs(patch) {
       「…C++教程从0到1入门编程」这种）。改分类只动这张表。 */
 const ACT_RULES = [
   ['fun',    /wuthering|client-win64-shipping|launcher_main|punishing|pgr|slaythespire|calabiyau|genshin|starrail|hkrpg|steam\.exe|epicgames|gog galaxy|minecraft/i],
-  ['study',  /教程|入门|公开课|课程|第\s*\d+\s*讲|习题|题解|讲解|速成|零基础|c\+\+|python|算法|数据结构|文档|手册|论文|arxiv|stack ?overflow|csdn|菜鸟教程|学习/i],
+  ['study',  /教程|入门|公开课|课程|第\s*\d+\s*讲|习题|题解|讲解|速成|零基础|c\+\+|python|pytorch|深度学习|算法|数据结构|文档|手册|论文|arxiv|stack ?overflow|csdn|菜鸟教程|学习/i],
   ['work',   /devenv|visual studio|code\.exe|jetbrains|idea64|pycharm|clion|goland|webstorm|cursor|ue4editor|unrealeditor|unity|blender|photoshop|premiere|after effects|matlab|origin|keil|stm32cube|cad|solidworks|autocad|word|excel|powerpoint|wps|notion|typora|obsidian|xmind|navicat|pgadmin|dbeaver|terminal|cmd\.exe|windowsterminal|git bash|powershell/i],
-  ['fun',    /哔哩哔哩|bilibili|抖音|douyin|快手|kuaishou|优酷|youku|爱奇艺|iqiyi|腾讯视频|网易云音乐|cloudmusic|qq音乐|spotify|喜马拉雅|steam|游戏|game/i],
+  ['fun',    /哔哩哔哩|bilibili|抖音|douyin|快手|kuaishou|红果|短剧|短视频|优酷|youku|爱奇艺|iqiyi|腾讯视频|网易云音乐|cloudmusic|qq音乐|spotify|喜马拉雅|steam|游戏|game/i],
   ['social', /微信|wechat|weixin|^qq|dingtalk|钉钉|feishu|飞书|telegram|discord|slack|thunderbird|outlook|邮件/i],
 ];
 /* 只用来判"是不是在打游戏"（决定要不要把窗口叫回来打扰他） */
@@ -1025,7 +1014,7 @@ function actSnapshot() {
   const dur = actDurations();
   return {
     date: _act.date, enabled: p.enabled, sampleSec: p.sampleSec, shotMin: p.shotMin, keepDays: p.keepDays,
-    ask: p.ask, askConfirm: p.askConfirm !== false, askCoolMin: p.askCoolMin,
+    ask: p.ask, askConfirm: p.askConfirm === true, askNotify: p.askNotify === true, askCoolMin: p.askCoolMin,
     count: _act.samples.length, byCat: byCat,
     /* byCatMin / byApp / totalMin 是**真实时长**（2026-10-09 加，手机式"应用使用时间"）；
        byCat(条数) 留着兼容老渲染，新的都读 byCatMin */
@@ -1046,12 +1035,13 @@ function actPush() {
    ⚠️ 跟截图没关系：真正知道"他在用哪个程序"的是 sampleForeground 这条线。
    只在**进程名真的变了**、且不在冷却期、且不是壳进程时才推 —— 免得切个输入法就被问一次。 */
 /* landing / electron 也算「自己」—— 他在着陆里点来点去的时候不该被问「你在做什么」 */
-const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|landing|electron|idle)$/i;
+const PROC_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|conhost|cmd|powershell|pwsh|node|landing|electron|着陆|explorer|idle)$/i;
 let _lastProc = '';
 let _lastProcAt = 0;    /* 当前这个进程**从什么时候开始**在前台 —— 算"上一段待了多久" */
 let _lastTitle = '';
 let _lastCat = 'other';
 let _askAt = 0;
+let _lastSampleAt = 0, _lastProcMs = 0;
 function _sendAppChanged(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     try { mainWindow.webContents.send('activity:appChanged', payload); } catch (e) { }
@@ -1064,45 +1054,31 @@ function _sendAppChanged(payload) {
    👉 所以事件里要带上**上一段**是谁、待了多久 —— 那才是要问的对象，也是要记账的时长。
       时长按采样时刻算（粒度 = sampleSec，默认 60 秒），也就是他说的"大概时间"。 */
 function maybeAskApp(fg) {
+  const p = actPrefs(), now = Date.now();
   const proc = (fg && fg.proc) || 'idle';
-  const now = Date.now();
-  const prev = _lastProc;
-
-  if (!prev) {                                        /* 第一次采样：只记账，不发 */
-    _lastProc = proc; _lastProcAt = now;
-    _lastTitle = (fg && fg.title) || '';
-    _lastCat = fg ? classifyActivity(proc, fg.title) : 'other';
-    return;
-  }
-  if (prev === proc) return;                          /* 没换应用 */
-
-  /* 换了 → 把「上一段」结算出来 */
-  const prevMinutes = Math.max(0, Math.round((now - _lastProcAt) / 60000));
+  const cat = fg ? classifyActivity(proc, fg.title) : 'other';
+  const step = Math.max(10, p.sampleSec) * 1000;
+  const gap = _lastSampleAt ? now - _lastSampleAt : 0;
+  // A suspended computer must never turn into hours of recorded study.
+  if (gap >= 0 && gap <= step * 2) _lastProcMs += gap;
+  const previous = _lastProc, startedAt = _lastProcAt;
   const prevTitle = _lastTitle, prevCat = _lastCat;
-  const prevWasReal = !PROC_SHELL.test(prev);
-  const isShell = PROC_SHELL.test(proc);
-
-  _lastProc = proc; _lastProcAt = now;
-  _lastTitle = (fg && fg.title) || '';
-  _lastCat = fg ? classifyActivity(proc, fg.title) : 'other';
-
-  if (!prevWasReal) return;                           /* 上一段本来就是桌面/系统壳，没什么可问的 */
-  if (prevMinutes < 1) return;                        /* 太短：采样本来就是分钟粒度，不值得记 */
-
-  const payload = {
-    proc: proc, idle: isShell,
-    title: String(_lastTitle).slice(0, 120), cat: _lastCat, at: now,
-    prevProc: prev,
-    prevTitle: String(prevTitle).slice(0, 120),
-    prevCat: prevCat,
-    prevMinutes: prevMinutes,
-  };
-  /* 切到桌面/系统壳也是"这一段结束了"（他干完走开了，回头一样要问）——
-     但询问偏好和冷却期对两种情况一视同仁，不然每次回桌面都会被打扰一次 */
-  if (!actPrefs().ask) return;                        /* 他自己关掉了自动询问 */
-  if (now - _askAt < Math.max(3, actPrefs().askCoolMin) * 60000) return;
-  _askAt = now;
-  _sendAppChanged(payload);
+  const changed = previous !== proc || prevCat !== cat;
+  const periodic = p.askConfirm !== true && _lastProcMs >= 5 * 60000;
+  _lastSampleAt = now;
+  if (previous && !changed && !periodic && gap <= step * 2) return;
+  const minutes = Math.round(_lastProcMs / 60000);
+  _lastProc = proc; _lastProcAt = now; _lastProcMs = 0;
+  _lastTitle = (fg && fg.title) || ''; _lastCat = cat;
+  if (!previous || PROC_SHELL.test(previous) || minutes < 1 || !p.ask) return;
+  // Cooldown belongs to questions only; automatic recording must not drop segments.
+  if (p.askConfirm === true) {
+    if (now - _askAt < Math.max(3, p.askCoolMin) * 60000) return;
+    _askAt = now;
+  }
+  _sendAppChanged({proc, idle:PROC_SHELL.test(proc), title:String(_lastTitle).slice(0,120), cat, at:now,
+    segmentId:startedAt + ':' + now + ':' + previous, startedAt,
+    prevProc:previous, prevTitle:String(prevTitle).slice(0,120), prevCat, prevMinutes:minutes});
 }
 
 /* ---- 桌面悬浮询问窗（2026-10-14）----
@@ -1176,7 +1152,12 @@ function askWinHide() {
   if (askWin && !askWin.isDestroyed() && askWin.isVisible()) askWin.hide();
 }
 /* 渲染进程决定「要不要问、叫什么名字」（状态都在它那儿），主进程只负责把这个窗显示出来。 */
-ipcMain.on('ask:show', (e, payload) => askWinShow(payload || {}));
+ipcMain.on('ask:show', (e, payload) => {
+  if (!mainWindow || e.sender !== mainWindow.webContents) return;
+  const p = actPrefs();
+  if (!p.enabled || !p.ask || (payload && payload.notify ? !p.askNotify : p.askConfirm !== true)) return;
+  askWinShow(payload || {});
+});
 /* ask.html 脚本挂上监听之后主动喊一声 —— 双保险，免得第一条 ask:data 被吃掉 */
 ipcMain.on('ask:ready', () => {
   askReady = true;
@@ -1193,17 +1174,21 @@ ipcMain.on('ask:resolve', (e, r) => {
 });
 
 /* ---- 采样一次 ---- */
-async function actTick() {
+async function actTick(generation) {
   if (!actPrefs().enabled) return;
   const today0 = ymdLocal();
   if (_act.date !== today0) { _act = { date: today0, samples: [], shots: 0, bytes: 0, last: null }; }
-  const fg = await sampleForeground();
+  let fg = await sampleForeground();
+  if (!actPrefs().enabled || (generation != null && generation !== _activityGeneration)) return;
+  // Watching a lesson may involve no mouse input; only a locked session is idle here.
+  if (powerMonitor.getSystemIdleState(120) === 'locked') fg = null;
+  fg = fg || {proc:'idle', title:''};
   if (fg) {
     const cat = classifyActivity(fg.proc, fg.title);
     _act.last = { proc: fg.proc, title: fg.title, cat: cat, at: Date.now() };
     /* 同一分钟只记一条（采样偶尔会抖动/重入） */
     const lastS = _act.samples[_act.samples.length - 1];
-    if (!lastS || (Date.now() - lastS.at) >= 30000) {
+    if (!lastS || (Date.now() - lastS.at) >= Math.max(10, actPrefs().sampleSec) * 1000 - 1000) {
       _act.samples.push({ at: Date.now(), proc: fg.proc, title: fg.title.slice(0, 120), cat: cat });
       if (_act.samples.length > 3000) _act.samples.splice(0, _act.samples.length - 3000);
     }
@@ -1215,7 +1200,7 @@ async function actTick() {
 
 /* ---- 截一张 ---- */
 async function actShot() {
-  if (!actPrefs().enabled) return;
+  if (!actPrefs().enabled || actPrefs().shotMin <= 0) return;
   try {
     const { desktopCapturer } = require('electron');
     const srcs = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1600, height: 900 } });
@@ -1244,7 +1229,7 @@ ipcMain.handle('learning:capture', async (event, displayId) => {
   const display = displayId == null ? screen.getDisplayMatching(mainWindow.getBounds()) : displays.find(d => String(d.id) === String(displayId));
   if (!display) return { error: '这个屏幕已断开，请重新选择' };
   learningCaptureBusy = true;
-  const visible = [mainWindow, askWin].concat(desktopPet ? desktopPet.getWindows() : []).filter(w => w && !w.isDestroyed() && w.isVisible());
+  const visible = [mainWindow, askWin].concat(desktopPet ? desktopPet.getWindows() : [],petSkinManager ? petSkinManager.getWindows() : []).filter(w => w && !w.isDestroyed() && w.isVisible());
   try {
     visible.forEach(w => w.hide());
     await new Promise(resolve => setTimeout(resolve, 450));
@@ -1291,19 +1276,27 @@ function cleanOldShots() {
 
 let _actTimers = [];
 let _actCleanTimer = null;      /* 过期截图的周期清理（每 6 小时） */
+let _activityGeneration = 0;
 function applyActivityTimers() {
-  _actTimers.forEach((t) => clearTimeout(t));
-  _actTimers = [];
-  if (!actPrefs().enabled) return;
+  const generation = ++_activityGeneration;
+  _actTimers.forEach(clearTimeout); _actTimers = [];
+  _lastProc = ''; _lastProcAt = 0; _lastSampleAt = 0; _lastProcMs = 0;
   const p = actPrefs();
-  const loop = (fn, ms) => {
-    const tick = async () => { try { await fn(); } catch (e) { } _actTimers.push(setTimeout(tick, ms)); };
-    _actTimers.push(setTimeout(tick, ms));
-  };
-  actTick();                       /* 立刻来一次 */
-  loop(actTick, Math.max(10, p.sampleSec) * 1000);
-  loop(actShot, Math.max(1, p.shotMin) * 60000);
+  if (!p.ask || p.askConfirm !== true) askWinHide();
+  if (!p.enabled) return;
+  // Keep one timer per loop; stale async samples cannot restart a stopped loop.
+  function loop(fn, ms, index, immediate) {
+    async function tick() {
+      if (generation !== _activityGeneration) return;
+      try { await fn(); } catch (e) { console.error('[activity]', e.message); }
+      if (generation === _activityGeneration) _actTimers[index] = setTimeout(tick, ms);
+    }
+    if (immediate) tick(); else _actTimers[index] = setTimeout(tick, ms);
+  }
+  loop(() => actTick(generation), Math.max(10, p.sampleSec) * 1000, 0, true);
+  if (p.shotMin > 0) loop(actShot, p.shotMin * 60000, 1, false);
 }
+
 function ymdLocal(d) {
   d = d || new Date();
   const z = (n) => ('0' + n).slice(-2);
@@ -1312,6 +1305,11 @@ function ymdLocal(d) {
 function pad2(n) { return ('0' + n).slice(-2); }
 
 function startActivity() {
+  const prefs = readPrefs();
+  if (!prefs.activity || prefs.activity.quietModeVersion !== 1) {
+    prefs.activity = Object.assign({}, prefs.activity, {ask:true, askConfirm:false, askNotify:false, quietModeVersion:1});
+    writePrefs(prefs);
+  }
   fs.mkdirSync(ACTIVITY_DIR, { recursive: true });
   const today0 = ymdLocal();
   try { _act = JSON.parse(fs.readFileSync(actLogPath(today0), 'utf8')); } catch (e) { _act = { date: today0, samples: [], shots: 0, bytes: 0, last: null }; }
@@ -1358,7 +1356,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 620,
     show: false,
-    backgroundColor: '#111713',
+    backgroundColor: '#cbcfb8',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     title: '着陆 · 每天一点，慢慢做到',
     webPreferences: {
@@ -1461,7 +1459,11 @@ app.whenReady().then(() => {
   buildMenu();
   createWindow();
   createTray();          /* 有托盘 = 关窗口只是藏起来，程序继续在后台跑 */
-  desktopPet = require('./desktop-pet.cjs')({ getMain: () => mainWindow, showMain: showMainWindow, readPrefs, writePrefs });
+  petSkinManager = require('./pet-skins.cjs')({getMain:()=>mainWindow,getDesktop:()=>desktopPet?desktopPet.getWindows():[],showDesktop:()=>desktopPet&&desktopPet.show(),desktopStatus:()=>desktopPet?desktopPet.status():{enabled:false,visible:false}});
+  desktopPet = require('./desktop-pet.cjs')({ getMain: () => mainWindow, showMain: showMainWindow, readPrefs, writePrefs, openSkins:()=>petSkinManager.open(),autoLaunch,closeBehavior:{get:getCloseAction,set:value=>writePrefs({closeAction:value})} });
+  if(process.argv.includes('--pet-skins'))petSkinManager.open();
+  if(process.argv.includes('--desktop-pet'))desktopPet.show();
+  if(process.argv.includes('--pet-settings'))desktopPet.openSettings();
   try { startActivity(); } catch (err) { console.error('[activity] 启动失败：', err.message); }
 
   app.on('activate', () => {

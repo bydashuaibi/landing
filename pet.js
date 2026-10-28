@@ -48,6 +48,9 @@
      注意：app.js 的 catVitality() 是"今天的综合状态"（由倾倒/打卡算出来，过零点归零重来），
      跟这里的 energy 不是一回事 —— 所以它的显示名改成了「今日状态」，把「精力」让给真正的状态值。 */
   var DIMS = [
+    {k:'curiosity',name:'好奇心',emoji:'🔎',hint:'观察、翻牌和真实专注会增长，20 解锁林间小径',tiers:[{min:0,t:'看见新鲜事'},{min:20,t:'小小探索家'},{min:50,t:'眼里有世界'},{min:80,t:'万物皆有趣'}]},
+    {k:'creativity',name:'创造力',emoji:'🎨',hint:'像素涂鸦和记录风景会增长，20 解锁新画笔',tiers:[{min:0,t:'随手画画'},{min:20,t:'有点灵感'},{min:50,t:'小小创作者'},{min:80,t:'世界有颜色'}]},
+    {k:'courage',name:'勇气',emoji:'🧭',hint:'尝试路线与翻牌会增长，20 解锁六对翻牌，35 解锁天台',tiers:[{min:0,t:'试着迈一步'},{min:20,t:'敢试试看'},{min:50,t:'独自也勇敢'},{min:80,t:'温柔而坚定'}]},
     { k: 'energy', name: '精力', emoji: '⚡', hint: '睡觉、记录会回；你 0-5 点还在专注，它会跟着熬',
       tiers: [{ min: 0, t: '蔫了' }, { min: 30, t: '还行' }, { min: 60, t: '有精神' }, { min: 85, t: '活蹦乱跳' }] },
     { k: 'mood', name: '心情', emoji: '💛', hint: '摸摸、说说话、一起玩都会涨；很久不理它会淡下去',
@@ -82,7 +85,22 @@
     { id: 'laser', name: '激光笔', emoji: '🔴', cost: 32, kind: 'toy', once: true, desc: '它永远抓不到的那个红点' },
     { id: 'scarf', name: '毛线围巾', emoji: '🧣', cost: 25, kind: 'gear', slot: 'neck', once: true, desc: '戴上就没那么赛博了' },
     { id: 'glasses', name: '墨镜', emoji: '🕶️', cost: 45, kind: 'gear', slot: 'face', once: true, desc: '看起来很有主意' },
-    { id: 'crown', name: '小王冠', emoji: '👑', cost: 90, kind: 'gear', slot: 'head', once: true, desc: '你养的是只有身份的猫' }
+    { id: 'crown', name: '小王冠', emoji: '👑', cost: 90, kind: 'gear', slot: 'head', once: true, desc: '送给伙伴的小小加冕' },
+    {id:'cookie',name:'黄油曲奇',emoji:'🍪',cost:2,kind:'food',hunger:18,intimacy:2,desc:'下午茶的小甜点'},
+    {id:'berry',name:'草莓拼盘',emoji:'🍓',cost:3,kind:'food',hunger:25,intimacy:2,desc:'分享一点清甜的好心情'},
+    {id:'sandwich',name:'午后轻食',emoji:'🥪',cost:4,kind:'food',hunger:32,intimacy:3,desc:'读书前先好好吃饭'},
+    {id:'matcha',name:'抹茶点心',emoji:'🍵',cost:6,kind:'food',hunger:40,intimacy:4,desc:'留给认真生活的你们'},
+    {id:'musicbox',name:'星光八音盒',emoji:'🎵',cost:8,kind:'toy',once:true,motion:'music',desc:'一起摇摆，飘出小音符（无声音）'},
+    {id:'camera',name:'拍立得',emoji:'📷',cost:10,kind:'toy',once:true,motion:'camera',desc:'挥手摆姿势，亮起星星；不截屏'},
+    {id:'sketchbook',name:'涂鸦手账',emoji:'📒',cost:12,kind:'toy',once:true,motion:'sketch',desc:'坐下来翻一翻，陪你安静画画'},
+    {id:'ribbon',name:'莓果蝴蝶结',emoji:'🎀',cost:6,kind:'gear',slot:'head',once:true,desc:'金发旁的一点莓果色'},
+    {id:'beret',name:'画家贝雷帽',emoji:'🎨',cost:12,kind:'gear',slot:'head',once:true,desc:'把普通午后变成创作时间'},
+    {id:'headphones',name:'奶油耳机',emoji:'🎧',cost:16,kind:'gear',slot:'head',once:true,desc:'读书时也能戴的像素耳机'},
+    {id:'starclip',name:'星星发夹',emoji:'⭐',cost:9,kind:'gear',slot:'head',once:true,desc:'随身带着一颗小星星'},
+    {id:'dawn',name:'晨光窗边',emoji:'🌤️',cost:8,kind:'scene',once:true,desc:'首页与伙伴房间 · 暖阳与奶油色'},
+    {id:'rain',name:'雨天书桌',emoji:'🌧️',cost:12,kind:'scene',once:true,desc:'首页与伙伴房间 · 蓝灰雨滴窗景'},
+    {id:'night',name:'星夜小屋',emoji:'🌙',cost:18,kind:'scene',once:true,desc:'首页与伙伴房间 · 深蓝与点点星光'},
+    {id:'library',name:'森林书房',emoji:'🌿',cost:24,kind:'scene',once:true,desc:'首页与伙伴房间 · 绿色书架与木色'}
   ];
   function itemById(id) { return ITEMS.find(function (x) { return x.id === id; }) || null; }
 
@@ -95,6 +113,7 @@
     if (p.fish === undefined) p.fish = 3;
     /* 三个新维度。老存档读出来自动拿默认值 —— 宠物字段是在这个 ensure() 里逐个补的
        （不是 app.js 的 migrate()），所以新增字段零迁移风险。 */
+    ['curiosity','creativity','courage'].forEach(function(k){if(!Number.isFinite(p[k]))p[k]=10;p[k]=clamp(p[k],0,100);});
     if (p.energy === undefined) p.energy = 80;
     if (p.mood === undefined) p.mood = 60;
     if (p.wits === undefined) p.wits = 10;
@@ -536,7 +555,7 @@
     p.lastFedAt = Date.now();
     addIntimacy(it.intimacy || 1);
     touch('feed');
-    L.addMemory('feed', '喂了小陆一份「' + it.name + '」（饱食 +' + it.hunger + '）', ['投喂']);
+    L.addMemory('feed', '给' + p.name + '分享了一份「' + it.name + '」（饱食 +' + it.hunger + '）', ['投喂']);
     L.save();
     say(pick(LINES.fed), 3600);
     floatText('+' + it.hunger + ' 🍚');
@@ -916,33 +935,48 @@
     p.fish -= it.cost;
     p.spent = (p.spent || 0) + it.cost;
     p.stats.bought += 1;
+    logSpend(p, it.cost, '买了' + it.name);
     if (it.kind === 'food') p.owned[id] = (p.owned[id] || 0) + 1;
     else if (it.kind === 'toy') { p.owned[id] = 1; p.toys.push(id); }
     else if (it.kind === 'gear') { p.owned[id] = 1; p.gear[it.slot] = id; }
+    else if (it.kind === 'scene') { p.owned[id] = 1; p.scene = id; }
     L.addMemory('note', '用 ' + it.cost + ' 条小鱼干换了「' + it.name + '」', ['商城']);
     L.save();
     say(pick(['买到了！', '这个我想要很久了。', '收下啦。']), 3600);
     floatText('-' + it.cost + ' 🐟');
     refresh(); renderPanel();
   }
+  function logSpend(p, cost, reason) {
+    p.fishLog.push({at:Date.now(),n:-cost,reason:reason});
+    if(p.fishLog.length>400)p.fishLog.splice(0,p.fishLog.length-400);
+  }
   function useItem(id) {
-    var it = itemById(id);
-    if (!it) return;
-    if (it.kind === 'food') { feed(id); return; }
-    if (it.kind === 'gear') {
-      var p = ensure();
-      p.gear[it.slot] = (p.gear[it.slot] === id) ? null : id;
-      L.save(); say(p.gear[it.slot] ? '好看吗？' : '摘下来了。', 3000);
-      refresh(); renderPanel(); return;
+    var it=itemById(id),p=ensure();
+    if(!it)return;
+    if(!(p.owned[id]>0 || (it.kind==='toy' && p.toys.indexOf(id)>=0))){L.toast('先拥有这件物品，再使用吧');return;}
+    if(it.kind==='food'){feed(id);return;}
+    if(it.kind==='gear'){
+      p.gear[it.slot]=p.gear[it.slot]===id?null:id;
+      say(p.gear[it.slot]?'戴好啦，桌面上的我也换好了。':'摘下来啦。',3000);
+    }else if(it.kind==='scene'){
+      p.scene=p.scene===id?null:id;say('房间换好了，来坐一会儿。',3000);
+    }else if(it.kind==='toy'){
+      // Shared cooldown prevents alternating toys from farming affection.
+      var now=Date.now(),ready=now-(p.lastToyAt||0)>=60000;
+      if(ready){p.lastToyAt=now;addIntimacy(1);touch('play');}
+      playMotion(it.motion || (id==='laser'?'laser':'hop'),3);
+      say(({musicbox:'跟着小小的旋律，晃一晃。',camera:'看这里！把今天的好心情留下来。',sketchbook:'随便画一点也可以，我陪你。',laser:'红点跑到那边去了！',toy_wand:'来啦，接住这颗小星星！'})[id],4000);
+      L.toast(ready?'一起玩了一会 · 亲密 +1':'可以继续玩，亲密奖励每分钟一次');
     }
-    if (it.kind === 'toy') { L.toast('玩具是被动的，它自己会玩'); }
+    L.save();refresh();renderPanel();
   }
   function redeem(rid) {
     var p = ensure();
     var r = p.rewards.find(function (x) { return x.id === rid; });
-    if (!r) return;
+    if (!r || !Number.isSafeInteger(r.cost) || r.cost < 1) return;
     if (p.fish < r.cost) { L.toast('小鱼干不够（还差 ' + (r.cost - p.fish) + ' 条）'); return; }
     p.fish -= r.cost;
+    logSpend(p, r.cost, '兑换' + r.name);
     p.spent = (p.spent || 0) + r.cost;
     p.todo.push({ id: L.uid('td'), name: r.name, cost: r.cost, at: Date.now(), done: false });
     L.addMemory('note', '兑了「' + r.name + '」（-' + r.cost + ' 🐟）· 该去享受了', ['兑现']);
@@ -1034,13 +1068,13 @@
   }
 
   /* 记完一次计时 → 给它回点精力（这是 B 档里精力的主要来源） */
-  function onRecord(minutes) {
+  function onRecord(minutes, unused, silent) {
     var p = ensure();
     if (!minutes || minutes <= 0) return;
     p.energy = clamp(p.energy + 4, 0, 100);
     p.lastInteractAt = Date.now();
     L.save();
-    if (ST().timer && ST().timer.discipline) {
+    if (!silent && ST().timer && ST().timer.discipline) {
       playMotion('celebrate', 2.2);
       say('刚才的 ' + minutes + ' 分钟，是真的往前走了。记下断点，就放心休息吧。', 6500);
     }
@@ -1715,7 +1749,7 @@
     var p = ensure();
     var v = L.vitality(), T = L.tierOf(v), lv = levelName(p.intimacy);
     var t0 = new Date(); t0.setHours(0, 0, 0, 0);
-    var earnedToday = (p.fishLog || []).filter(function (x) { return x.at >= t0.getTime(); })
+    var earnedToday = (p.fishLog || []).filter(function (x) { return x.at >= t0.getTime() && x.n > 0; })
       .reduce(function (a, x) { return a + (x.n || 0); }, 0);
     var days = Math.max(1, Math.round((Date.now() - p.bornAt) / 86400000) + 1);
 
@@ -1726,7 +1760,7 @@
     }
     function swRow(label, sub, on, act) {
       return '<div class="pg-row"><span class="lb">' + label + (sub ? '<small>' + sub + '</small>' : '') + '</span>'
-        + '<div class="pg-switch' + (on ? ' on' : '') + '" data-pact="' + act + '"><i></i></div></div>';
+        + '<button type="button" class="pg-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="'+on+'" aria-label="'+label+'" data-pact="' + act + '"><i></i></button></div>';
     }
     function stat(n, label) {
       return '<div class="pg-stat"><b>' + n + '</b><span>' + label + '</span></div>';
@@ -1793,7 +1827,7 @@
     /* 说说话：同样不留记录 —— 输入即走，回答以气泡回来（冒在输入框正上方） */
     h += '<div class="card"><h2>💬 说一句话</h2><div class="hint">'
       + (petAI().ready ? petAIText() + '：它会带着对你的记忆回你。' : '本地台词模式（在「我的 → 设置」里配了 AI Key 会更懂你）。')
-      + '说了就走，<b>不留记录</b> —— 它会记在心里。</div>';
+      + '这里只显示当前回应；对话上下文会保存在本机。</div>';
     h += '<div class="pg-say" id="pgSay"></div>';
     h += '<div class="pp-quick">' + QUICK_SAY.map(function (t) {
       return '<button class="pp-q" data-pact="qsay" data-id="' + t + '">' + t + '</button>';
@@ -1880,6 +1914,7 @@
       + '</div></div>';
 
     root.innerHTML = h;
+    if(window.UI) UI.polishPet(root);
 
     /* 大猫 */
     if (pageCat) { try { pageCat.dispose(); } catch (e) {} pageCat = null; }
@@ -2220,6 +2255,7 @@
 
   /* ================= 对外 API ================= */
   window.Pet = {
+    catalog: function(){return ITEMS.map(function(it){return Object.assign({},it);});},
     gesture: playMotion,
     cooldown: cdLeft,
     interact: interact,

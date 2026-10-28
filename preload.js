@@ -24,6 +24,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('landing', {
   isDesktop: true,
   desktopPet: {
+    settings: () => ipcRenderer.invoke('petdesk:settings'),
     reveal: () => ipcRenderer.invoke('petdesk:reveal'),
     status: () => ipcRenderer.invoke('petdesk:status'),
     configure: (p) => ipcRenderer.invoke('petdesk:configure', p),
@@ -121,4 +122,9 @@ contextBridge.exposeInMainWorld('landing', {
      winVisGet() 启动时同步查一次当前值；onWinVis(cb) 订阅 hide/show/minimize/restore 的变化 */
   winVisGet: () => ipcRenderer.sendSync('window:vis:get'),
   onWinVis: (cb) => { ipcRenderer.on('window:vis', (_e, v) => { try { cb(!!v); } catch (e) { } }); }
+});
+
+contextBridge.exposeInMainWorld('petSkins',{
+  open:()=>ipcRenderer.invoke('skins:open'),state:()=>ipcRenderer.invoke('skins:state'),asset:id=>ipcRenderer.invoke('skins:asset',id),
+  onActive:cb=>ipcRenderer.on('skins:active',(_e,p)=>cb(p))
 });

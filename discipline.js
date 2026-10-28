@@ -276,6 +276,7 @@
       d.sessions.push({ id: t.id, taskId: t.taskId, date: t.date, name: t.name, minutes: min, at: Date.now() });
       // 与原来的周报、伙伴奖励共用同一笔账。跨午夜归入本次开始的日期。
       var rec = B.record(t.name, min, 'work', t.date); if (rec) rec.focusId = t.id;
+      if(window.PetAdventure)PetAdventure.onFocus(t.id);
     }
     if (n && checked && checked.checked) completeTask(n, true);
     var checkpoint = document.getElementById('ds-next-checkpoint'), course = n && n.trackId ? track(n.trackId) : null;
@@ -306,7 +307,7 @@
     enableBackground: function (el) {
       if (!window.landing || !window.landing.autoLaunch) return;
       el.disabled = true;
-      window.landing.autoLaunch.set(true).then(function (on) { return window.landing.closePref.set('tray').then(function () { return on; }); }).then(function (on) { el.disabled = false; backgroundForm(); B.toast(on ? '已开启自启，关闭窗口后会留在托盘' : '已设置托盘常驻，开机自启未能启用，请在设置里重试'); }).catch(function () { el.disabled = false; B.toast('设置失败，请稍后重试'); });
+      window.landing.autoLaunch.set(true).then(function (on) { return window.landing.closePref.set('tray').then(function () { return on; }); }).then(function (on) { el.disabled = false; backgroundForm(); B.toast(on ? '已开启自启，关闭窗口后会留在托盘' : '已设置托盘常驻，开机自启未能启用，请在设置里重试'); }).catch(function (error) { el.disabled = false; B.toast(error.message || '设置失败，请稍后重试'); });
     },
     phone: phoneForm,
     phoneAndroid: function () { state().phone = 'android'; B.save(); phoneForm(); },

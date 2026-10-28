@@ -1,6 +1,6 @@
 {
   "name": "landing",
-  "version": "2.5.0",
+  "version": "2.10.0",
   "description": "着陆 · 每天一点，慢慢做到 —— 课后自学、学习断点与专注行动",
   "author": "bydashuaibi",
   "license": "MIT",
@@ -50,11 +50,29 @@
       "assets/fonts/**/*",
       "petdex-sprite.js",
       "desktop-pet.cjs",
+      "desktop-pet-settings-preload.js",
+      "desktop-pet-settings.html",
+      "desktop-pet-settings.css",
+      "desktop-pet-settings.js",
       "desktop-pet-preload.js",
       "desktop-pet.html",
       "desktop-pet.css",
       "desktop-pet-ui.js",
-      "desktop-pet-bridge.js"
+      "desktop-pet-bridge.js",
+      "auto-launch.cjs",
+      "ui-polish.css",
+      "ui-polish.js",
+      "market.js",
+      "market.css",
+      "pet-skins.cjs",
+      "pet-skins-window-preload.js",
+      "pet-skins-window.html",
+      "pet-skins-window.js",
+      "pet-skins-window.css",
+      "pet-adventure.js",
+      "pet-adventure.css",
+      "sage-studio.css",
+      "sage-studio.js"
     ],
     "win": {
       "target": [

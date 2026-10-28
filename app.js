@@ -11,7 +11,7 @@
 
 /* ================= 配置 & 分类体系 ================= */
 var APP_CONFIG = {
-  version: '2.4.0',
+  version: '2.10.0',
   storageKey: 'landing.v2',
   repo: 'https://github.com/bydashuaibi/landing',
   communityApi: ''
@@ -256,6 +256,7 @@ function migrate(){
 }
 
 function save(){
+  syncManualCoverage();
   try{ localStorage.setItem(APP_CONFIG.storageKey, JSON.stringify(STATE)); }
   catch(e){ toast('保存失败：存储可能已满'); }
 }
@@ -1015,7 +1016,7 @@ var APP_NAMES = {
   teamviewer:'TeamViewer', everything:'Everything', snipaste:'Snipaste'
 };
 /* 这些是"壳"进程，不是他在用的应用（跟手机的"主屏幕"一个性质） */
-var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|windowsterminal)$/i;
+var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|windowsterminal|landing|electron|着陆|explorer)$/i;
 
 function appLabel(proc){
   var p = String(proc || '').trim();
@@ -1118,6 +1119,7 @@ function autoNameOf(proc, cat){
   var map = STATE.appNames || {};
   if(map[raw]) return map[raw];
   if(map[key]) return map[key];
+  if(/^(chrome|msedge|firefox|brave)$/.test(key)) return ({study:'学习资料',work:'查阅工作资料',fun:'浏览视频与娱乐',social:'网页交流'})[cat] || '浏览网页';
   if(ACT_SUGGEST[key]) return ACT_SUGGEST[key];
   return ({work:'工作', study:'学习', fun:'玩', social:'聊天'})[cat] || appLabel(proc) || '这件事';
 }
@@ -1205,12 +1207,41 @@ function onAskResult(r){
   }
   applyAsk(String(r.name), ASK);
 }
+var _quietActivityRecord = false;
+// Persist manual timer intervals so a foreground segment arriving just after
+// settlement cannot award the same minutes twice (including after a reload).
+function syncManualCoverage(){
+  if(!STATE) return;
+  var now=Date.now(), t=STATE.timer;
+  var m=STATE.activityManual || (STATE.activityManual={closed:[],open:null});
+  if(!Array.isArray(m.closed))m.closed=[];
+  var running=t && !t.auto && !t.finished && !t.paused && Number.isFinite(t.startedAt);
+  var key=running ? String(t.id||t.startedAt) : '';
+  if(m.open && (!running || m.open.key!==key)){
+    var end=Math.min(now,m.open.deadline||now);
+    if(end>m.open.start)m.closed.push({start:m.open.start,end:end});
+    m.open=null;
+  }
+  if(running && !m.open)m.open={key:key,start:now,deadline:t.mode==='countdown'?t.endsAt:null};
+  m.closed=m.closed.filter(function(x){return x.end>now-86400000;}).slice(-200);
+}
+function automaticMinutes(inf){
+  var minutes=Math.max(0,Math.round(Number(inf.prevMinutes)||0));
+  if(!inf.startedAt || !inf.at || !STATE.activityManual)return minutes;
+  var ranges=STATE.activityManual.closed || [], start=inf.startedAt, end=inf.at, overlap=0, until=start;
+  ranges.slice().sort(function(a,b){return a.start-b.start;}).forEach(function(r){
+    var a=Math.max(start,until,r.start),b=Math.min(end,r.end);
+    if(b>a){overlap+=b-a;until=b;}
+  });
+  return Math.max(0,Math.round(minutes-overlap/60000));
+}
 function onAppChanged(inf){
   if(!inf) return;
   /* 主进程带的是「上一段」是谁、待了多久 —— 那是要问、要记账的对象。
      没带 prevProc（老版本/异常）就当没发生。 */
   var pp = inf.prevProc;
   if(!pp){ return; }
+  syncManualCoverage();
 
   /* 不打扰的情况：
      ① 手动计时中 —— 手动计时已经在记这段时间了，再问一遍就是重复记账；
@@ -1221,12 +1252,19 @@ function onAppChanged(inf){
   /* 「不用确认」模式（2026-10-14，master 选的）：不弹窗问，按建议名直接落账，
      只弹一个几秒就收的「已记下」通知让他知道机制在跑（机制要显化）。
      静音表在这个模式下没意义 —— 没人问他话。 */
-  if(ACT && ACT.askConfirm === false){
+  if(ACT && ACT.askConfirm !== true){
+    if(inf.segmentId && (STATE.autoSegments || []).indexOf(inf.segmentId) >= 0) return;
     var nm = autoNameOf(pp, inf.prevCat);
-    var mins = Math.max(1, Math.round(Number(inf.prevMinutes) || 0));
-    looseRecord(nm, mins, actCatToPet(inf.prevCat));
-    if(hasAskWin()) window.landing.ask.show({ notify:true, appLabel:appLabel(pp), name:nm, minutes:mins });
-    else toast('已记下：「' + nm + '」约 ' + fmtMin(mins));
+    var mins = automaticMinutes(inf); if(mins<1) return;
+    _quietActivityRecord = ACT.askNotify !== true;
+    try {
+      if(inf.segmentId) STATE.autoSegments = (STATE.autoSegments || []).concat(inf.segmentId).slice(-300);
+      looseRecord(nm, mins, actCatToPet(inf.prevCat), inf.startedAt ? ymd(new Date(inf.startedAt)) : today());
+    } finally { _quietActivityRecord = false; }
+    if(ACT.askNotify === true){
+      if(hasAskWin()) window.landing.ask.show({ notify:true, appLabel:appLabel(pp), name:nm, minutes:mins });
+      else toast('已记下：「' + nm + '」约 ' + fmtMin(mins));
+    }
     return;
   }
 
@@ -1283,8 +1321,9 @@ function fmtBytes(b){
 /* 今日页那张卡 */
 function renderActivityCard(){
   if(!ACT) return '';
-  var h = '<div class="card act-card"><div class="row between"><h2>👀 今天在干什么</h2>'
-    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? '正在记录' : '已暂停') + '</span></div>';
+  var h = '<div class="card act-card"><div class="row between"><h2>应用时间</h2>'
+    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? '正在记录' : '已暂停') + '</span></div>'
+    + '<div class="row wrap" style="margin:12px 0"><button class="btn ghost sm" data-act="actHistory">查看与整理记录</button></div>';
   if(!ACT.enabled){
     h += '<div class="hint">已暂停。要开回来去「我的 → 活动记录」。</div></div>';
     return h;
@@ -1306,7 +1345,7 @@ function renderActivityCard(){
 
   /* 按应用排行（手机那种"应用使用时间"）—— 只列真在前台用过的，壳进程不算 */
   var rk = appRanking().filter(function(x){ return !x.shell && !x.idle; });
-  var totalMin = ACT.totalMin || 0;
+  var totalMin = rk.reduce(function(n,x){return n+x.minutes;},0);
   if(rk.length){
     var top = rk.slice(0, 5), maxMin = top[0].minutes || 1;
     h += '<div class="app-head"><span>今天记录 <b>' + fmtMin(totalMin) + '</b></span>'
@@ -1330,7 +1369,7 @@ function renderActivityCard(){
   }
   /* 截图状态：**必须一路显化** —— 这是会碰到隐私的功能，藏起来就是错的 */
   h += '<div class="act-shot">'
-    + '<span>📷 每 ' + ACT.shotMin + ' 分钟截一张：已 <b>' + (ACT.shots || 0) + '</b> 张 · ' + fmtBytes(ACT.bytes) + '</span>'
+    + '<span>' + (ACT.shotMin > 0 ? '每 ' + ACT.shotMin + ' 分钟截屏 · ' : '自动截屏已关闭 · ') + (ACT.shots || 0) + ' 张 · ' + fmtBytes(ACT.bytes) + '</span>'
     + '<span>保留 ' + ACT.keepDays + ' 天 · 只存本机</span>'
     + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
     + '<button class="btn ghost sm" data-act="actToggle">暂停记录</button>'
@@ -1341,43 +1380,20 @@ function renderActivityCard(){
 /* 「我的」里的详细设置 */
 function renderActivitySettings(){
   if(!ACT) return '';
-  var h = '<div class="card"><div class="row between"><h2>👀 活动记录</h2>'
-    + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? '正在记录' : '已暂停') + '</span></div>'
-    + '<div class="hint">看我此刻在用哪个程序（抓前台窗口的进程名和标题），并按规则归类。'
-    + '全部在<b>本机</b>算、不上云；规则表在 <code>main.js</code> 的 <code>ACT_RULES</code>，想改分类改那里。</div>'
-    + '<div class="field" style="margin-top:10px"><label>采样间隔（秒）</label>'
-    + '<input id="act_sample" type="number" min="10" max="600" value="' + ACT.sampleSec + '"></div>'
-    + '<div class="field"><label>截屏间隔（分钟，0 = 不截屏）</label>'
-    + '<input id="act_shot" type="number" min="0" max="120" value="' + ACT.shotMin + '"></div>'
-    + '<div class="field"><label>截图保留（天）</label>'
-    + '<input id="act_keep" type="number" min="1" max="365" value="' + ACT.keepDays + '">'
-    + '<div class="hint" style="margin-top:6px">过期的整天目录会自动删掉（每 6 小时扫一次，不用你管）。</div></div>'
-    /* 换应用回问（2026-10-14 改语义）—— 不用手点计时：主进程一直在记，
-       切走时问一句「刚才那段记作什么」，确认后按大概时间直接落账 */
-    + '<div class="hint" style="margin-top:10px">换应用回问：<b>' + (ACT.ask ? '开着' : '关了') + '</b>'
-    + ' —— 一直在记；等你切到下一个程序（或回到桌面），右下角浮窗处理「刚才那段时间」，'
-    + '按大概时长直接记进今天的池子和周报。<b>不碰任何任务。</b></div>'
-    /* 确认方式（2026-10-14 加）：默认弹窗问；选「不用确认」就是全自动 + 通知 */
-    + '<div class="hint">确认方式：<b>' + (ACT.askConfirm === false ? '不用确认，直接记（全自动）' : '弹窗问我') + '</b>'
-    + '<button class="btn ghost sm" style="margin-left:8px" data-act="askConfirmToggle">'
-    + (ACT.askConfirm === false ? '改回弹窗问我' : '不用我确认，直接记') + '</button>'
-    + (ACT.askConfirm === false
-        ? '<div class="hint" style="margin-top:4px">全自动：切走后按建议名直接落账，右下角只弹一个几秒就收的「已记下」通知。记错了去今日页「今天的池子」里删。</div>'
-        : '') + '</div>'
-    + '<div class="field" style="margin-top:10px"><label>问过之后的最短静默（分钟）</label>'
-    + '<input id="act_cool" type="number" min="3" max="240" value="' + (ACT.askCoolMin || 15) + '">'
-    + '<div class="hint" style="margin-top:6px">刚问过又换应用，这段时间内不再问，免得烦。同一个应用被你点过「这次不用」也静默一小时。</div></div>'
-    + '<div class="act-shot" style="margin-top:4px">'
-    + '<span>已 <b>' + (ACT.shots || 0) + '</b> 张 · ' + fmtBytes(ACT.bytes) + ' · 目录 ' + esc(ACT.dir || '') + '</span>'
-    + '<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>'
-    + '<button class="btn ghost sm" data-act="actClearShots">清空截图</button>'
-    + '</div>'
-    + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
-    + '<button class="btn primary sm" data-act="actSave">保存设置</button>'
-    + '<button class="btn ghost sm" data-act="actToggle">' + (ACT.enabled ? '暂停记录' : '开始记录') + '</button>'
-    + '<button class="btn ghost sm" data-act="actAskToggle">' + (ACT.ask ? '关掉自动询问' : '打开自动询问') + '</button>'
-    + '</div></div>';
-  return h;
+  var mode = ACT.ask === false ? 'stats' : ACT.askConfirm === true ? 'ask' : ACT.askNotify === true ? 'notify' : 'silent';
+  return '<div class="card activity-settings"><div class="row between"><h2>应用时间记录</h2><span class="status-pill">'+(ACT.enabled ? '后台记录中' : '已暂停')+'</span></div>'
+    + '<p class="hint">自动统计前台应用的使用时间，保存在本机。安静模式无需确认，也不会弹出记录通知。</p>'
+    + '<div class="field"><label for="act_mode">记录方式</label><select id="act_mode">'
+    + [['silent','安静自动记录（推荐）'],['notify','自动记录，并显示通知'],['ask','每次记录前询问'],['stats','仅统计，不计入时间池']].map(function(x){return '<option value="'+x[0]+'"'+(mode===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div>'
+    + '<p class="hint">应用时间在「今日 → 应用时间」查看；自动记录也会进入周报和时间池。手动专注时避免重复计入时间池。</p>'
+    + '<details class="ui-fold"><summary>采样与截屏设置</summary><div class="settings-grid">'
+    + '<div class="field"><label for="act_sample">采样间隔 / 秒</label><input id="act_sample" type="number" min="10" max="600" value="'+ACT.sampleSec+'"></div>'
+    + '<div class="field"><label for="act_shot">自动截屏 / 分钟（0 为关闭）</label><input id="act_shot" type="number" min="0" max="120" value="'+ACT.shotMin+'"></div>'
+    + '<div class="field"><label for="act_keep">截图保留 / 天</label><input id="act_keep" type="number" min="1" max="365" value="'+ACT.keepDays+'"></div>'
+    + '<div class="field"><label for="act_cool">询问冷却 / 分钟</label><input id="act_cool" type="number" min="3" max="240" value="'+(ACT.askCoolMin||15)+'"></div></div>'
+    + '<p class="hint">冷却仅影响询问模式。关闭自动截屏后，仍然正常统计应用时间。</p>'
+    + '<div class="row wrap"><span class="hint">已有 '+(ACT.shots||0)+' 张截图 · '+fmtBytes(ACT.bytes)+'</span><button class="btn ghost sm" data-act="actFolder">打开文件夹</button><button class="btn ghost sm" data-act="actClearShots">清空截图</button></div></details>'
+    + '<div class="row wrap"><button class="btn primary sm" data-act="actSave">保存记录设置</button><button class="btn ghost sm" data-act="actToggle">'+(ACT.enabled?'暂停记录':'开始记录')+'</button><button class="btn ghost sm" data-act="actRank">应用排行</button><button class="btn ghost sm" data-act="actHistory">整理记录</button></div></div>';
 }
 
 function renderFunCard(){
@@ -1453,7 +1469,7 @@ function looseRecord(name, minutes, category, recordDate){
   var m = Math.max(0, Math.round(Number(minutes)||0));
   if(!name || m <= 0) return null;
   var rec = {id:uid('ls'), date:recordDate||today(), name:name, minutes:m,
-             category:(PET_CATS.indexOf(category)>=0 ? category : 'life'), ts:Date.now()};
+             category:(PET_CATS.indexOf(category)>=0 ? category : 'life'), ts:Date.now(), auto:!!_quietActivityRecord};
   STATE.loose = STATE.loose || [];
   STATE.loose.push(rec);
   if(rec.date===today()) awardFish(m, rec.name);
@@ -1491,8 +1507,9 @@ function petState(){
    结果就是**白屏**（#view 空的、挂件不存在）。触发条件只是"长周期任务已过半"。
    宠物是"顺带长"的旁路，它没就绪绝不该影响核心流程 —— 所有 Pet 回调一律走这里。 */
 function petNotify(fn, a, b){
+  if(_quietActivityRecord && fn === 'onFish') return;
   try{
-    if(window.Pet && typeof Pet[fn] === 'function') return Pet[fn](a, b);
+    if(window.Pet && typeof Pet[fn] === 'function') return Pet[fn](a, b, _quietActivityRecord);
   }catch(e){
     try{ console.warn('[app] 宠物侧回调 '+fn+' 失败（已忽略）', e); }catch(_){}
   }
@@ -2192,7 +2209,7 @@ function jwglPanelHTML(status){
   if(_jwglCaptcha){
     return head
       + '<div class="hint" style="margin:0 0 8px">学校要求验证码，填一次就行，之后应用会记住。'
-      + '学号密码用 Windows 系统加密存在本机，不走网络、不进代码。</div>'
+      + '凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。</div>'
       + '<div class="jwgl-form">'
       + '<input id="jw_u" placeholder="学号" value="' + esc(status.username || '') + '">'
       + '<input id="jw_p" type="password" placeholder="密码">'
@@ -2218,7 +2235,7 @@ function jwglPanelHTML(status){
   }
   return head
     + '<div class="hint" style="margin:0 0 8px">连上以后，今日页会显示今天的课。'
-    + '学号密码用 Windows 系统加密存在本机，不走网络、不进代码。</div>'
+    + '凭据用 Windows 系统加密保存在本机，登录时仅提交给学校教务系统。</div>'
     + '<button class="btn primary sm" data-act="jwglStartLogin">连接教务系统</button></div>';
 }
 
@@ -2228,7 +2245,8 @@ function viewToday(){
     return Discipline.render() + renderMustCard()
       + '<details class="ds-extra"><summary>今天的课表</summary>' + renderTodayCourses() + '</details>'
       + '<details class="ds-extra"><summary>情绪、倾倒与生活记录</summary>'
-      + renderMoodCard() + renderDumpCard() + renderFunCard() + renderActivityCard() + '</details>';
+      + renderMoodCard() + renderDumpCard() + renderFunCard() + '</details>'
+      + '<details class="ds-extra activity-overview"><summary>应用时间 <span>自动记录，随时查看</span></summary>' + renderActivityCard() + '</details>';
   }
   var h = '';
 
@@ -2667,10 +2685,9 @@ function viewWeekly(){
      有了就不重复拉（ensureActWeek 内部判 TTL / _loading），所以不会转圈。 */
   ensureActWeek(wk);
   var rpt = generateWeeklyReport();
-  var h = '<div class="mod-head"><div class="kicker">Module 03 · Weekly</div><div class="warp-head" data-warp><h2>周报</h2></div>'
-    + '<p>每周首次打开自动生成。看板按<b>投入时间占比</b>展示各类日常；最后用温柔复盘接住你，而不是评判。</p></div>';
-  h += '<div class="card"><h2>'+icon('chart')+' 复盘 · 本周</h2>'
-    + '<div class="hint">回顾你的一周。每周首次打开自动生成。</div></div>';
+  var h = '<div class="mod-head"><div class="kicker">这一周的足迹</div><div class="warp-head" data-warp><h2>周报</h2></div>'
+    + '<p>看看时间去了哪里，也看看自己已经走了多远。</p></div>';
+  h += '<div class="week-period">本周复盘 <span>'+mdShort(parseYmd(wk))+' — '+mdShort(parseYmd(today()))+'</span><small>根据记录自动整理</small></div>';
 
   /* 本周概况三数字 */
   h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)" data-count="'+rpt.summary.completionRate+'" data-decimals="0" data-suffix="%">0</div><div class="stat-label">完成率</div></div>'
@@ -2704,7 +2721,7 @@ function viewWeekly(){
     + (af.min > 0 ? '<span class="sum-fl k-auto" title="按前台窗口采样自动算的，不用你记">🖥 自动测得娱乐 '
         + (af.min >= 60 ? (Math.round(af.min/6)/10)+' 小时' : af.min+' 分钟') + '</span>' : '')
     + (fs.items.length ? '<span class="sum-fi">'+fs.items.slice(0,6).map(function(x){return esc(x.text)+'('+mdShort(parseYmd(x.date))+')';}).join('、')+'</span>'
-       : '<span class="sum-fi">这周没记过 —— 是没发生，还是忘了记？</span>')
+       : '<span class="sum-fi">还没有手动娱乐记录，应用使用时间会自动统计。</span>')
     + '</div>';
   /* AI 润色：没配 Key 就完全依赖上面的规则正文 */
   if(rpt.aiText){
@@ -2719,7 +2736,7 @@ function viewWeekly(){
 
   /* 「每周任务」那张双目标卡随任务模块删掉了（2026-10-13）。
      但「本周赚到多少鱼」值得留着 —— 它是这个项目里最直接的显化。 */
-  var wkFish = (petState().fishLog||[]).filter(function(x){ return ymd(new Date(x.at||0)) >= wk; })
+  var wkFish = (petState().fishLog||[]).filter(function(x){ return x.n > 0 && ymd(new Date(x.at||0)) >= wk; })
     .reduce(function(a,x){ return a+(x.n||0); }, 0);
   if(wkFish > 0){
     h += '<div class="card"><h2>🐟 本周小鱼干</h2><div class="hint">这周一共赚到 <b>'+wkFish+'</b> 条。'
@@ -3011,18 +3028,18 @@ function cmpRestore(){
 }
 
 function viewCompanion(){
-  var h = '<div class="mod-head"><div class="kicker">Module 05 · Companion</div><div class="warp-head" data-warp><h2>陪伴</h2></div>'
-    + '<p>云端 AI 真在听你说话、接住你。可一键生成「近三日跟进」，把散落的记录变成你能看懂的方向。</p></div>';
+  var h = '<div class="mod-head"><div class="kicker">给自己一点空间</div><div class="warp-head" data-warp><h2>陪伴</h2></div>'
+    + '<p>不用组织好语言。此刻的感受，可以慢慢说。</p></div>';
   h += '<div class="card"><h2>'+icon('chat')+' AI 陪伴</h2>'
-    + '<div class="hint">不评判、不催促。把闷在心里的话说出来 —— 说了就走，<b>不留记录</b>。'
+    + '<div class="hint">对话保存在本机作为上下文；发送时，相关内容会交给你配置的 AI。'
     + (STATE.settings.aiKey?'':'<span style="color:var(--amber)"> 未配置 AI → 设置</span>')+'</div>'
     + '<button class="btn ghost sm" data-act="followup3">'+icon('refresh')+' 近三日跟进</button></div>'
     + '<div class="card"><div class="cmp-bub" id="cmpBub"></div>'
-    + '<div class="companion-input"><textarea id="aiInput" placeholder="说点什么…"></textarea>'
-    + '<button class="btn primary" data-act="sendAI">'+icon('send')+'</button></div></div>';
+    + '<div class="companion-input"><textarea id="aiInput" aria-label="想说的话" placeholder="今天怎么样？有什么让你分心，或者有一点开心的事…"></textarea>'
+    + '<button class="btn primary" data-act="sendAI" aria-label="发送消息"> '+icon('send')+'</button></div></div>';
   var p0 = petState();
   h += '<div class="card"><h2>'+icon('user')+' 着陆伙伴</h2>'
-    + '<div class="hint">它不在页面里，它在<b>右下角那个挂件</b>里——切到哪一页都跟着你。喂食、抚摸、说话、逛商城都在那儿。</div>'
+    + '<div class="hint">初华会陪着你。桌面上的她也能帮你开始学习、保存断点和切换页面。</div>'
     + '<div class="pet-mini"><span>🐟 小鱼干 <b>'+(p0.fish||0)+'</b></span>'
     + '<span>🍚 饱食 <b>'+(p0.hunger==null?'—':Math.round(p0.hunger))+'</b></span>'
     + '<span>💗 亲密 <b>'+(p0.intimacy==null?'—':Math.round(p0.intimacy))+'</b></span></div>'
@@ -3048,18 +3065,16 @@ function bindMeActions(){
 
 /* ================= 视图：伙伴（详情与设定，内容由 pet.js 渲染） ================= */
 function viewPet(){
-  return '<div class="mod-head"><div class="kicker">Module 07 · Companion Pet</div>'
+  return '<div class="mod-head"><div class="kicker">一起，把日子过好</div>'
     + '<div class="warp-head" data-warp><h2>伙伴</h2></div>'
-    + '<p>它不是待办，是你做事时顺手养起来的一只猫：<b>花的每一分钟都攒进池子，每满 60 分钟换 1 条小鱼干</b>，'
-    + '小鱼干换吃的、玩具、装扮，也能换你自己定的现实奖励。'
-    + '右下角挂件是它的日常视角，这一页是它的全部细节。</p></div>'
+    + '<p>和初华打个招呼，或让她陪你读一会书。每一点投入，都会成为你们共同的回忆。</p></div>'
     + '<div id="petPage"><div class="empty">正在唤醒…</div></div>';
 }
 
 function viewMe(){
-  var h = '<div class="mod-head"><div class="kicker">Module 06 · Mine</div><div class="warp-head" data-warp><h2>我的</h2></div>'
-    + '<p>设置 AI 配置（陪伴）与 GitHub Token（可选，提升日报拉取限额）；查看数据概览、导出备份。</p></div>';
-  h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">配置 AI 和 GitHub Token。所有数据只存在这台电脑上。</div>'
+  var h = '<div class="mod-head"><div class="kicker">按照你的节奏</div><div class="warp-head" data-warp><h2>我的</h2></div>'
+    + '<p>管理记录、调整偏好，也给走过的日子留一份备份。</p></div>';
+  h += '<div class="card"><h2>'+icon('cog')+' 设置</h2><div class="hint">开机自启、课表与 AI 连接，都可以在这里调整。</div>'
     + '<button class="btn primary block" data-act="openSettings">'+icon('edit')+' 打开设置面板</button></div>';
 
   /* 情绪气象 SVG */
@@ -3078,7 +3093,7 @@ function viewMe(){
     });
   }
   var svgMood = '<svg width="100%" height="'+svgH2+'" viewBox="0 0 '+svgW2+' '+svgH2+'" style="margin-top:14px">'
-    + '<rect width="'+svgW2+'" height="'+svgH2+'" rx="12" fill="rgba(255,255,255,.35)"/>'
+    + '<rect width="'+svgW2+'" height="'+svgH2+'" rx="12" fill="rgba(165,196,164,.04)"/>'
     + '<line x1="'+pad2+'" y1="'+pad2+'" x2="'+pad2+'" y2="'+(pad2+chartH2)+'" stroke="var(--line)" stroke-width="1"/>'
     + '<line x1="'+pad2+'" y1="'+(pad2+chartH2)+'" x2="'+(pad2+chartW2)+'" y2="'+(pad2+chartH2)+'" stroke="var(--line)" stroke-width="1"/>'
     + (pts2?'<polyline points="'+pts2+'" fill="none" stroke="var(--terracotta)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>':'')
@@ -3127,7 +3142,7 @@ function viewMe(){
   var isDesk = !!(window.landing && window.landing.data);
   h += '<div class="card"><h2>'+icon('cog')+' 数据管理</h2>'
     + '<div class="hint">'+(isDesk
-        ? '所有数据都存在这台电脑上，不上传任何服务器。换电脑或重装前先导出备份。'
+        ? '记录默认保存在本机；使用 AI 时会发送相关内容。换电脑或重装前，请先导出备份。'
         : '所有数据只存在这个浏览器的本地存储里。换电脑前先导出备份。')+'</div>'
     + '<div class="row" style="gap:8px;flex-wrap:wrap">'
     + '<button class="btn primary sm" id="me_export">'+icon('send')+' 导出备份</button>'
@@ -3201,9 +3216,7 @@ function viewShop(){
   }
   return '<div class="mod-head"><div class="kicker">小鱼干换来的</div>'
     + '<div class="warp-head" data-warp><h2>商城</h2></div>'
-    + '<p>做事的每一分钟都攒进池子，<b>每满 60 分钟换 1 条小鱼干</b> 🐟（零头当天清零）；'
-    + '换吃的、换装扮，也能换你自己定的现实奖励 —— '
-    + '奖励不是"努力的理由"，是"努力过之后的证据"。</p></div>'
+    + '<p>给伙伴选份小礼物，也为自己存一个期待。每累计 60 分钟获得 1 条小鱼干，零头当日清零。</p></div>'
     + '<div class="card" id="shopPage">' + body + '</div>';
 }
 /* 独立页用的是挂件那套 data-pact，但挂件的事件是绑在它自己面板上的（够不到这里），
@@ -3219,9 +3232,18 @@ function bindShopActions(){
   });
 }
 
+var _renderedTab = null, _pageDrafts = {};
+function rememberPage(){
+  if(!_renderedTab) return;
+  var values = {};
+  document.querySelectorAll('#view textarea[id], #view input[id]:not([type="checkbox"]):not([type="radio"]), #view select[id]').forEach(function(el){values[el.id]=el.value;});
+  _pageDrafts[_renderedTab] = {values:values, folds:Array.from(document.querySelectorAll('#view details')).map(function(el){return el.open;}), scroll:window.scrollY};
+}
 function render(){
+  rememberPage();
+  var changedPage = _renderedTab !== CUR_TAB;
   var focused = document.activeElement;
-  var reviewFocus = focused && /^ds-(win|obstacle)$/.test(focused.id) ? {id:focused.id,start:focused.selectionStart,end:focused.selectionEnd} : null;
+  var reviewFocus = !changedPage && focused && focused.closest('#view') && focused.id ? {id:focused.id,start:focused.selectionStart,end:focused.selectionEnd} : null;
   var views = {today:viewToday,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
 
@@ -3233,10 +3255,6 @@ function render(){
     html = renderErrorView(CUR_TAB, err);
   }
   $('view').innerHTML = html;
-  if(reviewFocus && $(reviewFocus.id)){
-    $(reviewFocus.id).focus({preventScroll:true});
-    $(reviewFocus.id).setSelectionRange(reviewFocus.start,reviewFocus.end);
-  }
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
 
   /* 伙伴页内容由 pet.js 填（要赶在入场动画之前） */
@@ -3253,6 +3271,7 @@ function render(){
 
   document.querySelectorAll('.nav-item').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===CUR_TAB);
+    if(b.dataset.tab===CUR_TAB) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
   });
   /* 「一束光」：把当前栏目写到 body 上 —— CSS 只给 body[data-tab="today"] 在顶部打那束赭石暖光 */
   document.body.setAttribute('data-tab', CUR_TAB);
@@ -3272,7 +3291,19 @@ function render(){
   if(CUR_TAB==='me'){ bindMeActions(); }
 
   /* 玻璃折射标题 */
-  if(window.WarpText) WarpText.apply($('view'));
+  // Keep headings as crisp, accessible text; page navigation should be immediate.
+  if(window.UI) UI.polishPage(CUR_TAB);
+  var draft = _pageDrafts[CUR_TAB];
+  if(draft){
+    Object.keys(draft.values).forEach(function(id){var el=$(id); if(el && el.closest('#view')) el.value=draft.values[id];});
+    document.querySelectorAll('#view details').forEach(function(el,i){if(i<draft.folds.length) el.open=draft.folds[i];});
+  }
+  if(reviewFocus && $(reviewFocus.id)){
+    var restored=$(reviewFocus.id); restored.focus({preventScroll:true});
+    if(typeof restored.setSelectionRange==='function' && reviewFocus.start!=null) try{restored.setSelectionRange(reviewFocus.start,reviewFocus.end);}catch(e){}
+  }
+  _renderedTab=CUR_TAB;
+  if(changedPage) window.scrollTo(0,draft ? draft.scroll : 0);
 
   /* 伙伴挂件不随视图销毁，只刷新数据 */
   if(window.Pet) Pet.refresh();
@@ -3312,18 +3343,36 @@ function initCountUp(){
 }
 
 /* ================= 模态框 ================= */
+var _sheetReturnFocus = null;
 function openSheet(html, cls){
+  if($('sheet').classList.contains('hidden')) _sheetReturnFocus=document.activeElement;
   var s=$('sheet');
-  s.innerHTML='<div class="sheet'+(cls?' '+cls:'')+'">'+html+'</div>';
+  s.innerHTML='<div class="sheet'+(cls?' '+cls:'')+'" role="dialog" aria-modal="true" tabindex="-1"><button class="sheet-close" data-act="closeSheet" aria-label="关闭弹窗">×</button>'+html+'</div>';
+  var title=s.querySelector('h2'); if(title){title.id=title.id||'sheet-title';s.firstElementChild.setAttribute('aria-labelledby',title.id);} else s.firstElementChild.setAttribute('aria-label','着陆');
+  $('app').inert=true; document.body.classList.add('sheet-open');
   s.classList.remove('hidden');
   s.classList.add('show');
+  s.firstElementChild.focus({preventScroll:true});
 }
 function closeSheet(){
   var s=$('sheet');
   s.classList.add('hidden');
   s.classList.remove('show');
   s.innerHTML='';
+  $('app').inert=false; document.body.classList.remove('sheet-open');
+  if(_sheetReturnFocus && _sheetReturnFocus.isConnected) _sheetReturnFocus.focus({preventScroll:true});
+  _sheetReturnFocus=null;
 }
+document.addEventListener('keydown',function(e){
+  var sheet=$('sheet'); if(!sheet || sheet.classList.contains('hidden')) return;
+  if(e.key==='Escape'){e.preventDefault();closeSheet();return;}
+  if(e.key!=='Tab') return;
+  var items=Array.from(sheet.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]')).filter(function(x){return x.getClientRects().length>0;});
+  if(!items.length){e.preventDefault();sheet.firstElementChild.focus();return;}
+  var first=items[0],last=items[items.length-1],active=document.activeElement;
+  if(e.shiftKey && (active===first || !items.includes(active))){e.preventDefault();last.focus();}
+  else if(!e.shiftKey && (active===last || !items.includes(active))){e.preventDefault();first.focus();}
+});
 
 /* 管理弹层开着的时候，改完数据要把它自己重画一遍 ——
    否则点了「关」弹层还停在旧状态，看着像没生效。 */
@@ -3557,6 +3606,20 @@ var App = {
   /* --- 活动记录（实现在主进程）--- */
   /* 完整排行 —— 手机上的"应用使用时间"那一页。按应用列今天所有用过的，
      系统壳进程单独折叠在最后（写出来但不计入"真在用"） */
+  actHistory:function(){
+    var list=(STATE.loose||[]).slice(-100).reverse();
+    var h='<h2>时间记录</h2><p class="hint">最近 100 笔记录。可以修改名称与分类，或移除误记的条目；已获得的小鱼干不回收。</p><div class="activity-history">';
+    if(!list.length) h+='<div class="empty">还没有记录。着陆在后台运行时，会自动记下应用使用时间。</div>';
+    list.forEach(function(r){h+='<article><div><b>'+esc(r.name)+'</b><span>'+esc(r.date)+' · '+fmtMin(r.minutes)+' · '+catName(r.category)+(r.auto?' · 自动':'')+'</span></div><button class="btn ghost sm" data-act="actEdit" data-id="'+esc(r.id)+'">调整</button></article>';});
+    openSheet(h+'</div><div class="sheet-actions"><button class="btn ghost" data-act="closeSheet">关闭</button></div>');
+  },
+  actEdit:function(id){
+    var r=(STATE.loose||[]).find(function(x){return x.id===id;});if(!r)return;
+    openSheet('<h2>调整这笔记录</h2><p class="hint">'+esc(r.date)+' · '+fmtMin(r.minutes)+'</p><div class="field"><label for="record-name">记录名称</label><input id="record-name" maxlength="30" value="'+esc(r.name)+'"></div><div class="field"><label for="record-category">分类</label><select id="record-category">'+CATEGORIES.map(function(c){return '<option value="'+c.key+'"'+(r.category===c.key?' selected':'')+'>'+c.label+'</option>';}).join('')+'</select></div><div class="sheet-actions"><button class="btn ghost" id="record-back">返回</button><button class="btn danger" id="record-remove">移除误记</button><button class="btn primary" id="record-save">保存调整</button></div>');
+    $('record-back').onclick=App.actHistory;
+    $('record-save').onclick=function(){var name=$('record-name').value.trim();if(!name){toast('填写一个记录名称');$('record-name').focus();return;}r.name=name;r.category=$('record-category').value;save();render();App.actHistory();toast('这笔记录已更新');};
+    $('record-remove').onclick=function(){looseDel(id);App.actHistory();};
+  },
   actRank:function(){
     if(!ACT){ return; }
     var all = appRanking();
@@ -3634,12 +3697,14 @@ var App = {
       if(isNaN(v)) return dflt;
       return Math.max(min, Math.min(max, v));
     };
+    var mode = ($('act_mode') || {}).value || 'silent';
     window.landing.activity.setPref({
+      ask:mode !== 'stats', askConfirm:mode === 'ask', askNotify:mode === 'notify',
       sampleSec: num('act_sample', 60, 10, 600),
-      shotMin:   num('act_shot',   5,  0, 120),
+      shotMin:   num('act_shot',   0,  0, 120),
       keepDays:  num('act_keep',  14,  1, 365),
       askCoolMin:num('act_cool',  15,  3, 240)
-    }).then(function(s){ ACT = s; render(); toast('活动记录设置已保存'); });
+    }).then(function(s){ ACT = s; askClose(); render(); toast('记录设置已保存'); }).catch(function(e){toast('保存失败：'+e.message);});
   },
   /* --- 换应用自动计时（2026-10-13）--- */
   askGo:function(){
@@ -3686,6 +3751,7 @@ var App = {
 
   /* --- AI 陪伴 --- */
   sendAI:function(){
+    if(_cmpSay && _cmpSay.typing) return;
     var inp=$('aiInput'); if(!inp) return;
     var v=inp.value.trim(); if(!v) return;
     if(!STATE.settings.aiKey){ toast('先配置 AI'); CUR_TAB='me'; render(); App.openSettings(); return; }
@@ -3706,6 +3772,7 @@ var App = {
   },
 
   followup3:function(){
+    if(_cmpSay && _cmpSay.typing) return;
     if(!STATE.settings.aiKey){ toast('先配置 AI'); CUR_TAB='me'; render(); App.openSettings(); return; }
     var since=addDays(today(),-3);
     var dumps=STATE.dumps.filter(function(d){ return ymd(new Date(d.createdAt||0))>=since; }).map(function(d){return '【'+(d.kind||'未分类')+'】'+d.text;});
@@ -3966,12 +4033,7 @@ var App = {
       + '</div>'
       /* --- 伙伴单独一套：让它走本地 Ollama，云端那份留给周报点评 --- */
       + '<div class="field"><label>伙伴单独用哪套 AI（可留空）</label>'
-      +   '<div class="hint" style="margin:0 0 8px">留空 = 跟上面那套共用（<b>推荐</b>）。填了就<b>只有宠物聊天</b>用它 —— '
-      +   '原本是为了让宠物跑在<b>本地 Ollama</b> 上（不花额度、断网也能说话、纯 CPU 不占显存），'
-      +   '而需要"读懂一周数据再给建议"的周报点评仍留给云端大模型。'
-      +   '<br>⚠️ <b>本地模型这条路现在不要用</b>：本机实测 Ollama 的 runner '
-      +   '每次"重新加载模型"都会崩（只有服务刚起后的第一次加载能成），模型文件也已删除。'
-      +   '要再试请先读 <b>landing/tools/pet-cpu.Modelfile</b> 的注释（里面记了全部踩坑与解法）。</div>'
+      +   '<div class="hint">留空时共用上方的 AI。也可以单独填写服务地址和模型；使用本地服务前，请先启动服务并确认模型可用。</div>'
       +   '<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">'
       +     '<button class="btn ghost sm" id="s_pet_ollama">用本地 Ollama</button>'
       +     '<button class="btn ghost sm" id="s_pet_clear">跟上面共用</button>'
@@ -3997,21 +4059,25 @@ var App = {
       + jwglPanelHTML(_jwglStatus)
       + '<div class="ver">着陆 v'+APP_CONFIG.version+' · <a href="'+APP_CONFIG.repo+'" target="_blank" rel="noreferrer">GitHub</a></div>');
 
+    if(window.UI) UI.polishSettings();
+
     /* 开机自启：只在桌面版有桥；网页版说明一句 */
     var asBtn = $('s_autostart');
     if(asBtn){
       if(window.landing && window.landing.autoLaunch){
-        window.landing.autoLaunch.get().then(function(on){
+        asBtn.disabled = true;
+        function autoLaunchLabel(on){
           asBtn.dataset.on = on ? '1' : '0';
           asBtn.textContent = '开机自动启动：'+(on ? '已开启' : '已关闭');
-        });
+        }
+        window.landing.autoLaunch.get().then(autoLaunchLabel).catch(function(error){asBtn.textContent='开机自动启动：读取失败，点击重试';toast(error.message||'读取开机自启失败');}).finally(function(){asBtn.disabled=false;});
         asBtn.onclick = function(){
           var next = asBtn.dataset.on !== '1';
+          asBtn.disabled=true;asBtn.textContent='正在'+(next?'开启':'关闭')+'开机自启…';
           window.landing.autoLaunch.set(next).then(function(applied){
-            asBtn.dataset.on = applied ? '1' : '0';
-            asBtn.textContent = '开机自动启动：'+(applied ? '已开启' : '已关闭');
+            autoLaunchLabel(applied);
             toast(applied ? '开机自启已开（启动后待在托盘里，不弹窗）' : '开机自启已关');
-          });
+          }).catch(function(error){autoLaunchLabel(asBtn.dataset.on==='1');toast(error.message||'设置开机自启失败，请重试');}).finally(function(){asBtn.disabled=false;});
         };
       } else {
         asBtn.textContent = '开机自动启动：仅桌面版可用';
@@ -4252,6 +4318,8 @@ document.addEventListener('click',function(e){
   else if(act==='actToggle'){ App.actToggle(); }
   else if(act==='actFolder'){ App.actFolder(); }
   else if(act==='actRank'){ App.actRank(); }
+  else if(act==='actHistory'){ App.actHistory(); }
+  else if(act==='actEdit'){ App.actEdit(id); }
   else if(act==='actClearShots'){ App.actClearShots(); }
   else if(act==='actSave'){ App.actSave(); }
   /* 换应用回问（2026-10-13；10-14 加确认方式切换） */

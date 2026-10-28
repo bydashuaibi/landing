@@ -1,4 +1,12 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>初华 · 着陆桌宠</title><link rel="stylesheet" href="desktop-pet.css"></head><body>
-<section id="controls" aria-label="桌宠学习控制"><header><strong>初华 · 陪你学一点</strong><button id="hide" title="隐藏桌宠，首页齿轮可叫回" aria-label="隐藏桌宠">×</button></header><p id="line" role="status">只做五分钟，我陪你。</p><div class="course"><select id="track" aria-label="选择学习方向"><option value="python">Python</option><option value="pytorch">PyTorch</option></select><span id="clock">准备开始</span></div><div class="actions"><button id="start">开始 5 分钟</button><button id="capture">记断点</button><button id="open">打开着陆</button><button id="settle">结束记录</button></div><form id="command"><input id="text" aria-label="告诉初华要做什么" maxlength="160" placeholder="开始学 Python / 暂停 / 记断点"><button aria-label="执行指令">↵</button></form></section>
-<button id="avatar" aria-label="初华：点击展开控制，拖动移动，右键更多操作"><span id="sprite"></span></button><span id="hint">点我开始 · 拖动搬家 · 右键菜单</span>
+<section id="controls" aria-label="初华对话与应用控制" hidden>
+  <header><strong id="petName">初华 · 你的桌面伙伴</strong><div><button id="settings" title="桌宠设置" aria-label="桌宠设置">⚙</button><button id="collapse" title="收起对话，角色留在桌面" aria-label="收起对话">−</button><button id="closeDialog" title="关闭对话，角色留在桌面" aria-label="关闭对话，保留桌宠">×</button></div></header>
+  <p id="line" role="status">想去哪一页，或者学哪一点？告诉我就好。</p>
+  <div id="messages" role="log" aria-live="polite" aria-label="与初华的对话"><p class="message assistant">我可以帮你打开页面、选择 Python 或 PyTorch，再陪你开始五分钟。</p></div>
+  <form id="command"><input id="text" aria-label="告诉初华要做什么" maxlength="160" placeholder="比如：打开日报 / 选择 PyTorch"><button aria-label="发送">发送</button></form>
+  <nav id="pages" aria-label="让初华打开页面"><button data-page="today">今日</button><button data-page="weekly">周报</button><button data-page="digest">日报</button><button data-page="companion">陪伴</button><button data-page="pet">伙伴</button><button data-page="shop">商城</button><button data-page="me">我的</button><button id="help">怎么用</button><button id="skins">换皮肤</button><button id="playground">玩一会</button></nav>
+  <div class="course"><label for="track">接下来学</label><select id="track" aria-label="选择学习方向"><option value="python">Python</option><option value="pytorch">PyTorch</option></select><span id="clock">准备开始</span></div>
+  <div class="actions"><button id="start">开始 5 分钟</button><button id="capture">记断点</button><button id="open">打开着陆</button><button id="settle">结束记录</button></div>
+</section>
+<button id="avatar" aria-label="伙伴：单击展开对话，拖动移动，右键更多操作"><span id="sprite"></span></button><div id="quickbar"><span id="quickStatus">初华 · 在这里陪你</span><button id="petMenu" aria-label="桌宠菜单" title="桌宠菜单">≡</button></div><span id="hint">单击聊天 · 拖动搬家 · 右键更多</span>
 <script src="petdex-sprite.js"></script><script src="desktop-pet-ui.js"></script></body></html>

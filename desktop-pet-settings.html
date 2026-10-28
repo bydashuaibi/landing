@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>桌宠设置 · 着陆</title><link rel="stylesheet" href="desktop-pet-settings.css"></head><body>
+<aside class="sidebar"><div class="brand"><span class="brand-mark">✳</span><strong>着陆<small>桌面上的小小陪伴</small></strong></div><nav aria-label="桌宠设置分类"><button data-section="appearance" aria-current="page">◉ <span>外观与位置</span></button><button data-section="interaction">☷ <span>互动方式</span></button><button data-section="startup">↗ <span>启动与关闭</span></button><button data-section="guide">? <span>怎么相处</span></button></nav><div class="sidebar-bottom"><p>设置即时保存<br>按你舒服的方式陪着你。</p><button id="closeSettings">收起设置 ↙</button></div></aside>
+<main><header><div><span class="eyebrow">A LITTLE COMPANY</span><h1 id="sectionTitle">外观与位置</h1><p>让伙伴，刚好适合你的桌面。</p></div><div class="preview" id="settingsPreview" aria-label="当前皮肤预览"></div></header>
+<div class="status-bar"><span class="status-dot"></span><span id="desktopState">正在读取桌宠状态…</span><button id="findPet">找回桌宠 ↗</button></div>
+<section id="appearance" class="settings-panel" aria-labelledby="sectionTitle">
+<label class="setting-row" for="enabled"><span><b>显示桌面伙伴</b><small>独立悬浮在桌面，收起着陆后也在。</small></span><input id="enabled" type="checkbox" role="switch" data-pref="enabled"></label>
+<label class="setting-row" for="alwaysOnTop"><span><b>保持在其他窗口上方</b><small>关闭后，其他应用可以盖住伙伴。</small></span><input id="alwaysOnTop" type="checkbox" role="switch" data-pref="alwaysOnTop"></label>
+<label class="setting-row" for="showTaskbar"><span><b>显示桌宠任务栏图标</b><small>需要在任务栏找到桌宠或选择录制窗口时开启。</small></span><input id="showTaskbar" type="checkbox" role="switch" data-pref="showTaskbar"></label>
+<label class="setting-row slider-row" for="scale"><span><b>桌宠大小</b><small>只调整桌面角色，养成和学习数据不变。</small></span><span class="range-control"><input id="scale" type="range" min="60" max="160" step="5" data-range="scale"><output for="scale" id="scaleValue">100%</output></span></label>
+<label class="setting-row slider-row" for="opacity"><span><b>桌宠透明度</b><small>对话和设置保持清晰，角色可以更轻一点。</small></span><span class="range-control"><input id="opacity" type="range" min="25" max="100" step="5" data-range="opacity"><output for="opacity" id="opacityValue">100%</output></span></label>
+<div class="panel-actions"><button id="changeSkin">更换皮肤 · Petdex ↗</button><button id="resetAppearance">恢复外观默认</button></div>
+</section>
+<section id="interaction" class="settings-panel" hidden aria-labelledby="sectionTitle">
+<label class="setting-row" for="lockDrag"><span><b>锁定位置</b><small>不能拖动搬家，仍可单击聊天和右键操作。</small></span><input id="lockDrag" type="checkbox" role="switch" data-pref="lockDrag"></label>
+<label class="setting-row" for="clickThrough"><span><b>游戏模式 / 鼠标穿透</b><small>鼠标直接操作下面的应用。按 F7 恢复，也可从托盘恢复互动。</small></span><input id="clickThrough" type="checkbox" role="switch" data-pref="clickThrough"></label>
+<label class="setting-row" for="hoverFade"><span><b>鼠标悬停时半透明</b><small>指针经过角色时变淡，对话仍然可点。</small></span><input id="hoverFade" type="checkbox" role="switch" data-pref="hoverFade"></label>
+<label class="setting-row" for="showHints"><span><b>显示操作提示</b><small>角色下方显示单击、拖动等简短提示。</small></span><input id="showHints" type="checkbox" role="switch" data-pref="showHints"></label>
+<div class="setting-note"><b>关闭对话，不会赶走伙伴</b><p>“×”和“−”都只收起对话；单击角色可以再打开。只有右键菜单的“隐藏整个桌宠”才会隐藏角色。</p></div>
+</section>
+<section id="startup" class="settings-panel" hidden aria-labelledby="sectionTitle">
+<label class="setting-row" for="autoStart"><span><b>开机自动启动</b><small>登录电脑后在后台启动着陆；已开启的桌宠也会出现。</small></span><input id="autoStart" type="checkbox" role="switch" disabled></label>
+<label class="setting-row select-row" for="closeAction"><span><b>关闭着陆主窗口时</b><small>“收起到托盘”可以保留桌宠、计时和安静记录。</small></span><select id="closeAction" disabled><option value="tray">保留桌宠，收起到托盘</option><option value="ask">每次询问</option><option value="quit">退出整个着陆</option></select></label>
+<div class="setting-note"><b>隐藏、收起和退出是三件事</b><p>收起对话：伙伴留在桌面。隐藏桌宠：着陆继续运行。托盘菜单“退出着陆”：伙伴和程序一起退出。</p></div>
+</section>
+<section id="guide" class="settings-panel" hidden aria-labelledby="sectionTitle"><div class="guide-grid"><article><span>01</span><h2>单击，聊两句</h2><p>点角色展开对话，再点一次收起。可以选择学习方向、开始五分钟、记断点或打开页面。</p></article><article><span>02</span><h2>按住，搬个家</h2><p>拖动角色即可移动，位置自动记住。开启“锁定位置”后，单击仍可使用。</p></article><article><span>03</span><h2>右键，更多操作</h2><p>更换皮肤、桌宠设置和学习操作都在菜单里。角色下方的“≡”也能打开菜单。</p></article><article><span>04</span><h2>找不到，就叫回来</h2><p>点上方“找回桌宠”会回到屏幕右下并恢复互动。鼠标穿透时按 F7，或从系统托盘打开设置。</p></article></div></section>
+<p id="notice" role="status" aria-live="polite">设置即时生效。</p><footer>着陆 <span id="version">2.10.0</span> · 角色共用原有皮肤、属性与回忆</footer>
+</main><script src="petdex-sprite.js"></script><script src="desktop-pet-settings.js"></script></body></html>
