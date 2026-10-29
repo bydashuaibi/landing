@@ -4,7 +4,7 @@ const path=require('path');
 module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,autoLaunch,closeBehavior,i18n:I18n}) {
   let win=null,settingsWin=null,quitting=false,snapshot={},saveTimer,hit=true,recoveryRegistered=false,lastError='';
   const defaults={enabled:true,scale:1,opacity:1,lockDrag:false,clickThrough:false,hoverFade:false,alwaysOnTop:true,showTaskbar:false,showHints:true,panelOpen:false};
-  const actions=new Set(['open','study','pause','resume','capture','settle','chat','pat','wave','hug','text','weekly','navigate','select','help','skins','playground']);
+  const actions=new Set(['open','study','pause','resume','capture','settle','chat','pat','wave','hug','highfive','text','weekly','navigate','select','help','skins','playground']);
   const pages=new Set(['today','weekly','digest','companion','pet','shop','me']);
   const alive=w=>w&&!w.isDestroyed();
   const mainSender=e=>alive(getMain())&&e.sender===getMain().webContents;

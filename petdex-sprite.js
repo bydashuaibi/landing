@@ -46,21 +46,19 @@
         function pixels(rows,x,y,palette){rows.forEach(function(line,dy){for(var dx=0;dx<line.length;dx++){var color=palette[line[dx]];if(color){ctx.fillStyle=color;ctx.fillRect(x+dx,y+dy,1,1);}}});}
         var fabric={o:'#694353',d:'#98516a',m:'#c77c91',h:'#efb5bd',w:'#f8d7ce'};
         if(gear.head==='ribbon')pixels([
-          '.oooo..........oooo.',
-          'oddddo........oddddo',
-          'odhhmdo......odmh hdo'.replace(' ',''),
-          'odhwmmdoooooodmmhhdo',
-          'odmmmdodmhhmdodmmmdo',
-          '.odmmdodmhhmdodmmdo.',
-          '..oddoodmmmmdooddo..',
-          '...oo..oddmdo..oo...',
-          '.....oddmooddo......',
-          '.....odmdo.dmdo.....',
-          '....odmmdo.dmmdo....',
-          '....odmdo...dmdo....',
-          '....oddo.....ddo....',
-          '.....oo.......o.....'
-        ],115,29,fabric);
+          '...ooo....',
+          '..odddo...',
+          '.odhhmdo..',
+          'odhwmmddoo',
+          'odmmmddohh',
+          '.odmmddohw',
+          '..oddddohh',
+          '...ooddooo',
+          '.....oddoo',
+          '....odmdo.',
+          '....oddo..',
+          '.....oo...'
+        ].map(function(half){return half+half.split('').reverse().join('');}),115,30,fabric);
         if(gear.head==='crown')pixels([
           '.................oo.................',
           '....oo..........ohho..........oo....',
@@ -100,10 +98,10 @@
           '..ooooohhooooo..',
           '.odhhhhhhhhhhdo.',
           '..odhhwwhhhdo...',
-          '...odhw hhd o...'.replace(/ /g,''),
-          '....ohhhhhh o...'.replace(' ',''),
+          '...odhw hhd o...'.replace(/ /g,'.'),
+          '....ohhhhhh o...'.replace(' ','.'),
           '...ohhhddhhho...',
-          '...ohhdo odhho..'.replace(' ',''),
+          '...ohhdo odhho..'.replace(' ','.'),
           '..ohdo....odho..',
           '..ooo......ooo..'
         ],119,30,{o:'#846337',d:'#b49248',h:'#eed178',w:'#fff3b9'});

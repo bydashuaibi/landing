@@ -23,7 +23,9 @@
   document.addEventListener('contextmenu',function(e){e.preventDefault();petdesk.menu();});
   $('avatar').onpointerdown=function(e){if(e.button!==0||preferences.clickThrough)return;drag={x:e.screenX,y:e.screenY,ox:e.screenX,oy:e.screenY,moved:false};$('avatar').setPointerCapture(e.pointerId);petdesk.hit(true);};
   $('avatar').onpointermove=function(e){if(!drag||preferences.lockDrag)return;var dx=e.screenX-drag.x,dy=e.screenY-drag.y;if(!drag.moved&&Math.abs(e.screenX-drag.ox)+Math.abs(e.screenY-drag.oy)<6)return;drag.moved=true;drag.x=e.screenX;drag.y=e.screenY;petdesk.move({x:dx,y:dy});};
-  function release(){if(!drag)return;var moved=drag.moved;drag=null;if(!moved){setPanel($('controls').hidden);sprite.play('wave',1.6);send('pat');}}
+  var clickMotions=['wave','pat','highfive','hug'],previousClickMotion='';
+  function randomClickMotion(){var choices=clickMotions.filter(function(name){return name!==previousClickMotion;});previousClickMotion=choices[Math.floor(Math.random()*choices.length)];return previousClickMotion;}
+  function release(){if(!drag)return;var moved=drag.moved;drag=null;if(!moved){setPanel($('controls').hidden);var action=randomClickMotion();sprite.play(action,action==='hug'?2.2:1.6);send(action);}}
   $('avatar').onpointerup=release;$('avatar').onpointercancel=function(){drag=null;};
-  $('avatar').onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();setPanel($('controls').hidden);send('wave');}};
+  $('avatar').onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();setPanel($('controls').hidden);var action=randomClickMotion();sprite.play(action,action==='hug'?2.2:1.6);send(action);}};
 })();

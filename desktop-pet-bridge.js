@@ -28,7 +28,7 @@
       'checkpoint':{action:'capture'},'スクリーンショット':{action:'capture'},'進捗を記録':{action:'capture'},
       'finish':{action:'settle'},'学習を終了':{action:'settle'},
       'open studytrail':{action:'open'},'学迹を開く':{action:'open'},'学びのあとを開く':{action:'open'},
-      'wave':{action:'wave'},'手を振る':{action:'wave'},'hug':{action:'hug'},'ハグ':{action:'hug'}
+      'wave':{action:'wave'},'手を振る':{action:'wave'},'hug':{action:'hug'},'ハグ':{action:'hug'},'high five':{action:'highfive'},'击掌':{action:'highfive'}
     };
     if(international[local])return international[local];
     var pages={home:'today',today:'today',weekly:'weekly',digest:'digest',talk:'companion',companion:'pet',shop:'shop',settings:'me','ホーム':'today','今日':'today','週報':'weekly','技術ニュース':'digest','会話':'companion','パートナー':'pet','お店':'shop','設定':'me'};
@@ -51,6 +51,7 @@
     if(/^(打开|打开着陆|回到着陆|打开学迹|回到学迹)[。!！]?$/.test(t))return {action:'open'};
     if(/^(挥手|挥挥手)$/.test(t))return {action:'wave'};
     if(/^(抱抱|抱一下)$/.test(t))return {action:'hug'};
+    if(/^(击掌|拍手)$/.test(t))return {action:'highfive'};
     return null;
   }
   function command(p){
@@ -74,7 +75,7 @@
     if(p.action==='open'){answer(I18n.t('着陆打开了。今天从一点点开始。'));return;}
     if(p.action==='weekly'){L.tab('weekly');say('看看你已经走过的路。');return;}
     if(p.action==='chat'){Pet.open('panel','chat');say(I18n.t('我在着陆里等你说话。'));return;}
-    if(['pat','wave','hug'].indexOf(p.action)>=0){if(p.action==='pat')Pet.pat();else Pet.interact(p.action);motion=p.action;motionId=Date.now();publish();}
+    if(['pat','wave','hug','highfive'].indexOf(p.action)>=0){if(p.action==='pat')Pet.pat();else Pet.interact(p.action);motion=p.action;motionId=Date.now();publish();}
   }
   function apiRequestOpen(){api.reveal();}
   window.DesktopPetBridge={init:function(bridge){if(L)return;L=bridge;api=window.landing&&landing.desktopPet;if(!api)return;api.onCommand(command);publish();setInterval(publish,1000);},say:say,parse:parse,motion:function(name){motion=name;motionId=Date.now();publish();}};

@@ -36,7 +36,11 @@ async function solve(id){await page.evaluate(id=>TrailShop.openTool(id),id);
  await launch();await page.setViewportSize({width:1440,height:960});
  await check('desktop pet click and explicit commands trigger visible sprite motions',async()=>{
   await pet.locator('#avatar').click();
-  await pet.waitForFunction(()=>['wave','pat'].includes(document.querySelector('#sprite canvas').dataset.motion));
+  await pet.waitForFunction(()=>['wave','pat','highfive','hug'].includes(document.querySelector('#sprite canvas').dataset.motion));
+  var previous=await pet.locator('#sprite canvas').getAttribute('data-motion'),seen=new Set([previous]);
+  for(var n=0;n<8;n++){await pet.locator('#avatar').click();await pet.waitForFunction(last=>{var name=document.querySelector('#sprite canvas').dataset.motion;return name&&name!==last;},previous);previous=await pet.locator('#sprite canvas').getAttribute('data-motion');seen.add(previous);}
+  assert.ok(seen.size>=2,'random clicks produce different motions');
+  await pet.evaluate(()=>petdesk.panel(true));await pet.locator('#controls').waitFor();
   await pet.locator('#text').fill('挥手');await pet.locator('#command').press('Enter');
   await pet.waitForFunction(()=>document.querySelector('#sprite canvas').dataset.motion==='wave');
  });
