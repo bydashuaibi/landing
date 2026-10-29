@@ -34,6 +34,12 @@ async function solve(id){await page.evaluate(id=>TrailShop.openTool(id),id);
   assert.equal(core.create(data,'en').original('学迹'),'着陆');
  });
  await launch();await page.setViewportSize({width:1440,height:960});
+ await check('desktop pet click and explicit commands trigger visible sprite motions',async()=>{
+  await pet.locator('#avatar').click();
+  await pet.waitForFunction(()=>['wave','pat'].includes(document.querySelector('#sprite canvas').dataset.motion));
+  await pet.locator('#text').fill('挥手');await pet.locator('#command').press('Enter');
+  await pet.waitForFunction(()=>document.querySelector('#sprite canvas').dataset.motion==='wave');
+ });
  await check('existing profile identifiers remain compatible and all 29 items have pixel illustrations',async()=>{
   assert.equal(await page.evaluate(()=>!!localStorage.getItem('landing.v2')),true);const items=await page.evaluate(()=>Pet.catalog());assert.equal(items.length,29);assert.equal(items.filter(i=>i.kind==='tool').length,6);assert.equal(new Set(items.map(i=>i.id)).size,29);
   await page.evaluate(()=>{Pet.state().fish=200;Pet.state().gear.head='ribbon';Pet.state().gentleMotion=true;Landing.save();Landing.tab('shop');});assert.equal(await page.locator('.market-item-art svg').count(),29);await page.locator('[data-pact=category][data-id=tool]').click();assert.equal(await page.locator('.market-item').count(),6);assert.equal(await page.locator('.market-item').first().getAttribute('data-dimension'),'好奇心');
