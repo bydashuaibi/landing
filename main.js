@@ -973,8 +973,7 @@ function actDurations() {
   const byAppMs = r.byAppMs, byCatMs = r.byCatMs, appCat = r.appCat;
   const byApp = Object.keys(byAppMs)
     .map((k) => ({ proc: k, ms: byAppMs[k], cat: appCat[k] }))
-    .sort((a, b) => b.ms - a.ms)
-    .slice(0, 40);
+    .sort((a, b) => b.ms - a.ms);
   const totalMs = Object.keys(byAppMs).reduce((a, k) => a + byAppMs[k], 0);
   const byCatMin = {};
   Object.keys(byCatMs).forEach((k) => { byCatMin[k] = Math.round(byCatMs[k] / 60000); });
@@ -997,16 +996,20 @@ function actWeekStats(from, to) {
   for (let i = 0; i < 7; i++) {
     const d = addDaysYmd(from, i);
     if (to && d > to) break;
-    let samples = [];
-    try { samples = (JSON.parse(fs.readFileSync(actLogPath(d), 'utf8')).samples) || []; } catch (e) { samples = []; }
-    if (!samples.length) { days.push({ date: d, totalMin: 0 }); continue; }
+    let samples = [], available = false;
+    // The current log may still be in memory when the weekly view refreshes.
+    if (d === _act.date) { samples = _act.samples || []; available = true; }
+    else try { samples = (JSON.parse(fs.readFileSync(actLogPath(d), 'utf8')).samples) || []; available = true; } catch (e) { samples = []; }
+    if (!samples.length) { days.push({ date: d, totalMin: 0, byApp: [], available: available }); continue; }
     const r = durOf(samples, step);
     let dm = 0;
     Object.keys(r.byCatMs).forEach((k) => { byCatMs[k] = (byCatMs[k] || 0) + r.byCatMs[k]; dm += r.byCatMs[k]; });
     Object.keys(r.byAppMs).forEach((p) => {
       if ((r.appCat[p] || '') === 'fun') funAppMs[p] = (funAppMs[p] || 0) + r.byAppMs[p];
     });
-    days.push({ date: d, totalMin: Math.round(dm / 60000) });
+    const byApp = Object.keys(r.byAppMs).map(proc => ({proc, ms:r.byAppMs[proc], cat:r.appCat[proc] || 'other'}))
+      .sort((a,b) => b.ms-a.ms);
+    days.push({ date: d, totalMin: Math.round(dm / 60000), byApp: byApp, available: available });
   }
   const byCatMin = {};
   Object.keys(byCatMs).forEach((k) => { byCatMin[k] = Math.round(byCatMs[k] / 60000); });

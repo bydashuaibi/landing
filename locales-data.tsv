@@ -1482,3 +1482,87 @@ Petdex 选皮肤|Browse Petdex|Petdex で探す
 工作学习|Work & study|仕事・学習
 生活品质|Daily life|暮らし
 素养提高|Personal growth|自分磨き
+记账|Ledger|家計簿
+记录日常的另一种足迹|Another trail of daily life|暮らしの、もうひとつの足跡
+看看钱花在哪里，给想做的事留一点余地。|See where your money goes and leave room for what matters to you.|お金の使い道を振り返り、やりたいことに少し余裕を。
+查看月份|Month|表示する月
+导出本月 CSV|Export month as CSV|今月をCSVで出力
+＋ 记一笔|＋ Add entry|＋ 記録する
+本月支出|Monthly expenses|今月の支出
+本月收入|Monthly income|今月の収入
+本月结余|Monthly net|今月の収支
+月度预算|Monthly budget|月の予算
+调整预算|Edit budget|予算を変更
+设置预算|Set budget|予算を設定
+已超出|Over budget|予算超過
+还可支出|Remaining|残りの予算
+按需设置本月支出上限，不提醒、不催促。|Set a monthly spending limit if useful. No reminders or nudges.|必要なら月の支出上限を設定できます。通知や催促はしません。
+金额单位为人民币；结余是本月收入减支出，不代表账户余额。|Amounts are in CNY. Monthly net is income minus expenses, not an account balance.|通貨は人民元です。月の収支は収入から支出を引いた金額で、口座残高ではありません。
+收支明细|Transactions|収支の明細
+收支筛选|Transaction filter|収支の絞り込み
+全部|All|すべて
+支出|Expense|支出
+收入|Income|収入
+当前筛选下没有记录|No entries match this filter|この条件の記録はありません
+这个月的账本还是空的|No entries this month yet|今月の記録はまだありません
+从今天的一顿饭、一本书开始记。|Start with today's meal or a book.|今日の食事や一冊の本から記録してみましょう。
+记下第一笔|Add an entry|記録を追加
+支出去向|Spending breakdown|支出の内訳
+记下支出后，这里会显示分类分布。|Your spending categories will appear here.|支出を記録すると、カテゴリ別の内訳を表示します。
+收支只保存在本机，随完整数据备份一起导入、导出。小鱼干与真实收支分开记录。|Transactions stay on this device and are included in full data backups. Fish treats are separate from real money.|収支はこの端末に保存し、データ全体のバックアップに含まれます。おさかなと実際のお金は別々に記録します。
+餐饮|Food & drinks|食費
+交通|Transport|交通費
+学习资料|Study materials|学習教材
+日用|Daily essentials|日用品
+娱乐消费|Entertainment|娯楽費
+医疗健康|Health|医療・健康
+其他支出|Other expenses|その他の支出
+生活费|Allowance|生活費
+奖学金|Scholarship|奨学金
+兼职收入|Part-time work|アルバイト収入
+退款|Refund|返金
+其他收入|Other income|その他の収入
+编辑收支|Edit transaction|収支を編集
+记一笔|Add transaction|収支を記録
+收支类型|Type|収支の種類
+金额（元）|Amount (CNY)|金額（人民元）
+日期|Date|日付
+分类|Category|カテゴリ
+备注（选填）|Note (optional)|メモ（任意）
+比如：午饭、Python 教材|e.g. lunch, a Python book|例：昼食、Pythonの参考書
+保存记录|Save entry|記録を保存
+请输入有效日期和大于 0 的金额，最多两位小数。|Enter a valid date and an amount greater than zero, with up to two decimal places.|正しい日付と0より大きい金額を入力してください。小数は2桁までです。
+收支已保存|Transaction saved|収支を保存しました
+本月支出上限（元，0 为不设预算）|Monthly spending limit (CNY; 0 for no budget)|月の支出上限（人民元、0で予算なし）
+保存预算|Save budget|予算を保存
+请输入有效金额，最多两位小数。|Enter a valid amount with up to two decimal places.|有効な金額を入力してください。小数は2桁までです。
+删除这笔收支？|Delete this transaction?|この収支を削除しますか？
+应用记录读取失败，请重试。|Could not read usage records. Please retry.|アプリの使用記録を読み込めませんでした。再試行してください。
+应用记录需在桌面端查看。|Usage records are available in the desktop app.|使用記録はデスクトップアプリで確認できます。
+正在读取应用记录…|Loading usage records…|使用記録を読み込んでいます…
+不足 1 分钟|Less than 1 minute|1分未満
+应用使用|App usage|アプリの使用
+这天没有保存的应用日志，无法还原使用明细。|No app log was saved for this day, so usage details cannot be recovered.|この日のアプリログがないため、使用の明細を復元できません。
+这天还没有前台应用使用记录。|No foreground app usage recorded for this day.|この日のフォアグラウンドアプリの使用記録はありません。
+记录已暂停；已有日志仍可查看。|Recording is paused. Saved logs are still available.|記録は一時停止中です。保存済みのログは確認できます。
+展开全部应用|Show all apps|すべてのアプリを表示
+刷新应用记录|Refresh app usage|使用記録を更新
+投入包含课表和已记录的专注；应用使用单独统计，不重复计入投入。系统窗口、桌面和锁屏不计入应用使用。|Time invested includes scheduled classes and recorded focus. App usage is shown separately, without double counting. System windows, the desktop and lock screen are excluded.|取り組み時間には時間割の授業と記録した集中時間を含みます。アプリ使用は別に集計し、重複加算しません。システム画面、デスクトップ、ロック画面は除外します。
+给想学的东西留一段时间|Make time for what you want to learn|学びたいことに時間をつくる
+准备开始学习|Ready to study|学習の準備
+选一个适合今天的时长。5 分钟适合热身，也可以完整学一段；结束后再记录下次的起点。|Choose a duration that suits today. Five minutes is a warm-up option; a longer session works too. Leave a checkpoint when you finish.|今日に合った長さを選びましょう。5分でウォームアップしても、じっくり取り組んでも大丈夫。終わったら次の開始点を残しましょう。
+这次先做|Start with|まず取り組むこと
+本次学习时长（5–240 分钟）|Session length (5–240 minutes)|今回の学習時間（5〜240分）
+时长会记住。学习前可以放远手机，开启勿扰；不必每次重新设置。|Your duration is remembered. Put your phone away or enable Do Not Disturb before studying.|選んだ時間を記憶します。学習前にスマホを遠ざけたり、おやすみモードにしたりしましょう。
+开始学习|Start studying|学習を始める
+▶ 接着学习|▶ Continue learning|▶ 学習を続ける
+先选一段适合今天的学习时间，放好手机，从上次的进度继续。|Choose a session length, put your phone away and continue where you left off.|今日に合った時間を選び、スマホを置いて前回の続きから始めましょう。
+选择时长，开始学习|Choose duration & start|時間を選んで始める
+，按自己的节奏来。|, at your own pace.|、自分のペースで。
+现在没有学习计时，可以先选择时长再开始。|No study timer is running. Choose a duration to begin.|学習タイマーは動いていません。時間を選んで始めましょう。
+已删除|Deleted|削除しました
+确认删除|Confirm deletion|削除する
+应用足迹已记下，学习投入按实际记录。|App usage is saved. Study time follows your actual study records.|アプリの使用は記録済みです。学習時間は実際の学習記録に基づきます。
+整理投入记录|Manage invested time|取り組み記録を整理
+没有已保存的今日应用日志。|No app log is saved for today.|今日のアプリログはまだ保存されていません。
+今日排行在「今日 → 应用时间」；逐日应用明细在「周报 → 每日回顾」。自动投入记录与原始应用使用分开统计，手动专注时避免重复计入时间池。|Today's ranking is under Today → App usage. Daily details are under Weekly → Daily review. Invested time and raw app usage are counted separately, without overlapping manual focus time.|今日のランキングは「今日 → アプリ使用時間」、日別の明細は「週間レポート → 毎日の振り返り」で確認できます。取り組み時間とアプリ使用は別々に集計し、手動の集中時間とは重複させません。

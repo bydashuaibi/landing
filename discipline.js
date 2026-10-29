@@ -14,6 +14,7 @@
       { id: 'python', name: 'Python', checkpoint: I18n.t('打开正在学的 Python 资料，运行一个例子'), url: '' },
       { id: 'pytorch', name: 'PyTorch', checkpoint: I18n.t('打开正在学的 PyTorch 资料，运行一个例子'), url: '' }
     ] };
+    d.learning.minutes = Math.max(5, Math.min(240, Math.round(Number(d.learning.minutes) || 25)));
     if (!d.reminder) d.reminder = { enabled: false, time: '19:30', weekdays: [1, 2, 3, 4, 5], date: '', status: '', snoozeUntil: 0 };
     if (!d.reminder.mode) d.reminder.mode = 'timetable';
     if (!d.reminder.periodEnds) d.reminder.periodEnds = {};
@@ -94,7 +95,7 @@
     var d = state(), r = d.reminder, plan = reminderPlan();
     return I18n.html('<section class="ds-study"><div class="ds-section-head"><div><span class="ds-eyebrow">AFTER CLASS / 给自己的学习时间</span><h2>下课之后，接着上次那一步</h2></div>') + button('reminderSettings', r.enabled ? '◷ ' + (plan.time ? esc(plan.time) : I18n.t('今天休息')) + (r.mode === 'timetable' ? I18n.t(' · 按课表') : I18n.t(' 课后提醒')) : I18n.t('◷ 设置课后提醒'), 'ds-reminder-pill') + '</div><div class="ds-track-grid">' + d.learning.tracks.map(function (t) {
       var active = d.learning.selected === t.id;
-      return '<article class="ds-learning-track' + (active ? ' is-selected' : '') + '"><div class="ds-section-head"><span class="ds-course-name">' + esc(t.name) + '</span>' + button('trackEdit', I18n.t('手动记进度 ↗'), 'ds-link', 'data-track="' + esc(t.id) + '"') + '</div>' + (window.LearningCheckpoint ? LearningCheckpoint.summary(t) : '') + '<p>' + esc(checkpointText(t) || I18n.t('先记下你下次要做的第一步')) + '</p><div class="ds-learning-actions">' + button('captureProgress', I18n.t('▣ 截屏记断点'), 'ds-capture-button', 'data-track="' + esc(t.id) + '"') + button('captureHistory', I18n.t('历史断点'), 'ds-link', 'data-track="' + esc(t.id) + '"') + '</div><div class="ds-learning-actions">' + button('prepare', I18n.t('▶ 接着学 5 分钟'), 'ds-track-start', 'data-track="' + esc(t.id) + '"') + (t.url ? button('resource', t.resume ? I18n.t('打开上次位置') : I18n.t('打开资料'), 'ds-link', 'data-track="' + esc(t.id) + '"') : '') + '</div></article>';
+      return '<article class="ds-learning-track' + (active ? ' is-selected' : '') + '"><div class="ds-section-head"><span class="ds-course-name">' + esc(t.name) + '</span>' + button('trackEdit', I18n.t('手动记进度 ↗'), 'ds-link', 'data-track="' + esc(t.id) + '"') + '</div>' + (window.LearningCheckpoint ? LearningCheckpoint.summary(t) : '') + '<p>' + esc(checkpointText(t) || I18n.t('先记下你下次要做的第一步')) + '</p><div class="ds-learning-actions">' + button('captureProgress', I18n.t('▣ 截屏记断点'), 'ds-capture-button', 'data-track="' + esc(t.id) + '"') + button('captureHistory', I18n.t('历史断点'), 'ds-link', 'data-track="' + esc(t.id) + '"') + '</div><div class="ds-learning-actions">' + button('prepare', I18n.t('▶ 接着学习'), 'ds-track-start', 'data-track="' + esc(t.id) + '"') + (t.url ? button('resource', t.resume ? I18n.t('打开上次位置') : I18n.t('打开资料'), 'ds-link', 'data-track="' + esc(t.id) + '"') : '') + '</div></article>';
     }).join('') + I18n.html('</div><div class="ds-study-bottom"><span>开始前：把手机调成专注模式，放到伸手拿不到的地方。</span>') + button('phone', I18n.t('设置安卓手机防分心 →')) + '</div>' + (r.enabled ? '<p class="ds-note">' + esc(plan.reason) + '。' + button('background', I18n.t('配置开机自启和托盘常驻')) + '</p>' : '') + '</section>';
   }
   function safeURL(raw) {
@@ -120,18 +121,23 @@
     var t = track(id); if (!t) return;
     if (B.state().timer) { B.toast(I18n.t('先结束当前的计时，再接着学')); return; }
     state().learning.selected = t.id; B.save();
-    B.openSheet(I18n.html('<span class="ds-eyebrow">只承诺接下来的 5 分钟</span><h2 class="ds-prepare-title">先把手机放远一点</h2><p class="hint">打开手机的专注 / 勿扰模式，把短视频和短剧应用暂停。然后让手机离开桌面。</p><div class="ds-next-step"><span>这次只做</span><p>') + esc(checkpointText(t)) + I18n.html('</p></div><p class="hint">5 分钟结束后，可以休息，也可以继续。完成后写一句下次从哪接着做。</p><div class="sheet-actions">') + button('phone', I18n.t('手机怎么设置'), 'btn ghost') + button('learnStart', (t.url ? I18n.t('打开资料，') : '') + I18n.t('开始 5 分钟'), 'btn primary', 'data-track="' + esc(t.id) + '"') + '</div>');
+    B.openSheet(I18n.html('<span class="ds-eyebrow">给想学的东西留一段时间</span><h2 class="ds-prepare-title">准备开始学习</h2><p class="hint">选一个适合今天的时长。5 分钟适合热身，也可以完整学一段；结束后再记录下次的起点。</p><div class="ds-next-step"><span>这次先做</span><p>') + esc(checkpointText(t)) + I18n.html('</p></div><div class="field"><label for="ds-learning-minutes">本次学习时长（5–240 分钟）</label><input id="ds-learning-minutes" type="number" min="5" max="240" step="1" required value="') + state().learning.minutes + I18n.html('"></div><div class="ds-learning-presets">') + [5,25,50].map(function(m){return button('learnMinutes',m+I18n.t(' 分钟'),'btn ghost sm','data-minutes="'+m+'"');}).join('') + I18n.html('</div><p class="hint">时长会记住。学习前可以放远手机，开启勿扰；不必每次重新设置。</p><div class="sheet-actions">') + button('phone', I18n.t('手机怎么设置'), 'btn ghost') + button('learnStart', (t.url ? I18n.t('打开资料，') : '') + I18n.t('开始学习'), 'btn primary', 'data-track="' + esc(t.id) + '"') + '</div>');
   }
   function learnStart(id) {
     var t = track(id); if (!t || B.state().timer) return;
+    var input=document.getElementById('ds-learning-minutes');
+    if(input && !input.reportValidity()) return;
+    var min=input?Number(input.value):state().learning.minutes;
+    if(!Number.isInteger(min) || min<5 || min>240) return;
+    state().learning.minutes=min;
     var n = tasks().find(function (x) { return x.trackId === t.id && !x.done; });
     if (!n) {
       if (tasks().length >= 3) { B.toast(I18n.t('今天已经安排三件，可以先移除一件，再加入学习')); return; }
       n = { id: B.uid('plan'), date: day(), name: I18n.t('自学 ') + t.name, step: t.checkpoint, minutes: 25, done: false, trackId: t.id, createdAt: Date.now() }; state().tasks.push(n);
     }
-    n.step = t.checkpoint; selected = n.id;
+    n.step = t.checkpoint; n.minutes=min; selected = n.id;
     var r = state().reminder; r.date = day(); r.status = 'started'; r.snoozeUntil = 0; pendingReminder = false;
-    B.closeSheet(); openResource(t); start(true);
+    B.closeSheet(); openResource(t); start(false);
   }
   function reminderForm() {
     var r = state().reminder, plan = reminderPlan();
@@ -153,7 +159,7 @@
   function reminderPrompt() {
     var t = track(); if (!t) return;
     pendingReminder = false;
-    B.openSheet(I18n.html('<span class="ds-eyebrow">课后，留一点时间给自己</span><h2 class="ds-prepare-title">接着学一点 ') + esc(t.name) + I18n.html('？</h2><p class="hint">不用安排一整晚。先放好手机，只做 5 分钟。</p><div class="ds-next-step"><span>上次给自己留下的下一步</span><p>') + esc(checkpointText(t)) + '</p></div><div class="sheet-actions">' + button('restEvening', I18n.t('今天休息'), 'btn ghost') + button('snooze', I18n.t('20 分钟后提醒'), 'btn ghost') + button('prepare', I18n.t('就做 5 分钟'), 'btn primary', 'data-track="' + esc(t.id) + '"') + '</div>');
+    B.openSheet(I18n.html('<span class="ds-eyebrow">课后，留一点时间给自己</span><h2 class="ds-prepare-title">接着学一点 ') + esc(t.name) + I18n.html('？</h2><p class="hint">先选一段适合今天的学习时间，放好手机，从上次的进度继续。</p><div class="ds-next-step"><span>上次给自己留下的下一步</span><p>') + esc(checkpointText(t)) + '</p></div><div class="sheet-actions">' + button('restEvening', I18n.t('今天休息'), 'btn ghost') + button('snooze', I18n.t('20 分钟后提醒'), 'btn ghost') + button('prepare', I18n.t('选择时长，开始学习'), 'btn primary', 'data-track="' + esc(t.id) + '"') + '</div>');
   }
   function checkReminder() {
     if (!B) return;
@@ -175,13 +181,13 @@
       if (now < due || now.getHours() >= 23) return;
     }
     r.date = date; r.status = 'shown'; r.snoozeUntil = 0; pendingReminder = true; B.save();
-    B.notify(I18n.t('着陆 · 给自己的学习时间'), I18n.t('接着学 ') + track().name + I18n.t('，先做 5 分钟。'));
+    B.notify(I18n.t('着陆 · 给自己的学习时间'), I18n.t('接着学 ') + track().name + I18n.t('，按自己的节奏来。'));
     if (window.landing && window.landing.nudge) window.landing.nudge();
     if (!document.querySelector('#sheet.show') && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) reminderPrompt();
   }
   function phoneForm() {
     var phone = state().phone;
-    B.openSheet(I18n.html('<h2>给手机也留一道停顿</h2><p class="hint">电脑端不能直接限制手机。可以先用手机系统提供的功能，配合这次 5 分钟学习。</p><div class="ds-phone-tabs">') + button('phoneAndroid', I18n.t('安卓手机'), phone === 'android' ? 'btn primary' : 'btn ghost') + button('phoneIPhone', 'iPhone', phone === 'iphone' ? 'btn primary' : 'btn ghost') + '</div>' + (phone === 'iphone' ? I18n.html('<ol class="ds-phone-steps"><li>打开「设置 → 屏幕使用时间」，给常刷的短视频、短剧应用设置「App 限额」。</li><li>在「停用时间」中安排课后自学时段；学习、通讯等必要应用按需允许。</li><li>学习前开启「专注模式」，把手机放到桌面以外的位置。</li></ol>') : I18n.html('<ol class="ds-phone-steps"><li>打开「设置」，搜索「数字健康」或「健康使用手机」。各品牌名称可能不同。</li><li>为常刷的短视频、短剧应用设置每天的应用时长限制；支持「专注模式」的手机可安排课后时段。</li><li>学习前开启专注 / 勿扰，把手机放到桌面以外的位置。</li></ol>')) + I18n.html('<p class="hint">这些限制仍可由你修改。先用一周观察是否能帮你及时停下来。</p><div class="sheet-actions">') + button('phoneHelp', I18n.t('查看系统官方说明'), 'btn ghost') + I18n.html('<button type="button" class="btn primary" data-act="closeSheet">我去设置</button></div>'));
+    B.openSheet(I18n.html('<h2>给手机也留一道停顿</h2><p class="hint">电脑端不能直接限制手机。可以先用手机系统提供的功能，配合这次学习。</p><div class="ds-phone-tabs">') + button('phoneAndroid', I18n.t('安卓手机'), phone === 'android' ? 'btn primary' : 'btn ghost') + button('phoneIPhone', 'iPhone', phone === 'iphone' ? 'btn primary' : 'btn ghost') + '</div>' + (phone === 'iphone' ? I18n.html('<ol class="ds-phone-steps"><li>打开「设置 → 屏幕使用时间」，给常刷的短视频、短剧应用设置「App 限额」。</li><li>在「停用时间」中安排课后自学时段；学习、通讯等必要应用按需允许。</li><li>学习前开启「专注模式」，把手机放到桌面以外的位置。</li></ol>') : I18n.html('<ol class="ds-phone-steps"><li>打开「设置」，搜索「数字健康」或「健康使用手机」。各品牌名称可能不同。</li><li>为常刷的短视频、短剧应用设置每天的应用时长限制；支持「专注模式」的手机可安排课后时段。</li><li>学习前开启专注 / 勿扰，把手机放到桌面以外的位置。</li></ol>')) + I18n.html('<p class="hint">这些限制仍可由你修改。先用一周观察是否能帮你及时停下来。</p><div class="sheet-actions">') + button('phoneHelp', I18n.t('查看系统官方说明'), 'btn ghost') + I18n.html('<button type="button" class="btn primary" data-act="closeSheet">我去设置</button></div>'));
   }
   function backgroundForm() {
     B.openSheet(I18n.html('<h2>让提醒在后台等你</h2><p class="hint">课后提醒依赖着陆仍在运行。建议开启开机自启，并让关闭窗口时缩到托盘。彻底退出或电脑关机后无法提醒。</p><p id="ds-background-status" class="hint">正在读取设置…</p><div class="sheet-actions">') + button('enableBackground', I18n.t('开启自启和托盘常驻'), 'btn primary') + I18n.html('<button type="button" class="btn ghost" data-act="closeSheet">关闭</button></div>'));
@@ -304,6 +310,7 @@
     petDetails: function () { if (window.Landing) Landing.tab('pet'); },
     prepare: function (el) { prepare(el.dataset.track); },
     learnStart: function (el) { learnStart(el.dataset.track); },
+    learnMinutes: function(el){ var input=document.getElementById('ds-learning-minutes'); if(input) input.value=el.dataset.minutes; },
     trackEdit: function (el) { trackForm(el.dataset.track); },
     resource: function (el) { openResource(track(el.dataset.track)); },
     reminderSettings: reminderForm,
@@ -399,18 +406,18 @@
       if (B.state().timer) return I18n.t('已经有一个计时了，可以暂停、继续或结束记录。');
       var t = track(id); if (!t) return I18n.t('请先选择 Python 或 PyTorch。');
       learnStart(t.id);
-      return timer() ? I18n.t('开始学 ') + t.name + I18n.t('，先做五分钟。手机放远一点，我陪你。') : I18n.t('今天已有三件计划，请在着陆中先移除一件再开始。');
+      return timer() ? I18n.t('开始学 ') + t.name + ' · ' + timer().plannedMin + I18n.t(' 分钟') : I18n.t('今天已有三件计划，请在着陆中先移除一件再开始。');
     }
     if (action === 'pause' || action === 'resume') {
       var active = timer(); if (!active || active.finished) return I18n.t('现在没有可以暂停或继续的学习计时。');
       if ((action === 'pause' && !active.paused) || (action === 'resume' && active.paused)) { B.pause(); B.render(); }
       return active.paused ? I18n.t('暂停了，歇一会也没关系。') : I18n.t('接着刚才那一步，我陪你。');
     }
-    if (action === 'settle') { if (!timer()) return I18n.t('现在没有学习计时，先从五分钟开始吧。'); settle(); return I18n.t('请在着陆里确认实际学习时间，再保存记录。'); }
+    if (action === 'settle') { if (!timer()) return I18n.t('现在没有学习计时，可以先选择时长再开始。'); settle(); return I18n.t('请在着陆里确认实际学习时间，再保存记录。'); }
     if (action === 'capture') { var course=track(id); if (!course || !window.LearningCheckpoint) return I18n.t('暂时无法截屏，请打开着陆重试。'); LearningCheckpoint.capture(course.id); return I18n.t('正在截取学习画面，请在着陆里核对并保存断点。'); }
     return '';
   }
-  window.Discipline = { desktopAction: desktopAction, init: init, render: render, update: update, settle: settle, onActivity: onActivity, reminderPlan: reminderPlan, captureOne: captureOne,
+  window.Discipline = { prepare:prepare, desktopAction: desktopAction, init: init, render: render, update: update, settle: settle, onActivity: onActivity, reminderPlan: reminderPlan, captureOne: captureOne,
     needsBackground: function () { return !!(B && state().reminder.enabled); },
     newTask: function () { form(); } };
 })();

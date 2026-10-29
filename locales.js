@@ -7313,5 +7313,420 @@
     "zh-CN": "素养提高",
     "en": "Personal growth",
     "ja": "自分磨き"
+  },
+  "记账": {
+    "zh-CN": "记账",
+    "en": "Ledger",
+    "ja": "家計簿"
+  },
+  "记录日常的另一种足迹": {
+    "zh-CN": "记录日常的另一种足迹",
+    "en": "Another trail of daily life",
+    "ja": "暮らしの、もうひとつの足跡"
+  },
+  "看看钱花在哪里，给想做的事留一点余地。": {
+    "zh-CN": "看看钱花在哪里，给想做的事留一点余地。",
+    "en": "See where your money goes and leave room for what matters to you.",
+    "ja": "お金の使い道を振り返り、やりたいことに少し余裕を。"
+  },
+  "查看月份": {
+    "zh-CN": "查看月份",
+    "en": "Month",
+    "ja": "表示する月"
+  },
+  "导出本月 CSV": {
+    "zh-CN": "导出本月 CSV",
+    "en": "Export month as CSV",
+    "ja": "今月をCSVで出力"
+  },
+  "＋ 记一笔": {
+    "zh-CN": "＋ 记一笔",
+    "en": "＋ Add entry",
+    "ja": "＋ 記録する"
+  },
+  "本月支出": {
+    "zh-CN": "本月支出",
+    "en": "Monthly expenses",
+    "ja": "今月の支出"
+  },
+  "本月收入": {
+    "zh-CN": "本月收入",
+    "en": "Monthly income",
+    "ja": "今月の収入"
+  },
+  "本月结余": {
+    "zh-CN": "本月结余",
+    "en": "Monthly net",
+    "ja": "今月の収支"
+  },
+  "月度预算": {
+    "zh-CN": "月度预算",
+    "en": "Monthly budget",
+    "ja": "月の予算"
+  },
+  "调整预算": {
+    "zh-CN": "调整预算",
+    "en": "Edit budget",
+    "ja": "予算を変更"
+  },
+  "设置预算": {
+    "zh-CN": "设置预算",
+    "en": "Set budget",
+    "ja": "予算を設定"
+  },
+  "已超出": {
+    "zh-CN": "已超出",
+    "en": "Over budget",
+    "ja": "予算超過"
+  },
+  "还可支出": {
+    "zh-CN": "还可支出",
+    "en": "Remaining",
+    "ja": "残りの予算"
+  },
+  "按需设置本月支出上限，不提醒、不催促。": {
+    "zh-CN": "按需设置本月支出上限，不提醒、不催促。",
+    "en": "Set a monthly spending limit if useful. No reminders or nudges.",
+    "ja": "必要なら月の支出上限を設定できます。通知や催促はしません。"
+  },
+  "金额单位为人民币；结余是本月收入减支出，不代表账户余额。": {
+    "zh-CN": "金额单位为人民币；结余是本月收入减支出，不代表账户余额。",
+    "en": "Amounts are in CNY. Monthly net is income minus expenses, not an account balance.",
+    "ja": "通貨は人民元です。月の収支は収入から支出を引いた金額で、口座残高ではありません。"
+  },
+  "收支明细": {
+    "zh-CN": "收支明细",
+    "en": "Transactions",
+    "ja": "収支の明細"
+  },
+  "收支筛选": {
+    "zh-CN": "收支筛选",
+    "en": "Transaction filter",
+    "ja": "収支の絞り込み"
+  },
+  "支出": {
+    "zh-CN": "支出",
+    "en": "Expense",
+    "ja": "支出"
+  },
+  "收入": {
+    "zh-CN": "收入",
+    "en": "Income",
+    "ja": "収入"
+  },
+  "当前筛选下没有记录": {
+    "zh-CN": "当前筛选下没有记录",
+    "en": "No entries match this filter",
+    "ja": "この条件の記録はありません"
+  },
+  "这个月的账本还是空的": {
+    "zh-CN": "这个月的账本还是空的",
+    "en": "No entries this month yet",
+    "ja": "今月の記録はまだありません"
+  },
+  "从今天的一顿饭、一本书开始记。": {
+    "zh-CN": "从今天的一顿饭、一本书开始记。",
+    "en": "Start with today's meal or a book.",
+    "ja": "今日の食事や一冊の本から記録してみましょう。"
+  },
+  "记下第一笔": {
+    "zh-CN": "记下第一笔",
+    "en": "Add an entry",
+    "ja": "記録を追加"
+  },
+  "支出去向": {
+    "zh-CN": "支出去向",
+    "en": "Spending breakdown",
+    "ja": "支出の内訳"
+  },
+  "记下支出后，这里会显示分类分布。": {
+    "zh-CN": "记下支出后，这里会显示分类分布。",
+    "en": "Your spending categories will appear here.",
+    "ja": "支出を記録すると、カテゴリ別の内訳を表示します。"
+  },
+  "收支只保存在本机，随完整数据备份一起导入、导出。小鱼干与真实收支分开记录。": {
+    "zh-CN": "收支只保存在本机，随完整数据备份一起导入、导出。小鱼干与真实收支分开记录。",
+    "en": "Transactions stay on this device and are included in full data backups. Fish treats are separate from real money.",
+    "ja": "収支はこの端末に保存し、データ全体のバックアップに含まれます。おさかなと実際のお金は別々に記録します。"
+  },
+  "餐饮": {
+    "zh-CN": "餐饮",
+    "en": "Food & drinks",
+    "ja": "食費"
+  },
+  "交通": {
+    "zh-CN": "交通",
+    "en": "Transport",
+    "ja": "交通費"
+  },
+  "学习资料": {
+    "zh-CN": "学习资料",
+    "en": "Study materials",
+    "ja": "学習教材"
+  },
+  "日用": {
+    "zh-CN": "日用",
+    "en": "Daily essentials",
+    "ja": "日用品"
+  },
+  "娱乐消费": {
+    "zh-CN": "娱乐消费",
+    "en": "Entertainment",
+    "ja": "娯楽費"
+  },
+  "医疗健康": {
+    "zh-CN": "医疗健康",
+    "en": "Health",
+    "ja": "医療・健康"
+  },
+  "其他支出": {
+    "zh-CN": "其他支出",
+    "en": "Other expenses",
+    "ja": "その他の支出"
+  },
+  "生活费": {
+    "zh-CN": "生活费",
+    "en": "Allowance",
+    "ja": "生活費"
+  },
+  "奖学金": {
+    "zh-CN": "奖学金",
+    "en": "Scholarship",
+    "ja": "奨学金"
+  },
+  "兼职收入": {
+    "zh-CN": "兼职收入",
+    "en": "Part-time work",
+    "ja": "アルバイト収入"
+  },
+  "退款": {
+    "zh-CN": "退款",
+    "en": "Refund",
+    "ja": "返金"
+  },
+  "其他收入": {
+    "zh-CN": "其他收入",
+    "en": "Other income",
+    "ja": "その他の収入"
+  },
+  "编辑收支": {
+    "zh-CN": "编辑收支",
+    "en": "Edit transaction",
+    "ja": "収支を編集"
+  },
+  "记一笔": {
+    "zh-CN": "记一笔",
+    "en": "Add transaction",
+    "ja": "収支を記録"
+  },
+  "收支类型": {
+    "zh-CN": "收支类型",
+    "en": "Type",
+    "ja": "収支の種類"
+  },
+  "金额（元）": {
+    "zh-CN": "金额（元）",
+    "en": "Amount (CNY)",
+    "ja": "金額（人民元）"
+  },
+  "日期": {
+    "zh-CN": "日期",
+    "en": "Date",
+    "ja": "日付"
+  },
+  "分类": {
+    "zh-CN": "分类",
+    "en": "Category",
+    "ja": "カテゴリ"
+  },
+  "备注（选填）": {
+    "zh-CN": "备注（选填）",
+    "en": "Note (optional)",
+    "ja": "メモ（任意）"
+  },
+  "比如：午饭、Python 教材": {
+    "zh-CN": "比如：午饭、Python 教材",
+    "en": "e.g. lunch, a Python book",
+    "ja": "例：昼食、Pythonの参考書"
+  },
+  "保存记录": {
+    "zh-CN": "保存记录",
+    "en": "Save entry",
+    "ja": "記録を保存"
+  },
+  "请输入有效日期和大于 0 的金额，最多两位小数。": {
+    "zh-CN": "请输入有效日期和大于 0 的金额，最多两位小数。",
+    "en": "Enter a valid date and an amount greater than zero, with up to two decimal places.",
+    "ja": "正しい日付と0より大きい金額を入力してください。小数は2桁までです。"
+  },
+  "收支已保存": {
+    "zh-CN": "收支已保存",
+    "en": "Transaction saved",
+    "ja": "収支を保存しました"
+  },
+  "本月支出上限（元，0 为不设预算）": {
+    "zh-CN": "本月支出上限（元，0 为不设预算）",
+    "en": "Monthly spending limit (CNY; 0 for no budget)",
+    "ja": "月の支出上限（人民元、0で予算なし）"
+  },
+  "保存预算": {
+    "zh-CN": "保存预算",
+    "en": "Save budget",
+    "ja": "予算を保存"
+  },
+  "请输入有效金额，最多两位小数。": {
+    "zh-CN": "请输入有效金额，最多两位小数。",
+    "en": "Enter a valid amount with up to two decimal places.",
+    "ja": "有効な金額を入力してください。小数は2桁までです。"
+  },
+  "删除这笔收支？": {
+    "zh-CN": "删除这笔收支？",
+    "en": "Delete this transaction?",
+    "ja": "この収支を削除しますか？"
+  },
+  "应用记录读取失败，请重试。": {
+    "zh-CN": "应用记录读取失败，请重试。",
+    "en": "Could not read usage records. Please retry.",
+    "ja": "アプリの使用記録を読み込めませんでした。再試行してください。"
+  },
+  "应用记录需在桌面端查看。": {
+    "zh-CN": "应用记录需在桌面端查看。",
+    "en": "Usage records are available in the desktop app.",
+    "ja": "使用記録はデスクトップアプリで確認できます。"
+  },
+  "正在读取应用记录…": {
+    "zh-CN": "正在读取应用记录…",
+    "en": "Loading usage records…",
+    "ja": "使用記録を読み込んでいます…"
+  },
+  "不足 1 分钟": {
+    "zh-CN": "不足 1 分钟",
+    "en": "Less than 1 minute",
+    "ja": "1分未満"
+  },
+  "应用使用": {
+    "zh-CN": "应用使用",
+    "en": "App usage",
+    "ja": "アプリの使用"
+  },
+  "这天没有保存的应用日志，无法还原使用明细。": {
+    "zh-CN": "这天没有保存的应用日志，无法还原使用明细。",
+    "en": "No app log was saved for this day, so usage details cannot be recovered.",
+    "ja": "この日のアプリログがないため、使用の明細を復元できません。"
+  },
+  "这天还没有前台应用使用记录。": {
+    "zh-CN": "这天还没有前台应用使用记录。",
+    "en": "No foreground app usage recorded for this day.",
+    "ja": "この日のフォアグラウンドアプリの使用記録はありません。"
+  },
+  "记录已暂停；已有日志仍可查看。": {
+    "zh-CN": "记录已暂停；已有日志仍可查看。",
+    "en": "Recording is paused. Saved logs are still available.",
+    "ja": "記録は一時停止中です。保存済みのログは確認できます。"
+  },
+  "展开全部应用": {
+    "zh-CN": "展开全部应用",
+    "en": "Show all apps",
+    "ja": "すべてのアプリを表示"
+  },
+  "刷新应用记录": {
+    "zh-CN": "刷新应用记录",
+    "en": "Refresh app usage",
+    "ja": "使用記録を更新"
+  },
+  "投入包含课表和已记录的专注；应用使用单独统计，不重复计入投入。系统窗口、桌面和锁屏不计入应用使用。": {
+    "zh-CN": "投入包含课表和已记录的专注；应用使用单独统计，不重复计入投入。系统窗口、桌面和锁屏不计入应用使用。",
+    "en": "Time invested includes scheduled classes and recorded focus. App usage is shown separately, without double counting. System windows, the desktop and lock screen are excluded.",
+    "ja": "取り組み時間には時間割の授業と記録した集中時間を含みます。アプリ使用は別に集計し、重複加算しません。システム画面、デスクトップ、ロック画面は除外します。"
+  },
+  "给想学的东西留一段时间": {
+    "zh-CN": "给想学的东西留一段时间",
+    "en": "Make time for what you want to learn",
+    "ja": "学びたいことに時間をつくる"
+  },
+  "准备开始学习": {
+    "zh-CN": "准备开始学习",
+    "en": "Ready to study",
+    "ja": "学習の準備"
+  },
+  "选一个适合今天的时长。5 分钟适合热身，也可以完整学一段；结束后再记录下次的起点。": {
+    "zh-CN": "选一个适合今天的时长。5 分钟适合热身，也可以完整学一段；结束后再记录下次的起点。",
+    "en": "Choose a duration that suits today. Five minutes is a warm-up option; a longer session works too. Leave a checkpoint when you finish.",
+    "ja": "今日に合った長さを選びましょう。5分でウォームアップしても、じっくり取り組んでも大丈夫。終わったら次の開始点を残しましょう。"
+  },
+  "这次先做": {
+    "zh-CN": "这次先做",
+    "en": "Start with",
+    "ja": "まず取り組むこと"
+  },
+  "本次学习时长（5–240 分钟）": {
+    "zh-CN": "本次学习时长（5–240 分钟）",
+    "en": "Session length (5–240 minutes)",
+    "ja": "今回の学習時間（5〜240分）"
+  },
+  "时长会记住。学习前可以放远手机，开启勿扰；不必每次重新设置。": {
+    "zh-CN": "时长会记住。学习前可以放远手机，开启勿扰；不必每次重新设置。",
+    "en": "Your duration is remembered. Put your phone away or enable Do Not Disturb before studying.",
+    "ja": "選んだ時間を記憶します。学習前にスマホを遠ざけたり、おやすみモードにしたりしましょう。"
+  },
+  "开始学习": {
+    "zh-CN": "开始学习",
+    "en": "Start studying",
+    "ja": "学習を始める"
+  },
+  "▶ 接着学习": {
+    "zh-CN": "▶ 接着学习",
+    "en": "▶ Continue learning",
+    "ja": "▶ 学習を続ける"
+  },
+  "先选一段适合今天的学习时间，放好手机，从上次的进度继续。": {
+    "zh-CN": "先选一段适合今天的学习时间，放好手机，从上次的进度继续。",
+    "en": "Choose a session length, put your phone away and continue where you left off.",
+    "ja": "今日に合った時間を選び、スマホを置いて前回の続きから始めましょう。"
+  },
+  "选择时长，开始学习": {
+    "zh-CN": "选择时长，开始学习",
+    "en": "Choose duration & start",
+    "ja": "時間を選んで始める"
+  },
+  "，按自己的节奏来。": {
+    "zh-CN": "，按自己的节奏来。",
+    "en": ", at your own pace.",
+    "ja": "、自分のペースで。"
+  },
+  "现在没有学习计时，可以先选择时长再开始。": {
+    "zh-CN": "现在没有学习计时，可以先选择时长再开始。",
+    "en": "No study timer is running. Choose a duration to begin.",
+    "ja": "学習タイマーは動いていません。時間を選んで始めましょう。"
+  },
+  "已删除": {
+    "zh-CN": "已删除",
+    "en": "Deleted",
+    "ja": "削除しました"
+  },
+  "确认删除": {
+    "zh-CN": "确认删除",
+    "en": "Confirm deletion",
+    "ja": "削除する"
+  },
+  "应用足迹已记下，学习投入按实际记录。": {
+    "zh-CN": "应用足迹已记下，学习投入按实际记录。",
+    "en": "App usage is saved. Study time follows your actual study records.",
+    "ja": "アプリの使用は記録済みです。学習時間は実際の学習記録に基づきます。"
+  },
+  "整理投入记录": {
+    "zh-CN": "整理投入记录",
+    "en": "Manage invested time",
+    "ja": "取り組み記録を整理"
+  },
+  "没有已保存的今日应用日志。": {
+    "zh-CN": "没有已保存的今日应用日志。",
+    "en": "No app log is saved for today.",
+    "ja": "今日のアプリログはまだ保存されていません。"
+  },
+  "今日排行在「今日 → 应用时间」；逐日应用明细在「周报 → 每日回顾」。自动投入记录与原始应用使用分开统计，手动专注时避免重复计入时间池。": {
+    "zh-CN": "今日排行在「今日 → 应用时间」；逐日应用明细在「周报 → 每日回顾」。自动投入记录与原始应用使用分开统计，手动专注时避免重复计入时间池。",
+    "en": "Today's ranking is under Today → App usage. Daily details are under Weekly → Daily review. Invested time and raw app usage are counted separately, without overlapping manual focus time.",
+    "ja": "今日のランキングは「今日 → アプリ使用時間」、日別の明細は「週間レポート → 毎日の振り返り」で確認できます。取り組み時間とアプリ使用は別々に集計し、手動の集中時間とは重複させません。"
   }
 });

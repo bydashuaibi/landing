@@ -1016,7 +1016,7 @@ var APP_NAMES = {
   teamviewer:'TeamViewer', everything:'Everything', snipaste:'Snipaste'
 };
 /* 这些是"壳"进程，不是他在用的应用（跟手机的"主屏幕"一个性质） */
-var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|windowsterminal|landing|studytrail|学迹|electron|着陆|explorer)$/i;
+var APP_SHELL = /^(applicationframehost|textinputhost|shellexperiencehost|startmenuexperiencehost|searchhost|runtimebroker|widgets|widgetservice|lockapp|sihost|dwm|taskhostw|securityhealthsystray|gamebar|gamebarftserver|xboxgamebarwidgets|phoneexperiencehost|backgroundtaskhost|landing|studytrail|学迹|electron|着陆|explorer)$/i;
 
 function appLabel(proc){
   var p = String(proc || '').trim();
@@ -1050,7 +1050,7 @@ function ensureActWeek(wk){
     s.at = Date.now();
     ACT_WEEKS[wk] = s;
     if(CUR_TAB === 'weekly') render();
-  }).catch(function(){ ACT_WEEKS[wk] = { at: Date.now() }; });
+  }).catch(function(){ ACT_WEEKS[wk] = { at: Date.now(), error:true }; if(CUR_TAB === 'weekly') render(); });
 }
 function actWeekOf(wk){
   var w = ACT_WEEKS[wk];
@@ -1061,7 +1061,7 @@ function initActivity(){
   if(!window.landing || !window.landing.activity) return;   /* 网页版没有这套 */
   window.landing.activity.get().then(function(s){ ACT = s; render(); }).catch(function(){});
   if(window.landing.activity.onUpdate){
-    window.landing.activity.onUpdate(function(s){ ACT = s; if(window.Discipline) Discipline.onActivity(s); render(); });
+    window.landing.activity.onUpdate(function(s){ ACT = s; if(window.Discipline) Discipline.onActivity(s); delete ACT_WEEKS[weekKey()]; render(); });
   }
   /* 本周 + 上周都要：宠物回答「我上周干了什么」时也算上周的松紧 */
   ensureActWeek(weekKey());
@@ -1318,18 +1318,39 @@ function fmtBytes(b){
   return (b / 1048576).toFixed(1) + ' MB';
 }
 
+/* Screen usage is distinct from planned classes and confirmed focus minutes. */
+function renderDayActivity(date, wk){
+  var w=actWeekOf(wk), snapshot=ACT && ACT.date===date ? ACT : null;
+  var entry=snapshot || (w && (w.days||[]).find(function(x){return x.date===date;}));
+  if(!entry){
+    var message=w && w.error ? I18n.t('应用记录读取失败，请重试。') : !window.landing || !window.landing.activity ? I18n.t('应用记录需在桌面端查看。') : I18n.t('正在读取应用记录…');
+    return '<div class="dc-usage"><p class="hint">'+message+'</p></div>';
+  }
+  var rows=(entry.byApp||[]).filter(function(x){return !APP_SHELL.test(String(x.proc||'')) && !/^idle$/i.test(x.proc||'') && x.ms>0;});
+  var totalMs=rows.reduce(function(n,x){return n+x.ms;},0);
+  var fmt=function(ms){return ms<60000?I18n.t('不足 1 分钟'):fmtMin(Math.floor(ms/60000));};
+  var h='<div class="dc-usage"><div class="dc-usage-heading"><strong>'+I18n.t('应用使用')+'</strong><span>'+(totalMs?fmt(totalMs):'—')+'</span></div>';
+  if(!rows.length){
+    var empty=entry.available===false ? I18n.t('这天没有保存的应用日志，无法还原使用明细。') : I18n.t('这天还没有前台应用使用记录。');
+    if(snapshot && !snapshot.enabled) empty=I18n.t('记录已暂停；已有日志仍可查看。');
+    return h+'<p class="hint">'+empty+'</p></div>';
+  }
+  var max=rows[0].ms || 1;
+  function row(x){return '<div class="app-row"><span class="app-nm" title="'+esc(x.proc)+'"><i style="background:'+(ACT_COLOR[x.cat]||ACT_COLOR.other)+'"></i>'+esc(appLabel(x.proc))+'</span><span class="app-tm">'+fmt(x.ms)+'</span><span class="app-track"><b style="width:'+Math.max(2,Math.round(x.ms/max*100))+'%;background:'+(ACT_COLOR[x.cat]||ACT_COLOR.other)+'"></b></span></div>';}
+  h+='<div class="app-rank">'+rows.slice(0,3).map(row).join('')+'</div>';
+  if(rows.length>3) h+='<details class="dc-usage-more"><summary>'+I18n.t('展开全部应用')+' ('+rows.length+')</summary><div class="app-rank">'+rows.slice(3).map(row).join('')+'</div></details>';
+  return h+'</div>';
+}
+
 /* 今日页那张卡 */
 function renderActivityCard(){
   if(!ACT) return '';
   var h = I18n.html('<div class="card act-card"><div class="row between"><h2>应用时间</h2>')
     + '<span class="muted" style="font-size:12px">' + (ACT.enabled ? I18n.t('正在记录') : I18n.t('已暂停')) + '</span></div>'
-    + I18n.html('<div class="row wrap" style="margin:12px 0"><button class="btn ghost sm" data-act="actHistory">查看与整理记录</button></div>');
-  if(!ACT.enabled){
-    h += I18n.html('<div class="hint">已暂停。要开回来去「我的 → 活动记录」。</div></div>');
-    return h;
-  }
+    + I18n.html('<div class="row wrap" style="margin:12px 0"><button class="btn ghost sm" data-act="actRank">应用排行</button><button class="btn ghost sm" data-act="actHistory">整理投入记录</button></div>');
+  if(!ACT.enabled) h += I18n.html('<div class="hint">记录已暂停；已有日志仍可查看。</div>');
   if(!ACT.count){
-    h += I18n.html('<div class="hint">刚开起来，还没采到数据 —— 一分钟内就会出现。</div></div>');
+    h += '<div class="hint">'+I18n.t(ACT.enabled?'刚开起来，还没采到数据 —— 一分钟内就会出现。':'没有已保存的今日应用日志。')+'</div></div>';
     return h;
   }
   var mins = actMinutes();
@@ -1372,7 +1393,7 @@ function renderActivityCard(){
     + '<span>' + (ACT.shotMin > 0 ? I18n.t('每 ') + ACT.shotMin + I18n.t(' 分钟截屏 · ') : I18n.t('自动截屏已关闭 · ')) + (ACT.shots || 0) + I18n.t(' 张 · ') + fmtBytes(ACT.bytes) + '</span>'
     + I18n.html('<span>保留 ') + ACT.keepDays + ' 天 · 只存本机</span>'
     + I18n.html('<button class="btn ghost sm" data-act="actFolder">打开文件夹</button>')
-    + I18n.html('<button class="btn ghost sm" data-act="actToggle">暂停记录</button>')
+    + '<button class="btn ghost sm" data-act="actToggle">'+I18n.t(ACT.enabled?'暂停记录':'开始记录')+'</button>'
     + '</div></div>';
   return h;
 }
@@ -1385,7 +1406,7 @@ function renderActivitySettings(){
     + I18n.html('<p class="hint">自动统计前台应用的使用时间，保存在本机。安静模式无需确认，也不会弹出记录通知。</p>')
     + I18n.html('<div class="field"><label for="act_mode">记录方式</label><select id="act_mode">')
     + [['silent',I18n.t('安静自动记录（推荐）')],['notify',I18n.t('自动记录，并显示通知')],['ask',I18n.t('每次记录前询问')],['stats',I18n.t('仅统计，不计入时间池')]].map(function(x){return '<option value="'+x[0]+'"'+(mode===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div>'
-    + I18n.html('<p class="hint">应用时间在「今日 → 应用时间」查看；自动记录也会进入周报和时间池。手动专注时避免重复计入时间池。</p>')
+    + I18n.html('<p class="hint">今日排行在「今日 → 应用时间」；逐日应用明细在「周报 → 每日回顾」。自动投入记录与原始应用使用分开统计，手动专注时避免重复计入时间池。</p>')
     + I18n.html('<details class="ui-fold"><summary>采样与截屏设置</summary><div class="settings-grid">')
     + I18n.html('<div class="field"><label for="act_sample">采样间隔 / 秒</label><input id="act_sample" type="number" min="10" max="600" value="')+ACT.sampleSec+'"></div>'
     + I18n.html('<div class="field"><label for="act_shot">自动截屏 / 分钟（0 为关闭）</label><input id="act_shot" type="number" min="0" max="120" value="')+ACT.shotMin+'"></div>'
@@ -2531,6 +2552,8 @@ function generateWeeklyReport(wkArg){
     else if(rate>=50) comment=I18n.t('稳中有进，继续加油');
     else if(rate>0) comment='慢一点也行，你在往前走';
     else comment=I18n.t('休息也是前进的一部分');
+    var usageDay=ACT && ACT.date===d?ACT:((actWeekOf(wk)||{}).days||[]).find(function(x){return x.date===d;});
+    if(!tasksTotal && !loadMin && usageDay && (usageDay.byApp||[]).some(function(x){return x.ms>0 && !APP_SHELL.test(String(x.proc||'')) && !/^idle$/i.test(x.proc||'');})) comment=I18n.t('应用足迹已记下，学习投入按实际记录。');
 
     dailyCards.push({date:d, tasksDone:tasksDone, tasksTotal:tasksTotal, load:loadMin, recharge:rechargeMin, rate:rate, mood:wObj?wObj.mood:null, comment:comment});
   }
@@ -2807,7 +2830,7 @@ function viewWeekly(){
   }
 
   /* 每日卡片 */
-  h += I18n.html('<div class="card"><h2>每日回顾</h2>');
+  h += I18n.html('<div class="card"><div class="row between wrap"><h2>每日回顾</h2><button class="btn ghost sm" data-act="actRefresh">刷新应用记录</button></div><p class="hint">投入包含课表和已记录的专注；应用使用单独统计，不重复计入投入。系统窗口、桌面和锁屏不计入应用使用。</p>');
   rpt.dailyCards.forEach(function(dc){
     var barColor = dc.rate>=80 ? 'var(--green)' : dc.rate>=50 ? 'var(--amber)' : 'var(--red)';
     var moodE={sun:'😊',cloud:'🙂',rain:'☁️',storm:'😫'};
@@ -2816,7 +2839,8 @@ function viewWeekly(){
       + '<span style="margin-left:auto;font-size:18px">'+(moodE[dc.mood]||'')+'</span>'
       + '<span style="color:'+(!dc.tasksTotal?'var(--muted)':dc.rate>=80?'var(--green)':dc.rate>=50?'var(--amber)':'var(--red)')+';font-weight:600;margin-left:8px">'+(dc.tasksTotal?dc.rate+'%':'—')+'</span></div>'
       + I18n.html('<div class="dc-stats"><span>投入 ')+dc.load+'min</span></div>'
-      + '<div class="dc-bar"><div style="width:'+dc.rate+'%;background:'+barColor+'"></div></div>'
+      + (dc.tasksTotal?'<div class="dc-bar"><div style="width:'+dc.rate+'%;background:'+barColor+'"></div></div>':'')
+      + renderDayActivity(dc.date,wk)
       + '<div class="dc-comment">'+dc.comment+'</div>'
       + '</div>';
   });
@@ -3192,7 +3216,7 @@ function viewMe(){
 
 
 /* ================= 渲染入口 ================= */
-var TAB_TITLE = {today:I18n.t('今日行动'),weekly:I18n.t('周报'),digest:I18n.t('日报'),companion:I18n.t('陪伴'),pet:I18n.t('伙伴'),shop:I18n.t('商城'),me:I18n.t('我的')};
+var TAB_TITLE = {today:I18n.t('今日行动'),weekly:I18n.t('周报'),digest:I18n.t('日报'),companion:I18n.t('陪伴'),pet:I18n.t('伙伴'),shop:I18n.t('商城'),ledger:I18n.t('记账'),me:I18n.t('我的')};
 
 /* 出错兜底：单个视图抛异常不应该让整个应用白屏，其它模块仍然能用 */
 function renderErrorView(tab, err){
@@ -3260,7 +3284,7 @@ function render(){
   var changedPage = _renderedTab !== CUR_TAB;
   var focused = document.activeElement;
   var reviewFocus = !changedPage && focused && focused.closest('#view') && focused.id ? {id:focused.id,start:focused.selectionStart,end:focused.selectionEnd} : null;
-  var views = {today:viewToday,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,me:viewMe};
+  var views = {today:viewToday,weekly:viewWeekly,digest:renderDigestView,companion:viewCompanion,pet:viewPet,shop:viewShop,ledger:function(){return Ledger.render();},me:viewMe};
   if(window.WarpText) WarpText.disposeAll();
 
   var html;
@@ -3272,6 +3296,8 @@ function render(){
   }
   $('view').innerHTML = html;
   $('viewTitle').textContent = TAB_TITLE[CUR_TAB];
+  $('topNew').innerHTML=icon('plus')+' '+I18n.t(CUR_TAB==='ledger'?'记一笔':'添加计划');
+  $('fabNew').setAttribute('aria-label',I18n.t(CUR_TAB==='ledger'?'记一笔':'添加计划'));
 
   /* 伙伴页内容由 pet.js 填（要赶在入场动画之前） */
   if(CUR_TAB==='pet' && window.Pet) Pet.renderPage();
@@ -3620,6 +3646,7 @@ var App = {
   goDigest:function(){ CUR_TAB='digest'; render(); },
 
   /* --- 活动记录（实现在主进程）--- */
+  actRefresh:function(){ delete ACT_WEEKS[weekKey()]; ensureActWeek(weekKey()); if(window.landing && window.landing.activity) window.landing.activity.get().then(function(s){ACT=s;render();}).catch(function(){toast(I18n.t('应用记录读取失败，请重试。'));}); render(); },
   /* 完整排行 —— 手机上的"应用使用时间"那一页。按应用列今天所有用过的，
      系统壳进程单独折叠在最后（写出来但不计入"真在用"） */
   actHistory:function(){
@@ -4336,6 +4363,7 @@ document.addEventListener('click',function(e){
   else if(act==='actToggle'){ App.actToggle(); }
   else if(act==='actFolder'){ App.actFolder(); }
   else if(act==='actRank'){ App.actRank(); }
+  else if(act==='actRefresh'){ App.actRefresh(); }
   else if(act==='actHistory'){ App.actHistory(); }
   else if(act==='actEdit'){ App.actEdit(id); }
   else if(act==='actClearShots'){ App.actClearShots(); }
@@ -4429,6 +4457,7 @@ function init(){
     tab:function(t){ CUR_TAB=t; render(); }
   };
 
+  if(window.Ledger) Ledger.init(window.Landing);
   if(window.Digest) Digest.init(window.Landing);
   if(window.DesktopPetBridge) DesktopPetBridge.init(window.Landing);
 
@@ -4458,8 +4487,8 @@ function init(){
   });
 
   /* 任务模块删掉后，「新建」只剩"定今天那一件"这一个去处 */
-  $('topNew').addEventListener('click',function(){ if(window.Discipline) Discipline.newTask(); else App.newOne(); });
-  $('fabNew').addEventListener('click',function(){ if(window.Discipline) Discipline.newTask(); else App.newOne(); });
+  $('topNew').addEventListener('click',function(){ if(CUR_TAB==='ledger' && window.Ledger) Ledger.add(); else if(window.Discipline) Discipline.newTask(); else App.newOne(); });
+  $('fabNew').addEventListener('click',function(){ if(CUR_TAB==='ledger' && window.Ledger) Ledger.add(); else if(window.Discipline) Discipline.newTask(); else App.newOne(); });
   $('topSettings').addEventListener('click',function(){ App.openSettings(); });
 
   /* 视差（2026-10-14，审美研究 ⑩）：背景比内容慢半拍，才有多层深度。

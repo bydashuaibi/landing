@@ -36,7 +36,7 @@
     header.querySelector('p').textContent=I18n.t('留一点时间，给真正想学的东西。\n从 Python 或 PyTorch 的一个小例子开始。');
     var actions=document.createElement('div');actions.className='sage-hero-actions';
     var active=Landing.state().timer;
-    actions.innerHTML='<button class="btn primary" data-sage="begin">'+(active?I18n.t('回到当前专注'):I18n.t('先学 5 分钟'))+I18n.html(' <span aria-hidden="true">↗</span></button><button class="sage-desktop-link" data-sage="desktop">显示到桌面 <span aria-hidden="true">↗</span></button><button class="sage-desktop-link" data-sage="petSettings">桌宠设置 <span aria-hidden="true">⚙</span></button>');
+    actions.innerHTML='<button class="btn primary" data-sage="begin">'+(active?I18n.t('回到当前专注'):I18n.t('开始学习'))+I18n.html(' <span aria-hidden="true">↗</span></button><button class="sage-desktop-link" data-sage="desktop">显示到桌面 <span aria-hidden="true">↗</span></button><button class="sage-desktop-link" data-sage="petSettings">桌宠设置 <span aria-hidden="true">⚙</span></button>');
     header.querySelector('p').after(actions);
     var labels=[I18n.t('FOCUS / 今日专注'),I18n.t('PLANS / 完成计划'),I18n.t('RHYTHM / 连续行动')];
     stats.querySelectorAll(':scope>div>span').forEach(function(el,i){el.textContent=labels[i];});
@@ -59,7 +59,7 @@
       if(button.dataset.sage==='petSettings'&&window.landing&&landing.desktopPet)landing.desktopPet.settings();
       if(button.dataset.sage==='begin'){
         if(Landing.state().timer){var focus=document.querySelector('.ds-focus');if(focus)focus.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});}
-        else {var learning=Landing.state().discipline.learning;Discipline.desktopAction('study',learning.selected||'python');}
+        else {var learning=Landing.state().discipline.learning;Discipline.prepare(learning.selected||'python');}
       }
       if(button.dataset.sage==='workspace'){var study=document.querySelector('.ds-study');if(study)study.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
     }

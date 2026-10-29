@@ -17,7 +17,7 @@ async function check(name,fn){await fn();checks.push(name);console.log('PASS '+n
   if(await page.evaluate(()=>I18n.locale())!==language){await page.locator('#appLanguage').selectOption(language);await page.waitForFunction(l=>document.documentElement.lang===l&&window.Landing,language);}
   for(const width of [1440,820,390]){
    await page.setViewportSize({width,height:960});
-   for(const tab of ['today','weekly','digest','companion','pet','shop','me']){
+   for(const tab of ['today','weekly','digest','companion','pet','shop','ledger','me']){
     await page.evaluate(t=>Landing.tab(t),tab);await page.waitForTimeout(180);
     const issues=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth+1,failed:document.querySelector('#view').innerText.includes('这一页没渲染出来'),clipped:[...document.querySelectorAll('#view button,.topbar button,.brand .name')].filter(e=>e.getBoundingClientRect().width&&e.scrollWidth>e.clientWidth+3).map(e=>({text:e.innerText,class:e.className})),clickFx:!!document.querySelector('.click-fx')}));
     if(issues.overflow)issues.outside=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>{var r=e.getBoundingClientRect();return r.width>0&&(r.right>innerWidth+1||r.left< -1);}).slice(-35).map(e=>({tag:e.tagName,id:e.id,class:e.className,text:e.innerText?.slice(0,60),right:e.getBoundingClientRect().right})));

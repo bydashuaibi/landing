@@ -29,6 +29,8 @@
     "files": [
       "index.html",
       "app.js",
+      "ledger.js",
+      "ledger.css",
       "digest.js",
       "digest.css",
       "digest-network.cjs",
