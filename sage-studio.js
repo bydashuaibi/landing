@@ -50,7 +50,8 @@
   menu.setAttribute('aria-label',I18n.t('打开主导航'));menu.setAttribute('aria-expanded','false');menu.setAttribute('aria-controls','sageNavigation');menu.innerHTML='<span></span><span></span>';
   document.querySelector('.topbar').prepend(menu);
   var nav=document.querySelector('.tabbar');nav.id='sageNavigation';nav.inert=innerWidth<=820;
-  menu.onclick=function(){var open=!document.body.classList.contains('sage-menu-open');document.body.classList.toggle('sage-menu-open',open);menu.setAttribute('aria-expanded',String(open));nav.inert=!open&&innerWidth<=820;};
+  function placeMenu(){if(innerWidth<=820)nav.style.top=(document.querySelector('.topbar').getBoundingClientRect().bottom+9)+'px';else nav.style.top='';}
+  menu.onclick=function(){var open=!document.body.classList.contains('sage-menu-open');placeMenu();document.body.classList.toggle('sage-menu-open',open);menu.setAttribute('aria-expanded',String(open));nav.inert=!open&&innerWidth<=820;};
   document.addEventListener('click',function(e){
     var button=e.target.closest('[data-sage]');
     if(button){
@@ -65,5 +66,5 @@
     if(!e.target.closest('.tabbar,#sageMenu'))closeMenu();
   });
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('sage-menu-open')){closeMenu();menu.focus();}});
-  window.addEventListener('resize',function(){if(innerWidth>820)closeMenu();nav.inert=innerWidth<=820&&!document.body.classList.contains('sage-menu-open');});
+  window.addEventListener('resize',function(){if(innerWidth>820)closeMenu();placeMenu();nav.inert=innerWidth<=820&&!document.body.classList.contains('sage-menu-open');});
 })();

@@ -8,3 +8,9 @@
 
 /* A small persistent companion, with a conversation panel only when requested. */
 :root{--pet-scale:1;--pet-opacity:1}#avatar{width:calc(150px * var(--pet-scale));height:calc(163px * var(--pet-scale));bottom:44px;right:15px;opacity:var(--pet-opacity);cursor:grab;transition:opacity .16s}#avatar:active{cursor:grabbing}body[data-lock-drag=true] #avatar{cursor:pointer}body[data-hover-fade=true] #avatar:hover{opacity:calc(var(--pet-opacity) * .5)}#controls{max-height:calc(100% - 163px * var(--pet-scale) - 63px)}#quickbar{position:absolute;right:15px;bottom:20px;display:flex;align-items:center;gap:5px;max-width:calc(100% - 30px);width:calc(150px * var(--pet-scale));min-width:135px;padding:3px 5px 3px 9px;border:1px solid #9bad83;background:rgba(238,245,221,.95);border-radius:30px;color:#45663b;font-size:9px}#quickStatus{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#petMenu{font-size:17px;background:transparent;color:#42643c;padding:0 5px;line-height:20px;flex:none}#hint{right:15px;bottom:1px;font-size:8px;padding:1px 6px;max-width:calc(100% - 30px)}body[data-click-through=true] #quickbar{background:#e3ead8;color:#6a775e}header strong{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header div{flex:none}header #settings{font-size:16px}
+
+#controls{scrollbar-width:thin;scrollbar-color:#95aa7f transparent}
+#command input::placeholder{color:#647757;opacity:1}
+#pages button{overflow-wrap:anywhere;min-height:28px;line-height:1.45}
+html[lang=en] #pages,html[lang=ja] #pages{grid-template-columns:repeat(3,minmax(0,1fr))}
+#controls .actions{position:sticky;bottom:-12px;margin-bottom:-4px;padding:8px 0 4px;background:#e4edd2;z-index:2}

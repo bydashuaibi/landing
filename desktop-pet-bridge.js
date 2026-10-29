@@ -78,5 +78,6 @@
     if(['pat','wave','hug','highfive'].indexOf(p.action)>=0){if(p.action==='pat')Pet.pat();else Pet.interact(p.action);motion=p.action;motionId=Date.now();publish();}
   }
   function apiRequestOpen(){api.reveal();}
-  window.DesktopPetBridge={init:function(bridge){if(L)return;L=bridge;api=window.landing&&landing.desktopPet;if(!api)return;api.onCommand(command);publish();setInterval(publish,1000);},say:say,parse:parse,motion:function(name){motion=name;motionId=Date.now();publish();}};
+  function visibility(status){document.body.dataset.desktopPetVisible=String(!!(status&&status.visible));}
+  window.DesktopPetBridge={init:function(bridge){if(L)return;L=bridge;api=window.landing&&landing.desktopPet;if(!api)return;api.onCommand(command);if(api.onPreferences)api.onPreferences(visibility);api.status().then(visibility).catch(function(){visibility(null);});publish();setInterval(publish,1000);},say:say,parse:parse,motion:function(name){motion=name;motionId=Date.now();publish();}};
 })();

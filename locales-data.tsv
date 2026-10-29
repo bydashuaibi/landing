@@ -1452,3 +1452,33 @@ AI 返回格式不完整，请重试或手动填写|Incomplete AI response. Retr
 按你上次的叫法填好了 · 回车即记下|Filled in your previous label. Press Enter to record.|前回の名前を入力しました。Enter で記録します。
 确认一次就记住 · 回车即记下|Confirm once to remember this label. Press Enter to record.|一度確認すると名前を覚えます。Enter で記録します。
 给它起个名字再记 —— 随便写两个字的都行。|Give this activity a short name before recording.|記録する活動に短い名前をつけてください。
+还没有足够记录，暂不判断本周节奏|Not enough records to assess this week's rhythm yet.|まだ記録が少ないため、今週のペースは判断しません。
+先完成一次学习或记录心情，周报会随记录慢慢清晰。|Start with a study session or a mood entry. Your weekly picture will grow over time.|まずは一度学習するか、気分を記録してみましょう。記録とともに週報が見えてきます。
+记录不足|More records needed|記録が不足
+应用使用时间在后台自动记录，切换窗口不会弹窗打扰；需要时可在记录中补充分类。|App usage is recorded quietly in the background. Switching windows won't trigger popups; you can adjust categories in your records.|アプリの使用時間はバックグラウンドで自動記録します。ウィンドウを切り替えても通知せず、必要なときに記録の分類を変更できます。
+A NEW LOOK / 同一份陪伴|A NEW LOOK / THE SAME COMPANION|A NEW LOOK / いつものパートナー
+换个伙伴外观|A new look for your companion|パートナーの着せ替え
+换肤窗口|Companion skins|スキン変更ウィンドウ
+Petdex 选皮肤|Browse Petdex|Petdex で探す
+浏览器打开|Open in browser|ブラウザーで開く
+预览动作|Preview animations|動きをプレビュー
+原生像素动画，继续陪你学习。|A pixel companion to keep you company while you learn.|ピクセルのパートナーが、今日も学習に寄り添います。
+内置的初华像素伙伴|Your built-in Uika pixel companion.|初華のピクセルパートナーです。
+换肤共用原来的属性、物品和回忆。商城配饰按初华定制，其他角色暂时隐藏配饰，库存保留。|Your stats, items and memories stay with you. Shop accessories are made for Uika; other skins hide them while keeping your inventory.|着せ替え後もステータス、アイテム、思い出は引き継がれます。お店のアクセサリーは初華用です。ほかのスキンでは非表示になりますが、所持品は残ります。
+已有官方资源包链接|Official skin pack URL|公式スキンパックのリンク
+从 Petdex 带一个新伙伴回来|Bring a new companion from Petdex|Petdex で新しいパートナーを見つけよう
+在网站中选择角色，点击 ZIP 下载。导入完成后，左侧可预览并换上。|Choose a character on Petdex and download its ZIP. Import it here, then preview and apply it on the left.|Petdex でキャラクターを選び、ZIP をダウンロードしてください。読み込むと、左側でプレビューして着せ替えできます。
+也可以把下载好的 ZIP 用右上角按钮导入。|You can also import a downloaded ZIP using the button above.|ダウンロード済みの ZIP は、右上のボタンから読み込めます。
+先预览动作，再决定今天谁来陪你。|Preview their animations and choose today's companion.|動きを見て、今日のパートナーを選びましょう。
+我可以帮你打开页面、选择 Python 或 PyTorch，再陪你开始五分钟。|I can open pages, select Python or PyTorch, and help you start with five minutes.|ページを開いたり、Python や PyTorch を選んだりできます。まずは5分、一緒に始めましょう。
+比如：打开日报 / 选择 PyTorch|Try: open digest / select PyTorch|例：技術ニュースを開く / PyTorchを選ぶ
+玩一会|Let's play|一緒に遊ぶ
+这一天的投入已经记下，不必额外补任务。|Your time is recorded. No need to add extra tasks.|この日の取り組みは記録済みです。無理にタスクを増やさなくても大丈夫。
+这天还没有记录，随时可以从一点点开始。|No records for this day yet. You can start small whenever you're ready.|この日はまだ記録がありません。いつでも小さな一歩から始められます。
+计划与必做|Plans & essentials|計画と日課
+未安排任务|No tasks planned|タスク未設定
+跟它说点什么…|Say something…|何か話してみよう…
+跟它说点什么...|Say something…|何か話してみよう…
+工作学习|Work & study|仕事・学習
+生活品质|Daily life|暮らし
+素养提高|Personal growth|自分磨き

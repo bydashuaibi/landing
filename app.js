@@ -23,9 +23,9 @@ var APP_CONFIG = {
  */
 var CATEGORIES = [
   {key:'fun',    label:I18n.t('休闲娱乐'), cls:'fun',    subs:['游戏','看番','追剧','音乐','社交','出门玩']},
-  {key:'work',   label:'工作学习', cls:'work',   subs:['课程','项目','刷题','英语','论文','实习']},
-  {key:'life',   label:'生活品质', cls:'life',   subs:['作息','运动','整理','饮食','健康','出行']},
-  {key:'growth', label:'素养提高', cls:'growth', subs:['阅读','冥想','写作','技能','艺术','视野']}
+  {key:'work',   label:I18n.t('工作学习'), cls:'work',   subs:['课程','项目','刷题','英语','论文','实习']},
+  {key:'life',   label:I18n.t('生活品质'), cls:'life',   subs:['作息','运动','整理','饮食','健康','出行']},
+  {key:'growth', label:I18n.t('素养提高'), cls:'growth', subs:['阅读','冥想','写作','技能','艺术','视野']}
 ];
 
 /* 旧分类 key → 新四类。
@@ -106,7 +106,7 @@ function catName(key){
 /* 四类的**唯一**色源（2026-10-13）：必须和 index.html 里 `.cat.<cls>` 那套标签色一模一样，
    别在别处再写一张 map —— 之前周报就自己写了两张按**旧 key** 取色的表，
    结果现在的 fun/work/life/growth 全掉到紫色兜底（"工作学习"显示成紫的）。 */
-var CAT_COLOR = {fun:'#e5768e', work:'#5b93d6', life:'#e0a93b', growth:'#8f74ff'};
+var CAT_COLOR = {fun:'var(--cat-fun,#a86674)', work:'var(--cat-work,#527787)', life:'var(--cat-life,#897239)', growth:'var(--cat-growth,#776387)'};
 
 /* 分类 key 归一化 → data-cat / 取色用。认不出来返回空串（调用方别写 data-cat，会渲染成灰线）。 */
 function catKeyOf(key){
@@ -2361,7 +2361,7 @@ function viewToday(){
             + esc(r.name)+' '+r.minutes+I18n.t(' 分钟')
             + '<button class="act-mini" data-act="looseDel" data-id="'+r.id+'" title="删掉这一笔">✕</button>';
         }).join('　') : '')
-    + I18n.html('<br>换应用时右下角会问你一句「这件事记作什么」，确认后自动开始计时 —— 不用手动点。</div></div>');
+    + I18n.html('<br>应用使用时间在后台自动记录，切换窗口不会弹窗打扰；需要时可在记录中补充分类。</div></div>');
 
   /* 放开一下：娱乐 / 放纵。放在「做了什么」之后、「想说什么」之前 */
   h += renderFunCard();
@@ -2384,6 +2384,10 @@ function weekBalance(o){
   var funN = o.fun || 0, spreeN = o.spree || 0, funTotal = funN + spreeN;
   var moodAvg = (o.moodAvg === null || o.moodAvg === undefined) ? null : o.moodAvg;
   var reasons = [], verdict = 'ok', headline = '';
+
+  if(!(o.loadMin > 0) && funTotal === 0 && moodAvg === null && !(o.autoFunMin > 0)){
+    return {verdict:'empty',headline:I18n.t('还没有足够记录，暂不判断本周节奏'),avg:avg,reasons:[],tips:[I18n.t('先完成一次学习或记录心情，周报会随记录慢慢清晰。')],funN:funN,spreeN:spreeN,funTotal:funTotal,moodAvg:moodAvg};
+  }
 
   if(funTotal === 0 && avg >= 300){                       /* 偏紧：一次口子都没留 */
     verdict = 'tight';
@@ -2502,13 +2506,16 @@ function generateWeeklyReport(wkArg){
     var d=addDays(monday,i);
     if(d>today()) continue; /* 未来不生成 */
 
-    /* 当天完成情况（2026-10-13 改口径）：必做清了几件 + 投入分钟（松散时长 + 上课）。
-       任务模块删掉后 longTasks/dailyTasks/weeklyTasks 三个统计源都没了，别再往这儿加回来。 */
+    /* Current daily plans and legacy essentials share completion statistics.
+       Focus minutes already live in STATE.loose; do not add sessions again. */
     var _musts = mustActive();
     var tasksDone=0, tasksTotal=_musts.length, loadMin=0, rechargeMin=0;
     _musts.forEach(function(m){
       if((m.records||[]).some(function(r){return r.date===d;})) tasksDone++;
     });
+    var plans = ((STATE.discipline || {}).tasks || []).filter(function(t){return t.date===d;});
+    tasksTotal += plans.length;
+    tasksDone += plans.filter(function(t){return t.done;}).length;
     (STATE.loose||[]).forEach(function(r){ if(r.date===d) loadMin += (r.minutes||0); });
     /* 上课也进当天的「投入」—— 否则日均投入只统计他手动记的那部分，跟总计对不上 */
     var classMinD = classMinutesOn(d);
@@ -2519,7 +2526,8 @@ function generateWeeklyReport(wkArg){
 
     /* 温柔评语 */
     var comment='';
-    if(rate>=80) comment=I18n.t('状态很好，保持了健康的节奏');
+    if(tasksTotal === 0) comment=loadMin>0 ? I18n.t('这一天的投入已经记下，不必额外补任务。') : I18n.t('这天还没有记录，随时可以从一点点开始。');
+    else if(rate>=80) comment=I18n.t('状态很好，保持了健康的节奏');
     else if(rate>=50) comment=I18n.t('稳中有进，继续加油');
     else if(rate>0) comment='慢一点也行，你在往前走';
     else comment=I18n.t('休息也是前进的一部分');
@@ -2527,8 +2535,9 @@ function generateWeeklyReport(wkArg){
     dailyCards.push({date:d, tasksDone:tasksDone, tasksTotal:tasksTotal, load:loadMin, recharge:rechargeMin, rate:rate, mood:wObj?wObj.mood:null, comment:comment});
   }
 
-  var completionRate = dailyCards.length>0
-    ? Math.round(dailyCards.reduce(function(a,c){return a+c.rate;},0)/dailyCards.length)
+  var completionDays = dailyCards.filter(function(c){return c.tasksTotal>0;});
+  var completionRate = completionDays.length>0
+    ? Math.round(completionDays.reduce(function(a,c){return a+c.rate;},0)/completionDays.length)
     : 0;
 
   /* ---- 娱乐/放纵 + 「偏松/偏紧」的综合性总结（2026-09-23 加）---- */
@@ -2555,6 +2564,7 @@ function generateWeeklyReport(wkArg){
     firstGeneratedAt: (cached && cached.firstGeneratedAt) || Date.now(),
     summary: {
       completionRate: completionRate,
+      hasTasks: completionDays.length>0,
       avgLoad: dailyCards.length>0 ? Math.round(dailyCards.reduce(function(a,c){return a+c.load;},0)/dailyCards.length) : 0,
       totalDailyMin: totalDailyMin
     },
@@ -2653,7 +2663,7 @@ function aiWeeklySummary(force){
   var f = rpt.fun || {fun:0, spree:0, items:[]};
   var facts = I18n.t('本周（已过 ') + (rpt.days||0) + ' 天）\n'
     + I18n.t('总投入 ') + rpt.summary.totalDailyMin + I18n.t(' 分钟，其中上课 ') + (rpt.classMin||0) + I18n.t(' 分钟\n')
-    + I18n.t('日均投入 ') + rpt.summary.avgLoad + I18n.t(' 分钟 · 完成率 ') + rpt.summary.completionRate + '%\n'
+    + I18n.t('日均投入 ') + rpt.summary.avgLoad + I18n.t(' 分钟 · 完成率 ') + (rpt.summary.hasTasks ? rpt.summary.completionRate+'%' : I18n.t('未安排任务')) + '\n'
     + I18n.t('娱乐 ') + f.fun + I18n.t(' 笔、放纵 ') + f.spree + I18n.t(' 笔')
     + (f.items && f.items.length ? '（' + f.items.map(function(x){return x.text;}).join('、') + '）' : '') + '\n'
     + '规则给出的结论：' + (rpt.balance ? rpt.balance.headline : '') + '\n'
@@ -2690,7 +2700,7 @@ function viewWeekly(){
   h += I18n.html('<div class="week-period">本周复盘 <span>')+mdShort(parseYmd(wk))+' — '+mdShort(parseYmd(today()))+I18n.html('</span><small>根据记录自动整理</small></div>');
 
   /* 本周概况三数字 */
-  h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)" data-count="'+rpt.summary.completionRate+I18n.html('" data-decimals="0" data-suffix="%">0</div><div class="stat-label">完成率</div></div>')
+  h += '<div class="stat-row"><div class="stat-col"><div class="stat-num" style="color:var(--amber)"'+(rpt.summary.hasTasks?' data-count="'+rpt.summary.completionRate+'" data-decimals="0" data-suffix="%">0':'>—')+I18n.html('</div><div class="stat-label">完成率</div></div>')
     + '<div class="stat-col"><div class="stat-num" style="color:var(--violet)" data-count="'+rpt.summary.avgLoad+I18n.html('" data-decimals="0" data-suffix="">0</div><div class="stat-label">日均投入(分钟)</div></div>')
     + '<div class="stat-col"><div class="stat-num" style="color:var(--teal)" data-count="'+rpt.summary.totalDailyMin+I18n.html('" data-decimals="0" data-suffix="">0</div><div class="stat-label">本周总计(分钟)</div></div>')
     + '</div>';
@@ -2704,8 +2714,8 @@ function viewWeekly(){
      master 的要求：每周做综合性总结、周报要记录下来、给出「有什么需要补充」的方案，他自己决策。
      所以这里只**提方案**，绝不自动改他的任务。 */
   var bal = rpt.balance || {verdict:'ok', headline:'', tips:[], reasons:[]};
-  var vClass = bal.verdict === 'tight' ? 'tight' : (bal.verdict === 'loose' ? 'loose' : 'ok');
-  var vLabel = bal.verdict === 'tight' ? I18n.t('偏紧') : (bal.verdict === 'loose' ? I18n.t('偏松') : I18n.t('平衡'));
+  var vClass = bal.verdict === 'empty' ? 'empty' : bal.verdict === 'tight' ? 'tight' : (bal.verdict === 'loose' ? 'loose' : 'ok');
+  var vLabel = bal.verdict === 'empty' ? I18n.t('记录不足') : bal.verdict === 'tight' ? I18n.t('偏紧') : (bal.verdict === 'loose' ? I18n.t('偏松') : I18n.t('平衡'));
   h += I18n.html('<div class="card sum-card"><div class="row between"><h2>🧭 综合总结</h2>')
     + '<span class="sum-verdict v-'+vClass+'">'+vLabel+'</span></div>';
   h += '<div class="sum-body">';
@@ -2765,7 +2775,9 @@ function viewWeekly(){
       var x1=cx+r*Math.cos((start-.25)*Math.PI*2), y1=cy+r*Math.sin((start-.25)*Math.PI*2);
       var x2=cx+r*Math.cos((end-.25)*Math.PI*2), y2=cy+r*Math.sin((end-.25)*Math.PI*2);
       var large=d.pct>.5?1:0;
-      arcs += '<path d="M'+x1+' '+y1+' A'+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+' L'+cx+' '+cy+' Z" fill="'+d.col+'" opacity=".92"/>';
+      // A single SVG arc with identical endpoints draws nothing at 100%.
+      arcs += d.pct >= 1-1e-9 ? '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+d.col+'" opacity=".92"/>'
+        : '<path d="M'+x1+' '+y1+' A'+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+' L'+cx+' '+cy+' Z" fill="'+d.col+'" opacity=".92"/>';
       acc=end;
     });
     var legend='';
@@ -2777,9 +2789,8 @@ function viewWeekly(){
     });
     h += I18n.html('<div class="card"><h2>本周投入分布</h2>')
       + '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px">'
-      + '<svg width="'+svgW+'" height="'+svgH+'" viewBox="0 0 '+svgW+' '+svgH+'" style="overflow:visible">'
-      + '<circle cx="'+cx+'" cy="'+cy+'" r="'+hole+'" fill="var(--bg)"/>'
-      + arcs + legend
+      + '<svg class="weekly-distribution" role="img" aria-label="'+I18n.t('本周投入分布')+'" width="'+svgW+'" height="'+svgH+'" viewBox="0 0 '+svgW+' '+svgH+'" style="overflow:visible">'
+      + arcs + '<circle cx="'+cx+'" cy="'+cy+'" r="'+hole+'" fill="var(--bg)"/>' + legend
       + '</svg></div>'
       + '<div class="kanban">';
     var maxMin = 1;
@@ -2801,9 +2812,9 @@ function viewWeekly(){
     var barColor = dc.rate>=80 ? 'var(--green)' : dc.rate>=50 ? 'var(--amber)' : 'var(--red)';
     var moodE={sun:'😊',cloud:'🙂',rain:'☁️',storm:'😫'};
     h += '<div class="day-card">'
-      + '<div class="dc-head"><strong>'+dc.date.slice(5)+I18n.html('</strong> <span class="muted">必做 ')+dc.tasksDone+'/'+dc.tasksTotal+'</span>'
+      + '<div class="dc-head"><strong>'+dc.date.slice(5)+'</strong> <span class="muted">'+(dc.tasksTotal?I18n.t('计划与必做')+' '+dc.tasksDone+'/'+dc.tasksTotal:I18n.t('未安排任务'))+'</span>'
       + '<span style="margin-left:auto;font-size:18px">'+(moodE[dc.mood]||'')+'</span>'
-      + '<span style="color:'+(dc.rate>=80?'var(--green)':dc.rate>=50?'var(--amber)':'var(--red)')+';font-weight:800;margin-left:8px">'+dc.rate+'%</span></div>'
+      + '<span style="color:'+(!dc.tasksTotal?'var(--muted)':dc.rate>=80?'var(--green)':dc.rate>=50?'var(--amber)':'var(--red)')+';font-weight:600;margin-left:8px">'+(dc.tasksTotal?dc.rate+'%':'—')+'</span></div>'
       + I18n.html('<div class="dc-stats"><span>投入 ')+dc.load+'min</span></div>'
       + '<div class="dc-bar"><div style="width:'+dc.rate+'%;background:'+barColor+'"></div></div>'
       + '<div class="dc-comment">'+dc.comment+'</div>'
@@ -3037,7 +3048,7 @@ function viewCompanion(){
     + I18n.html('<p>不用组织好语言。此刻的感受，可以慢慢说。</p></div>');
   h += '<div class="card"><h2>'+icon('chat')+I18n.html(' AI 陪伴</h2>')
     + I18n.html('<div class="hint">对话保存在本机作为上下文；发送时，相关内容会交给你配置的 AI。')
-    + (STATE.settings.aiKey?'':I18n.html('<span style="color:var(--amber)"> 未配置 AI → 设置</span>'))+'</div>'
+    + (STATE.settings.aiKey?'':I18n.html('<button class="btn ghost sm companion-config" data-act="openSettings">未配置 AI → 设置</button>'))+'</div>'
     + '<button class="btn ghost sm" data-act="followup3">'+icon('refresh')+I18n.html(' 近三日跟进</button></div>')
     + '<div class="card"><div class="cmp-bub" id="cmpBub"></div>'
     + I18n.html('<div class="companion-input"><textarea id="aiInput" aria-label="想说的话" placeholder="今天怎么样？有什么让你分心，或者有一点开心的事…"></textarea>')

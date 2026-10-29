@@ -29,7 +29,8 @@ contextBridge.exposeInMainWorld('landing', {
     status: () => ipcRenderer.invoke('petdesk:status'),
     configure: (p) => ipcRenderer.invoke('petdesk:configure', p),
     publish: (p) => ipcRenderer.send('petdesk:publish', p),
-    onCommand: (cb) => ipcRenderer.on('petdesk:command', (_e,p) => cb(p))
+    onCommand: (cb) => ipcRenderer.on('petdesk:command', (_e,p) => cb(p)),
+    onPreferences: (cb) => ipcRenderer.on('petdesk:preferences', (_e,p) => cb(p))
   },
   digest: {
     request: (payload) => ipcRenderer.invoke('digest:request', payload),

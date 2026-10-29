@@ -7163,5 +7163,155 @@
     "zh-CN": "给它起个名字再记 —— 随便写两个字的都行。",
     "en": "Give this activity a short name before recording.",
     "ja": "記録する活動に短い名前をつけてください。"
+  },
+  "还没有足够记录，暂不判断本周节奏": {
+    "zh-CN": "还没有足够记录，暂不判断本周节奏",
+    "en": "Not enough records to assess this week's rhythm yet.",
+    "ja": "まだ記録が少ないため、今週のペースは判断しません。"
+  },
+  "先完成一次学习或记录心情，周报会随记录慢慢清晰。": {
+    "zh-CN": "先完成一次学习或记录心情，周报会随记录慢慢清晰。",
+    "en": "Start with a study session or a mood entry. Your weekly picture will grow over time.",
+    "ja": "まずは一度学習するか、気分を記録してみましょう。記録とともに週報が見えてきます。"
+  },
+  "记录不足": {
+    "zh-CN": "记录不足",
+    "en": "More records needed",
+    "ja": "記録が不足"
+  },
+  "应用使用时间在后台自动记录，切换窗口不会弹窗打扰；需要时可在记录中补充分类。": {
+    "zh-CN": "应用使用时间在后台自动记录，切换窗口不会弹窗打扰；需要时可在记录中补充分类。",
+    "en": "App usage is recorded quietly in the background. Switching windows won't trigger popups; you can adjust categories in your records.",
+    "ja": "アプリの使用時間はバックグラウンドで自動記録します。ウィンドウを切り替えても通知せず、必要なときに記録の分類を変更できます。"
+  },
+  "A NEW LOOK / 同一份陪伴": {
+    "zh-CN": "A NEW LOOK / 同一份陪伴",
+    "en": "A NEW LOOK / THE SAME COMPANION",
+    "ja": "A NEW LOOK / いつものパートナー"
+  },
+  "换个伙伴外观": {
+    "zh-CN": "换个伙伴外观",
+    "en": "A new look for your companion",
+    "ja": "パートナーの着せ替え"
+  },
+  "换肤窗口": {
+    "zh-CN": "换肤窗口",
+    "en": "Companion skins",
+    "ja": "スキン変更ウィンドウ"
+  },
+  "Petdex 选皮肤": {
+    "zh-CN": "Petdex 选皮肤",
+    "en": "Browse Petdex",
+    "ja": "Petdex で探す"
+  },
+  "浏览器打开": {
+    "zh-CN": "浏览器打开",
+    "en": "Open in browser",
+    "ja": "ブラウザーで開く"
+  },
+  "预览动作": {
+    "zh-CN": "预览动作",
+    "en": "Preview animations",
+    "ja": "動きをプレビュー"
+  },
+  "原生像素动画，继续陪你学习。": {
+    "zh-CN": "原生像素动画，继续陪你学习。",
+    "en": "A pixel companion to keep you company while you learn.",
+    "ja": "ピクセルのパートナーが、今日も学習に寄り添います。"
+  },
+  "内置的初华像素伙伴": {
+    "zh-CN": "内置的初华像素伙伴",
+    "en": "Your built-in Uika pixel companion.",
+    "ja": "初華のピクセルパートナーです。"
+  },
+  "换肤共用原来的属性、物品和回忆。商城配饰按初华定制，其他角色暂时隐藏配饰，库存保留。": {
+    "zh-CN": "换肤共用原来的属性、物品和回忆。商城配饰按初华定制，其他角色暂时隐藏配饰，库存保留。",
+    "en": "Your stats, items and memories stay with you. Shop accessories are made for Uika; other skins hide them while keeping your inventory.",
+    "ja": "着せ替え後もステータス、アイテム、思い出は引き継がれます。お店のアクセサリーは初華用です。ほかのスキンでは非表示になりますが、所持品は残ります。"
+  },
+  "已有官方资源包链接": {
+    "zh-CN": "已有官方资源包链接",
+    "en": "Official skin pack URL",
+    "ja": "公式スキンパックのリンク"
+  },
+  "从 Petdex 带一个新伙伴回来": {
+    "zh-CN": "从 Petdex 带一个新伙伴回来",
+    "en": "Bring a new companion from Petdex",
+    "ja": "Petdex で新しいパートナーを見つけよう"
+  },
+  "在网站中选择角色，点击 ZIP 下载。导入完成后，左侧可预览并换上。": {
+    "zh-CN": "在网站中选择角色，点击 ZIP 下载。导入完成后，左侧可预览并换上。",
+    "en": "Choose a character on Petdex and download its ZIP. Import it here, then preview and apply it on the left.",
+    "ja": "Petdex でキャラクターを選び、ZIP をダウンロードしてください。読み込むと、左側でプレビューして着せ替えできます。"
+  },
+  "也可以把下载好的 ZIP 用右上角按钮导入。": {
+    "zh-CN": "也可以把下载好的 ZIP 用右上角按钮导入。",
+    "en": "You can also import a downloaded ZIP using the button above.",
+    "ja": "ダウンロード済みの ZIP は、右上のボタンから読み込めます。"
+  },
+  "先预览动作，再决定今天谁来陪你。": {
+    "zh-CN": "先预览动作，再决定今天谁来陪你。",
+    "en": "Preview their animations and choose today's companion.",
+    "ja": "動きを見て、今日のパートナーを選びましょう。"
+  },
+  "我可以帮你打开页面、选择 Python 或 PyTorch，再陪你开始五分钟。": {
+    "zh-CN": "我可以帮你打开页面、选择 Python 或 PyTorch，再陪你开始五分钟。",
+    "en": "I can open pages, select Python or PyTorch, and help you start with five minutes.",
+    "ja": "ページを開いたり、Python や PyTorch を選んだりできます。まずは5分、一緒に始めましょう。"
+  },
+  "比如：打开日报 / 选择 PyTorch": {
+    "zh-CN": "比如：打开日报 / 选择 PyTorch",
+    "en": "Try: open digest / select PyTorch",
+    "ja": "例：技術ニュースを開く / PyTorchを選ぶ"
+  },
+  "玩一会": {
+    "zh-CN": "玩一会",
+    "en": "Let's play",
+    "ja": "一緒に遊ぶ"
+  },
+  "这一天的投入已经记下，不必额外补任务。": {
+    "zh-CN": "这一天的投入已经记下，不必额外补任务。",
+    "en": "Your time is recorded. No need to add extra tasks.",
+    "ja": "この日の取り組みは記録済みです。無理にタスクを増やさなくても大丈夫。"
+  },
+  "这天还没有记录，随时可以从一点点开始。": {
+    "zh-CN": "这天还没有记录，随时可以从一点点开始。",
+    "en": "No records for this day yet. You can start small whenever you're ready.",
+    "ja": "この日はまだ記録がありません。いつでも小さな一歩から始められます。"
+  },
+  "计划与必做": {
+    "zh-CN": "计划与必做",
+    "en": "Plans & essentials",
+    "ja": "計画と日課"
+  },
+  "未安排任务": {
+    "zh-CN": "未安排任务",
+    "en": "No tasks planned",
+    "ja": "タスク未設定"
+  },
+  "跟它说点什么…": {
+    "zh-CN": "跟它说点什么…",
+    "en": "Say something…",
+    "ja": "何か話してみよう…"
+  },
+  "跟它说点什么...": {
+    "zh-CN": "跟它说点什么...",
+    "en": "Say something…",
+    "ja": "何か話してみよう…"
+  },
+  "工作学习": {
+    "zh-CN": "工作学习",
+    "en": "Work & study",
+    "ja": "仕事・学習"
+  },
+  "生活品质": {
+    "zh-CN": "生活品质",
+    "en": "Daily life",
+    "ja": "暮らし"
+  },
+  "素养提高": {
+    "zh-CN": "素养提高",
+    "en": "Personal growth",
+    "ja": "自分磨き"
   }
 });
