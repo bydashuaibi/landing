@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),path=require('path');
+const {chromium}=require('C:/Users/31701/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const dir=path.join(__dirname,'_shots/bilibili');fs.mkdirSync(dir,{recursive:true});
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
+try{const page=await browser.newPage({viewport:{width:1440,height:960},locale:'zh-CN'});
+const response=await page.goto('https://www.bilibili.com/video/BV1sHU9BmEne?t=77.1&p=36',{waitUntil:'domcontentloaded',timeout:45000});
+await page.waitForTimeout(6000);
+await page.screenshot({path:path.join(dir,'course-p36.png')});
+const data=await page.evaluate(()=>({title:document.title,url:location.href,text:document.body.innerText.slice(0,18000),headings:[...document.querySelectorAll('h1')].map(x=>x.innerText),state:window.__INITIAL_STATE__?{title:window.__INITIAL_STATE__.videoData?.title,desc:window.__INITIAL_STATE__.videoData?.desc,pages:window.__INITIAL_STATE__.videoData?.pages?.map(p=>({page:p.page,part:p.part,duration:p.duration})),p:window.__INITIAL_STATE__.p}:null}));
+fs.writeFileSync(path.join(dir,'course-p36.json'),JSON.stringify({status:response?.status(),...data},null,2));
+console.log(JSON.stringify({status:response?.status(),title:data.title,currentEpisode:data.state?.p,episode:data.state?.pages?.find(p=>p.page===data.state.p),total:data.state?.pages?.length,screenshot:path.join(dir,'course-p36.png')},null,2));
+}finally{await browser.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});

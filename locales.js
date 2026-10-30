@@ -7429,6 +7429,51 @@
     "en": "Got it",
     "ja": "わかりました"
   },
+  "B 站课程已确认，优先按标题、选集和简介复核": {
+    "zh-CN": "B 站课程已确认，优先按标题、选集和简介复核",
+    "en": "Bilibili course confirmed; checking its title, current episode and description.",
+    "ja": "Bilibiliの講座を確認済みです。タイトル・現在のエピソード・概要を優先して再確認します。"
+  },
+  "使用截图 AI 检测（通常每 30 秒，需支持图片的模型）": {
+    "zh-CN": "使用截图 AI 检测（通常每 30 秒，需支持图片的模型）",
+    "en": "Use screenshot AI checks (usually every 30 seconds; vision model required)",
+    "ja": "画像AIで判定（通常30秒ごと・画像対応モデルが必要）"
+  },
+  "B 站网课优先识别课程标题、当前选集与简介。已确认且窗口标题不变时，约每 3 分钟复核；切换窗口或标题后重新检测。仍发送完整前台窗口截图，不单独裁切侧栏。": {
+    "zh-CN": "B 站网课优先识别课程标题、当前选集与简介。已确认且窗口标题不变时，约每 3 分钟复核；切换窗口或标题后重新检测。仍发送完整前台窗口截图，不单独裁切侧栏。",
+    "en": "Bilibili courses are checked using the course title, current episode and description. Confirmed courses with an unchanged window title are rechecked about every 3 minutes. Window or title changes trigger fresh checks. The full foreground window image is still sent; the sidebar is not cropped separately.",
+    "ja": "Bilibiliの講座はタイトル・現在のエピソード・概要を優先して判定します。確認済みでウィンドウ名が変わらない場合は約3分ごとに再確認し、ウィンドウやタイトルが変わると新たに判定します。前面ウィンドウ全体の画像を送信し、サイドバーだけには切り抜きません。"
+  },
+  "屏幕已锁定，计时暂停": {
+    "zh-CN": "屏幕已锁定，计时暂停",
+    "en": "Screen locked; timer paused.",
+    "ja": "画面がロックされたため、計時を停止しました。"
+  },
+  "内容相关，正在复核后继续": {
+    "zh-CN": "内容相关，正在复核后继续",
+    "en": "Content matches; confirming before resuming.",
+    "ja": "関連する内容です。再確認後に再開します。"
+  },
+  "正在复核任务内容，短暂切换不会暂停": {
+    "zh-CN": "正在复核任务内容，短暂切换不会暂停",
+    "en": "Checking task relevance; brief switches will not pause the timer.",
+    "ja": "内容を再確認中です。短時間の切り替えでは停止しません。"
+  },
+  "截图检测暂不可用，请检查图片模型或连接": {
+    "zh-CN": "截图检测暂不可用，请检查图片模型或连接",
+    "en": "Screenshot checks are unavailable. Check your vision model or connection.",
+    "ja": "画像の判定が利用できません。画像対応モデルと接続を確認してください。"
+  },
+  "截图检测暂不可用，正在重试": {
+    "zh-CN": "截图检测暂不可用，正在重试",
+    "en": "Screenshot checks are temporarily unavailable; retrying.",
+    "ja": "画像の判定が一時的に利用できません。再試行中です。"
+  },
+  "本地模式只按窗口标题关键词判断，不能确认浏览器的实际网址。截图模式会将当前前台窗口画面发送到你配置的 AI 服务，可能包含私人内容；不保存截图到磁盘。短暂切换会先复核；截图模式需两次独立判断偏离才暂停。检测暂不可用会单独提示。": {
+    "zh-CN": "本地模式只按窗口标题关键词判断，不能确认浏览器的实际网址。截图模式会将当前前台窗口画面发送到你配置的 AI 服务，可能包含私人内容；不保存截图到磁盘。短暂切换会先复核；截图模式需两次独立判断偏离才暂停。检测暂不可用会单独提示。",
+    "en": "Local mode matches window-title keywords and cannot verify the browser URL. Screenshot mode sends the foreground window image to your configured AI service; it may contain private information and is not saved to disk. Brief switches are checked again. Screenshot mode requires two independent off-task judgments before pausing. Detection failures are reported separately.",
+    "ja": "ローカル判定はウィンドウ名のキーワードを照合し、実際のURLは確認できません。画像判定では前面ウィンドウの画像を設定したAIサービスに送信します。個人情報が含まれる可能性があり、画像はディスクに保存しません。短時間の切り替えは再確認し、独立した2回の画像判定で作業外と確認した場合に停止します。判定できない場合は別途表示します。"
+  },
   "请在主窗口确认学习时长和检测方式": {
     "zh-CN": "请在主窗口确认学习时长和检测方式",
     "en": "Confirm duration and monitoring in the main window",

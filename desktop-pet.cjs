@@ -2,7 +2,7 @@
 const {app,BrowserWindow,ipcMain,screen,Menu,globalShortcut}=require('electron');
 const path=require('path');
 module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,autoLaunch,closeBehavior,i18n:I18n}) {
-  let win=null,settingsWin=null,quitting=false,snapshot={},saveTimer,hit=true,recoveryRegistered=false,lastError='';
+  let win=null,settingsWin=null,quitting=false,snapshot={},saveTimer,hit=true,recoveryRegistered=false,lastError='',regions=[],dragging=false;
   const defaults={enabled:true,scale:1,opacity:1,lockDrag:false,clickThrough:false,hoverFade:false,alwaysOnTop:true,showTaskbar:false,showHints:true,panelOpen:false};
   const actions=new Set(['open','study','pause','resume','capture','settle','chat','pat','wave','hug','highfive','text','weekly','navigate','select','help','skins','playground']);
   const pages=new Set(['today','weekly','digest','companion','pet','shop','me']);
@@ -22,6 +22,14 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
     if(!on&&recoveryRegistered){globalShortcut.unregister('F7');recoveryRegistered=false;}
   }
   function inputMode(){if(alive(win))win.setIgnoreMouseEvents(prefs().clickThrough||!hit,{forward:true});}
+  // Forwarded mousemove can be lost after reload or movement. Recover from native cursor coordinates.
+  function refreshHit(){
+    if(!alive(win)||!win.isVisible()||!regions.length)return;
+    const cursor=screen.getCursorScreenPoint(),b=win.getBounds(),z=win.webContents.getZoomFactor(),x=(cursor.x-b.x)/z,y=(cursor.y-b.y)/z;
+    const next=dragging||regions.some(r=>x>=r.x&&y>=r.y&&x<r.x+r.width&&y<r.y+r.height);
+    if(next!==hit){hit=next;inputMode();}
+  }
+  const hitWatch=setInterval(refreshHit,150);
   function applyWindow(){
     if(!alive(win))return;const p=prefs(),b=win.getBounds(),a=screen.getDisplayMatching(b).workArea;
     const size={width:Math.min(340,a.width-16),height:Math.min(Math.round(596+163*(p.scale-1)),a.height-16)};
@@ -36,6 +44,7 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
     }
     if(!next.enabled)next.clickThrough=false;
     if(next.clickThrough)next.panelOpen=false;
+    if(!next.enabled||next.clickThrough)dragging=false;
     try{shortcut(next.enabled&&next.clickThrough);}catch(e){lastError=e.message;notify();throw e;}
     lastError='';clearTimeout(saveTimer);writePrefs({desktopPet:Object.assign({},readPrefs().desktopPet||{},next)});
     if(next.enabled){create();applyWindow();}else if(alive(win))win.hide();notify();return status();
@@ -56,6 +65,7 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
     const area=screen.getPrimaryDisplay().workArea,p=prefs(),size={width:Math.min(340,area.width-16),height:Math.min(Math.round(596+163*(p.scale-1)),area.height-16)},pos=clamp(Number.isFinite(p.x)?p.x:area.x+area.width-size.width-20,Number.isFinite(p.y)?p.y:area.y+area.height-size.height-20,size);
     win=new BrowserWindow({...pos,...size,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:p.alwaysOnTop,skipTaskbar:!p.showTaskbar,resizable:false,show:false,title:I18n.t('初华 · 着陆桌宠'),webPreferences:{preload:path.join(__dirname,'desktop-pet-preload.js'),contextIsolation:true,nodeIntegration:false,spellcheck:false}});
     win.setAlwaysOnTop(p.alwaysOnTop,'floating');inputMode();
+    win.webContents.on('did-start-loading',()=>{regions=[];dragging=false;hit=true;inputMode();});
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(e,url)=>{if(url!==win.webContents.getURL())e.preventDefault();});
     win.once('ready-to-show',()=>{if(prefs().enabled)win.showInactive();notify();});win.loadFile(path.join(__dirname,'desktop-pet.html'));
     win.on('close',e=>{if(!quitting){e.preventDefault();setPanel(false);}});win.on('closed',()=>{win=null;});
@@ -95,10 +105,12 @@ module.exports=function setup({getMain,showMain,readPrefs,writePrefs,openSkins,a
   ipcMain.handle('petdesk:ready',e=>petSender(e)?snapshot:null);
   ipcMain.handle('petdesk:command',(e,p)=>petSender(e)&&!prefs().clickThrough?command(p):{ok:false});
   ipcMain.on('petdesk:hit',(e,on)=>{if(petSender(e)){hit=!!on;inputMode();}});
+  ipcMain.on('petdesk:regions',(e,list)=>{if(!petSender(e)||!Array.isArray(list))return;regions=list.slice(0,3).filter(r=>r&&[r.x,r.y,r.width,r.height].every(Number.isFinite)&&r.width>0&&r.height>0).map(r=>({x:r.x,y:r.y,width:r.width,height:r.height}));refreshHit();});
+  ipcMain.on('petdesk:drag',(e,on)=>{if(petSender(e)){dragging=!!on&&!prefs().clickThrough;if(dragging){hit=true;inputMode();}else refreshHit();}});
   ipcMain.on('petdesk:hide',e=>{if(petSender(e))configure({enabled:false});});
   ipcMain.on('petdesk:move',(e,delta)=>{if(!petSender(e)||prefs().lockDrag||prefs().clickThrough||!delta||!Number.isFinite(delta.x)||!Number.isFinite(delta.y))return;const b=win.getBounds(),p=clamp(b.x+Math.max(-1000,Math.min(1000,delta.x)),b.y+Math.max(-1000,Math.min(1000,delta.y)));win.setPosition(p.x,p.y);});
   ipcMain.on('petdesk:menu',e=>{if(petSender(e)&&!prefs().clickThrough)contextMenu().popup({window:win});});
-  app.on('before-quit',()=>{quitting=true;persistPosition();shortcut(false);});
+  app.on('before-quit',()=>{quitting=true;clearInterval(hitWatch);persistPosition();shortcut(false);});
   try{shortcut(prefs().enabled&&prefs().clickThrough);}catch(e){lastError=e.message;writePrefs({desktopPet:Object.assign({},readPrefs().desktopPet||{},prefs(),{clickThrough:false})});}
   if(prefs().enabled)create();
   function reveal(){if(prefs().enabled)create();}

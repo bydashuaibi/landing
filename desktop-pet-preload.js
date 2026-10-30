@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('petdesk',{
   command:p=>ipcRenderer.invoke('petdesk:command',p),
   onState:cb=>ipcRenderer.on('petdesk:state',(_e,p)=>cb(p)),
   hit:on=>ipcRenderer.send('petdesk:hit',!!on),
+  regions:list=>ipcRenderer.send('petdesk:regions',list),
+  dragging:on=>ipcRenderer.send('petdesk:drag',!!on),
   move:p=>ipcRenderer.send('petdesk:move',p),
   menu:()=>ipcRenderer.send('petdesk:menu'),
   hide:()=>ipcRenderer.send('petdesk:hide')
