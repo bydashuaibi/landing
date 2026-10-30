@@ -1,0 +1,14 @@
+'use strict';
+const {buildSync}=require('../mobile/node_modules/esbuild'),vm=require('vm'),path=require('path'),assert=require('assert/strict');
+const code=buildSync({entryPoints:[path.join(__dirname,'../mobile/src/notification-core.js')],bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text;
+const moduleObject={exports:{}};vm.runInNewContext(code,{module:moduleObject,exports:moduleObject.exports,Date});const {mergeEvents}=moduleObject.exports;
+const date=()=> '2026-10-30',event={id:'notification:one',source:'wechat',kind:'payment',type:'expense',cents:1800,at:100000};
+let checks=0;const check=(name,fn)=>{fn();checks++;console.log('PASS '+name);};
+const state=()=>({ledger:{entries:[],deleted:{}},captureReview:[]});
+check('redelivery is idempotent before and after acknowledgement',()=>{const s=state();mergeEvents(s,[event,event],date);assert.equal(s.ledger.entries.length,1);mergeEvents(s,[event],date);assert.equal(s.ledger.entries.length,1);assert.equal(s.ledger.entries[0].review,'pending');});
+check('nearby equal amounts stay separate for review rather than being silently merged',()=>{const s=state();mergeEvents(s,[event,{...event,id:'notification:two',at:105000}],date);assert.equal(s.ledger.entries.length,2);assert.match(s.ledger.entries[1].reason,/重复/);});
+check('deleted notifications never resurrect; imported manual edits survive redelivery',()=>{const s=state();s.ledger.deleted[event.id]=1;mergeEvents(s,[event],date);assert.equal(s.ledger.entries.length,0);delete s.ledger.deleted[event.id];mergeEvents(s,[event],date);s.ledger.entries[0].note='edited';s.ledger.entries[0].review='confirmed';mergeEvents(s,[event],date);assert.equal(s.ledger.entries[0].note,'edited');assert.equal(s.ledger.entries[0].review,'confirmed');});
+check('missing amounts are saved for review without becoming zero-valued ledger entries',()=>{const s=state();mergeEvents(s,[{...event,cents:0},{...event,cents:0}],date);assert.equal(s.ledger.entries.length,0);assert.equal(s.captureReview.length,1);});
+check('refunds remain pending and transfers stay outside consumption',()=>{const s=state();mergeEvents(s,[{...event,type:'income',kind:'refund'},{...event,id:'notification:transfer',type:'transfer',kind:'transfer'}],date);assert.equal(s.ledger.entries[0].category,'退款');assert.equal(s.ledger.entries[0].review,'pending');assert.equal(s.ledger.entries[1].type,'transfer');});
+check('unsupported sources, unsafe values and malformed events are not acknowledged as imported',()=>{const s=state();const ids=mergeEvents(s,[null,{...event,source:'bank'},{...event,cents:-1},{...event,cents:1.2},{...event,id:'other'}],date);assert.equal(ids.length,0);assert.equal(s.ledger.entries.length,0);});
+console.log('Verified '+checks+' notification ingestion scenarios.');

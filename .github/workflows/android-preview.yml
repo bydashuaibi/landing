@@ -32,7 +32,16 @@ jobs:
         run: npm run android:sync
       - name: Build debug APK
         working-directory: mobile/android
-        run: bash gradlew assembleDebug --no-daemon
+        env:
+          STUDYTRAIL_PREVIEW_KEYSTORE: ${{ secrets.STUDYTRAIL_PREVIEW_KEYSTORE }}
+          STUDYTRAIL_STORE_PASSWORD: ${{ secrets.STUDYTRAIL_STORE_PASSWORD }}
+        shell: bash
+        run: |
+          test -n "$STUDYTRAIL_PREVIEW_KEYSTORE"
+          export STUDYTRAIL_KEYSTORE="$RUNNER_TEMP/studytrail-preview.p12"
+          printf '%s' "$STUDYTRAIL_PREVIEW_KEYSTORE" | base64 --decode > "$STUDYTRAIL_KEYSTORE"
+          bash gradlew testDebugUnitTest assembleDebug --no-daemon
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: StudyTrail-Android-preview
