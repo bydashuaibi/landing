@@ -14,6 +14,7 @@ public class PaymentListener extends NotificationListenerService {
     @Override public void onDestroy(){connected=false;super.onDestroy();}
     @Override public void onNotificationPosted(StatusBarNotification sbn){
         if(sbn==null||!getSharedPreferences("studytrail-native",MODE_PRIVATE).getBoolean("capture",false))return;
+        if(!sbn.getPackageName().equals("com.tencent.mm")&&!sbn.getPackageName().equals("com.eg.android.AlipayGphone"))return;
         Notification n=sbn.getNotification();if(n==null||(n.flags&Notification.FLAG_GROUP_SUMMARY)!=0)return;
         Bundle b=n.extras;if(b==null)return;
         CharSequence title=b.getCharSequence(Notification.EXTRA_TITLE),body=b.getCharSequence(Notification.EXTRA_BIG_TEXT);

@@ -10,6 +10,6 @@ export function createCapture(B){
   function bind(){const el=id=>document.getElementById(id);if(!el('capture-toggle'))return;el('capture-toggle').onclick=()=>{if(status.enabled){Native.configure({enabled:false}).then(sync).catch(()=>B.toast(B.t('采集或保存异常，请检查权限与本机存储')));return;}
     B.open('<h2>'+B.t('开启自动记账')+'</h2><p>'+B.t('系统通知使用权允许读取通知。本应用只在本机处理微信和支付宝的付款通知，不保存普通聊天、验证码或通知原文，不上传云端。授权不会补回历史交易，也不能保证每笔付款都有通知。')+'</p><button id="capture-consent" class="primary">'+B.t('同意并前往系统授权')+'</button>');
     el('capture-consent').onclick=async()=>{try{await Native.configure({enabled:true});await Native.openAccess();B.close();await sync();}catch(_){B.toast(B.t('无法打开系统设置，请稍后重试'));}};
-  };el('capture-access').onclick=()=>Native.openAccess().catch(()=>B.toast(B.t('无法打开系统设置，请稍后重试')));el('capture-settings').onclick=()=>Native.openAppSettings().catch(()=>B.toast(B.t('无法打开系统设置，请稍后重试')));el('capture-refresh').onclick=()=>sync();}
+  };el('capture-access').onclick=()=>Native.openAccess().catch(()=>B.toast(B.t('无法打开系统设置，请稍后重试')));el('capture-settings').onclick=()=>Native.openAppSettings().catch(()=>B.toast(B.t('无法打开系统设置，请稍后重试')));el('capture-refresh').onclick=async()=>{try{if(native&&status.enabled&&status.granted&&!status.connected)await Native.configure({enabled:true});await sync();}catch(_){B.toast(B.t('采集或保存异常，请检查权限与本机存储'));}};}
   return {sync,render,bind};
 }
