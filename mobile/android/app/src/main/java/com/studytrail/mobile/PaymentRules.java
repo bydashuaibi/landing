@@ -22,7 +22,7 @@ public final class PaymentRules {
         else if(!Pattern.compile("支付成功|付款成功|成功支付|成功付款|扣款成功|收款到账|收款成功").matcher(text).find())return null;
         String type=kind.equals("refund")||Pattern.compile("收款到账|收款成功").matcher(text).find()?"income":kind.equals("transfer")?"transfer":"expense";
         // Require a currency marker, and reject multiple amounts (e.g. paid amount + balance).
-        Matcher m=Pattern.compile("(?<![\\d.,，-])(?:[¥￥]\\s*(\\d{1,7}(?:\\.\\d{1,2})?)(?![\\d.])|(\\d{1,7}(?:\\.\\d{1,2})?)\\s*元)").matcher(text);
+        Matcher m=Pattern.compile("(?<![\\d.,，-])(?:[¥￥]\\s*(\\d{1,7}(?:\\.\\d{1,2})?)(?![\\d.,，])|(\\d{1,7}(?:\\.\\d{1,2})?)\\s*元)").matcher(text);
         long cents=0;int count=0;
         while(m.find()){count++;try{cents=new BigDecimal(m.group(1)!=null?m.group(1):m.group(2)).movePointRight(2).longValueExact();}catch(Exception e){return null;}}
         if(count!=1||cents<=0||cents>999999999)cents=0;
