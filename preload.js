@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('landing', {
 
   data: {
     save: (json) => ipcRenderer.invoke('data:save', { json }),
+    saveLedger: (json) => ipcRenderer.invoke('ledger:save', { json }),
     open: () => ipcRenderer.invoke('data:open')
   },
 
@@ -101,6 +102,7 @@ contextBridge.exposeInMainWorld('landing', {
   /* 叫回来之后没人理 → 让它自己缩回托盘 */
   retract: () => ipcRenderer.send('window:retract'),
   /* 活动感知 / 定时截屏：采集在主进程（规则表也在 main.js），这里只取快照、订阅、改设置 */
+  focusMonitor: {configure: c=>ipcRenderer.invoke('focus:configure',c),sample: capture=>ipcRenderer.invoke('focus:sample',!!capture),remind: reason=>ipcRenderer.invoke('focus:remind',reason),hide: ()=>ipcRenderer.send('focus:hide')},
   activity: {
     get: () => ipcRenderer.invoke('activity:get'),
     week: (from, to) => ipcRenderer.invoke('activity:week', from, to),

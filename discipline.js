@@ -121,7 +121,7 @@
     var t = track(id); if (!t) return;
     if (B.state().timer) { B.toast(I18n.t('先结束当前的计时，再接着学')); return; }
     state().learning.selected = t.id; B.save();
-    B.openSheet(I18n.html('<span class="ds-eyebrow">给想学的东西留一段时间</span><h2 class="ds-prepare-title">准备开始学习</h2><p class="hint">选一个适合今天的时长。5 分钟适合热身，也可以完整学一段；结束后再记录下次的起点。</p><div class="ds-next-step"><span>这次先做</span><p>') + esc(checkpointText(t)) + I18n.html('</p></div><div class="field"><label for="ds-learning-minutes">本次学习时长（5–240 分钟）</label><input id="ds-learning-minutes" type="number" min="5" max="240" step="1" required value="') + state().learning.minutes + I18n.html('"></div><div class="ds-learning-presets">') + [5,25,50].map(function(m){return button('learnMinutes',m+I18n.t(' 分钟'),'btn ghost sm','data-minutes="'+m+'"');}).join('') + I18n.html('</div><p class="hint">时长会记住。学习前可以放远手机，开启勿扰；不必每次重新设置。</p><div class="sheet-actions">') + button('phone', I18n.t('手机怎么设置'), 'btn ghost') + button('learnStart', (t.url ? I18n.t('打开资料，') : '') + I18n.t('开始学习'), 'btn primary', 'data-track="' + esc(t.id) + '"') + '</div>');
+    B.openSheet(I18n.html('<span class="ds-eyebrow">给想学的东西留一段时间</span><h2 class="ds-prepare-title">准备开始学习</h2><p class="hint">选一个适合今天的时长。5 分钟适合热身，也可以完整学一段；结束后再记录下次的起点。</p><div class="ds-next-step"><span>这次先做</span><p>') + esc(checkpointText(t)) + I18n.html('</p></div><div class="field"><label for="ds-learning-minutes">本次学习时长（5–240 分钟）</label><input id="ds-learning-minutes" type="number" min="5" max="240" step="1" required value="') + state().learning.minutes + '"></div>' + (window.FocusMonitor?FocusMonitor.fields(Object.assign({resourceUrl:t.url||''},t.monitor||{}),'fm-learn'):'') + I18n.html('<div class="ds-learning-presets">') + [5,25,50].map(function(m){return button('learnMinutes',m+I18n.t(' 分钟'),'btn ghost sm','data-minutes="'+m+'"');}).join('') + I18n.html('</div><p class="hint">时长会记住。学习前可以放远手机，开启勿扰；不必每次重新设置。</p><div class="sheet-actions">') + button('phone', I18n.t('手机怎么设置'), 'btn ghost') + button('learnStart', (t.url ? I18n.t('打开资料，') : '') + I18n.t('开始学习'), 'btn primary', 'data-track="' + esc(t.id) + '"') + '</div>');
   }
   function learnStart(id) {
     var t = track(id); if (!t || B.state().timer) return;
@@ -129,15 +129,15 @@
     if(input && !input.reportValidity()) return;
     var min=input?Number(input.value):state().learning.minutes;
     if(!Number.isInteger(min) || min<5 || min>240) return;
-    state().learning.minutes=min;
+    var monitoring=window.FocusMonitor?FocusMonitor.read('fm-learn'):{};if(!monitoring)return;state().learning.minutes=min;t.monitor=monitoring;
     var n = tasks().find(function (x) { return x.trackId === t.id && !x.done; });
     if (!n) {
       if (tasks().length >= 3) { B.toast(I18n.t('今天已经安排三件，可以先移除一件，再加入学习')); return; }
       n = { id: B.uid('plan'), date: day(), name: I18n.t('自学 ') + t.name, step: t.checkpoint, minutes: 25, done: false, trackId: t.id, createdAt: Date.now() }; state().tasks.push(n);
     }
-    n.step = t.checkpoint; n.minutes=min; selected = n.id;
+    n.step = t.checkpoint; n.minutes=min;Object.assign(n,monitoring); selected = n.id;
     var r = state().reminder; r.date = day(); r.status = 'started'; r.snoozeUntil = 0; pendingReminder = false;
-    B.closeSheet(); openResource(t); start(false);
+    B.closeSheet();if(!n.resourceUrl)openResource(t);start(false,true);
   }
   function reminderForm() {
     var r = state().reminder, plan = reminderPlan();
@@ -210,6 +210,7 @@
     } else {
       html += button('new', I18n.t('+ 定下今天第一件事'), 'ds-primary');
     }
+    if(t && t.monitorEnabled)html+='<div class="focus-status" id="focus-monitor-status" role="status" data-paused="'+!!t.monitorHold+'">'+esc(FocusMonitor.status()||I18n.t('等待确认当前窗口与任务相关'))+'</div>';
     html += I18n.html('<div class="ds-focus-footer"><span>◷ 一次只做一件</span><span>完成专注后，再确认任务是否做完</span></div></section>');
     return html;
   }
@@ -250,7 +251,7 @@
     var t = id ? task(id) : preset || { name: '', minutes: 25, step: '' };
     if (!t) return;
     if (!id && tasks().length >= 3) { B.toast(I18n.t('今天先做好这三件，做少一点也可以')); return; }
-    B.openSheet('<h2>' + (id ? I18n.t('调整这件小事') : I18n.t('今天想做哪件小事？')) + I18n.html('</h2><p class="hint">把目标缩成一个具体动作。最多三件，第一步越小越好。</p><form id="ds-task-form"><div class="field"><label for="ds-name">要做的事</label><input id="ds-name" maxlength="60" required placeholder="比如：学习一节 C++ 课程" value="') + esc(t.name) + I18n.html('"></div><div class="field"><label for="ds-step">第一步怎么开始？</label><input id="ds-step" maxlength="100" placeholder="比如：打开教程，看到第一个例子" value="') + esc(t.step) + I18n.html('"></div><div class="field"><label for="ds-minutes">一次专注多久（1–180 分钟）</label><input id="ds-minutes" type="number" min="1" max="180" step="1" required value="') + t.minutes + '"></div><div class="sheet-actions">' + (id ? button('delete', I18n.t('删除这件事'), 'btn ghost', 'data-id="' + esc(id) + '"') : '') + I18n.html('<button type="button" class="btn ghost" data-act="closeSheet">取消</button><button type="submit" class="btn primary">') + (id ? I18n.t('保存调整') : I18n.t('就从这件开始')) + '</button></div></form>');
+    B.openSheet('<h2>' + (id ? I18n.t('调整这件小事') : I18n.t('今天想做哪件小事？')) + I18n.html('</h2><p class="hint">把目标缩成一个具体动作。最多三件，第一步越小越好。</p><form id="ds-task-form"><div class="field"><label for="ds-name">要做的事</label><input id="ds-name" maxlength="60" required placeholder="比如：学习一节 C++ 课程" value="') + esc(t.name) + I18n.html('"></div><div class="field"><label for="ds-step">第一步怎么开始？</label><input id="ds-step" maxlength="100" placeholder="比如：打开教程，看到第一个例子" value="') + esc(t.step) + I18n.html('"></div><div class="field"><label for="ds-minutes">一次专注多久（1–180 分钟）</label><input id="ds-minutes" type="number" min="1" max="180" step="1" required value="') + t.minutes + '"></div>' + (window.FocusMonitor?FocusMonitor.fields(t,'fm-task'):'') + '<div class="sheet-actions">' + (id ? button('delete', I18n.t('删除这件事'), 'btn ghost', 'data-id="' + esc(id) + '"') : '') + I18n.html('<button type="button" class="btn ghost" data-act="closeSheet">取消</button><button type="submit" class="btn primary">') + (id ? I18n.t('保存调整') : I18n.t('就从这件开始')) + '</button></div></form>');
     var name = document.getElementById('ds-name'); name.focus();
     document.getElementById('ds-task-form').onsubmit = function (e) {
       e.preventDefault(); var v = name.value.trim(), min = Number(document.getElementById('ds-minutes').value);
@@ -259,17 +260,20 @@
       if (!id && tasks().length >= 3) return;
       var rec = id ? task(id) : { id: B.uid('plan'), date: day(), done: false, createdAt: Date.now() };
       if (!rec) return;
-      rec.name = v; rec.step = document.getElementById('ds-step').value.trim(); rec.minutes = min;
+      var monitoring=window.FocusMonitor?FocusMonitor.read('fm-task'):{};if(!monitoring)return;Object.assign(rec,monitoring);rec.name = v; rec.step = document.getElementById('ds-step').value.trim(); rec.minutes = min;
       if (carriedFrom) rec.carriedFrom = carriedFrom;
       if (!id) state().tasks.push(rec);
       selected = rec.id; B.closeSheet(); commit(I18n.t('计划好了，现在就可以开始'));
     };
   }
-  function start(small) {
+  function start(small, prepared) {
     if (B.state().timer) { B.toast(I18n.t('先记录当前的计时，再开始下一段')); return; }
     var n = next(); if (!n) { form(); return; }
+    if(window.FocusMonitor&&!prepared){FocusMonitor.form(n,function(){start(small,true);});return;}
     var min = small ? 5 : n.minutes;
     B.state().timer = { id: B.uid('focus'), discipline: true, mode: 'countdown', scope: 'loose', taskId: n.id, name: n.name, step: n.step, category: 'work', date: day(), plannedMin: min, startedAt: Date.now(), endsAt: Date.now() + min * 60000, paused: false, remainMs: min * 60000, finished: false };
+    Object.assign(B.state().timer,{resourceUrl:n.resourceUrl||'',monitorEnabled:!!n.monitorEnabled,monitorVision:!!n.monitorVision,monitorKeywords:n.monitorKeywords||''});
+    if(window.FocusMonitor)FocusMonitor.start(B.state().timer);
     B.save(); B.tick(); B.render(); B.toast(I18n.t('开始了。现在只做「') + n.name + '」');
   }
   function settle() {
@@ -386,7 +390,7 @@
   }
   function onActivity(snapshot) {
     var t = timer(), last = snapshot && snapshot.last;
-    if (!t || t.paused || t.finished || !state().distractionNudge || !last || !snapshot.enabled) return;
+    if (!t || t.monitorEnabled || t.paused || t.finished || !state().distractionNudge || !last || !snapshot.enabled) return;
     if (last.at === lastSampleAt || Date.now() - lastDistractionAt < 10 * 60000) return;
     lastSampleAt = last.at;
     var text = String(last.proc || '') + ' ' + String(last.title || '');
@@ -405,8 +409,7 @@
     if (action === 'study') {
       if (B.state().timer) return I18n.t('已经有一个计时了，可以暂停、继续或结束记录。');
       var t = track(id); if (!t) return I18n.t('请先选择 Python 或 PyTorch。');
-      learnStart(t.id);
-      return timer() ? I18n.t('开始学 ') + t.name + ' · ' + timer().plannedMin + I18n.t(' 分钟') : I18n.t('今天已有三件计划，请在着陆中先移除一件再开始。');
+      prepare(t.id);return I18n.t('请在主窗口确认学习时长和检测方式');
     }
     if (action === 'pause' || action === 'resume') {
       var active = timer(); if (!active || active.finished) return I18n.t('现在没有可以暂停或继续的学习计时。');

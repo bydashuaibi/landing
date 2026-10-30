@@ -224,6 +224,17 @@ ipcMain.handle('data:save', async (e, payload) => {
   }
 });
 
+ipcMain.handle('ledger:save', async (e, payload) => {
+  if (!mainWindow || e.sender !== mainWindow.webContents) return {ok:false,error:'Unsupported window'};
+  const json=String(payload && payload.json || '');
+  try { require('./ledger-core.js').parse(json,'ledger.json'); } catch(err) { return {ok:false,error:err.message}; }
+  const {canceled,filePath}=await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender),{
+    title:I18n.t('导出全部账目'),defaultPath:path.join(app.getPath('documents'),'StudyTrail-ledger-'+todayStr()+'.json'),filters:[{name:'StudyTrail Ledger JSON',extensions:['json']}]
+  });
+  if(canceled||!filePath)return {ok:false,canceled:true};
+  try {fs.writeFileSync(filePath,json,'utf8');return {ok:true};}catch(err){return {ok:false,error:err.message};}
+});
+
 ipcMain.handle('data:open', async (e) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
@@ -934,6 +945,8 @@ function sampleForeground() {
   });
 }
 
+require('./focus-monitor-main.cjs')({app,BrowserWindow,ipcMain,screen,powerMonitor,desktopCapturer:require('electron').desktopCapturer,path,I18n,mainWindow:()=>mainWindow,sampleForeground});
+
 /* ---- 当天的活动日志 ---- */
 let _act = { date: '', samples: [], shots: 0, bytes: 0, last: null };
 function actLogPath(d) { return path.join(ACTIVITY_DIR, 'log-' + d + '.json'); }
@@ -1379,7 +1392,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: false,
-      /* 窗口在后台时让挂件的 Canvas 停下来，别白烧 CPU */
+      /* 普通页面在后台节流；启用任务检测时临时解除节流。 */
       backgroundThrottling: true
     }
   }, state));

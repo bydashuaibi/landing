@@ -30,6 +30,8 @@
       "index.html",
       "app.js",
       "ledger.js",
+      "ledger-core.js",
+      "ledger-exchange.js",
       "ledger.css",
       "digest.js",
       "digest.css",
@@ -83,7 +85,13 @@
       "i18n-core.js",
       "i18n.js",
       "trail-shop.js",
-      "trail-shop.css"
+      "trail-shop.css",
+      "focus-monitor-main.cjs",
+      "focus-monitor.js",
+      "focus-monitor.css",
+      "focus-notice-preload.js",
+      "focus-notice.html",
+      "focus-notice.js"
     ],
     "win": {
       "target": [

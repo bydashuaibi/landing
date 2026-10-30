@@ -631,6 +631,7 @@ function ensureTimerTick(){
   _timerTick = setInterval(function(){
     var t = STATE.timer;
     if(!t){ clearInterval(_timerTick); _timerTick=null; return; }
+    if(window.FocusMonitor) FocusMonitor.guard();
     /* 藏在后台的计时，每 30 分钟把窗口叫回来一次（正计时/倒计时都算） */
     if(timerWantsNudge(t)) nudgeWindowBack(t);
     if(t.mode==='stopwatch'){
@@ -659,7 +660,8 @@ function ensureTimerTick(){
     renderTimerBar();
   }, 500);
 }
-function toggleTimer(){
+function toggleTimer(monitorAction){
+  if(monitorAction!==true && window.FocusMonitor) FocusMonitor.manual();
   var t=STATE.timer; if(!t||t.finished) return;
   if(t.mode==='stopwatch'){
     if(t.paused){ t.startedAt = Date.now(); t.paused=false; }
@@ -4457,6 +4459,7 @@ function init(){
     tab:function(t){ CUR_TAB=t; render(); }
   };
 
+  if(window.FocusMonitor) FocusMonitor.init(Object.assign({},window.Landing,{pause:toggleTimer}));
   if(window.Ledger) Ledger.init(window.Landing);
   if(window.Digest) Digest.init(window.Landing);
   if(window.DesktopPetBridge) DesktopPetBridge.init(window.Landing);

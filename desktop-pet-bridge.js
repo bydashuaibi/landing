@@ -71,7 +71,7 @@
       if(document.querySelector('#sheet.show')){answer(I18n.t('先完成或关闭着陆里的弹窗，再选择学习方向。'));return;}
       var learning=L.state().discipline.learning;learning.selected=id;L.save();L.tab('today');answer(I18n.t('已选择 ')+(id==='python'?'Python':'PyTorch')+I18n.t('。准备好后点“开始 5 分钟”，也可以先记断点。'));return;
     }
-    if(['study','pause','resume','capture','settle'].indexOf(p.action)>=0){answer(Discipline.desktopAction(p.action,id));return;}
+    if(['study','pause','resume','capture','settle'].indexOf(p.action)>=0){if(p.action==='study')apiRequestOpen();answer(Discipline.desktopAction(p.action,id));return;}
     if(p.action==='open'){answer(I18n.t('着陆打开了。今天从一点点开始。'));return;}
     if(p.action==='weekly'){L.tab('weekly');say('看看你已经走过的路。');return;}
     if(p.action==='chat'){Pet.open('panel','chat');say(I18n.t('我在着陆里等你说话。'));return;}

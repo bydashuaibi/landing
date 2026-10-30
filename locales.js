@@ -7314,6 +7314,381 @@
     "en": "Personal growth",
     "ja": "自分磨き"
   },
+  "任务定位与屏幕检测": {
+    "zh-CN": "任务定位与屏幕检测",
+    "en": "Task location & screen checks",
+    "ja": "作業のリンクと画面確認"
+  },
+  "指定网页 / 视频地址（HTTPS，可选）": {
+    "zh-CN": "指定网页 / 视频地址（HTTPS，可选）",
+    "en": "Webpage / video URL (HTTPS, optional)",
+    "ja": "ページ・動画のURL（HTTPS、任意）"
+  },
+  "相关窗口关键词（用逗号分隔）": {
+    "zh-CN": "相关窗口关键词（用逗号分隔）",
+    "en": "Related window keywords (comma-separated)",
+    "ja": "関連するウィンドウのキーワード（カンマ区切り）"
+  },
+  "偏离任务时暂停并提醒，回到相关内容自动继续": {
+    "zh-CN": "偏离任务时暂停并提醒，回到相关内容自动继续",
+    "en": "Pause and remind when off task; resume after returning",
+    "ja": "作業から外れたら一時停止して通知し、戻ったら自動再開"
+  },
+  "使用截图 AI 检测（每 30 秒，需支持图片的模型）": {
+    "zh-CN": "使用截图 AI 检测（每 30 秒，需支持图片的模型）",
+    "en": "AI screenshot checks (every 30s; vision model required)",
+    "ja": "AI画面確認（30秒ごと、画像対応モデルが必要）"
+  },
+  "本地模式只按窗口标题关键词判断，不能确认浏览器的实际网址。截图模式会将当前前台窗口画面发送到你配置的 AI 服务，可能包含私人内容；不保存截图到磁盘。不能确定是否相关时保持暂停。": {
+    "zh-CN": "本地模式只按窗口标题关键词判断，不能确认浏览器的实际网址。截图模式会将当前前台窗口画面发送到你配置的 AI 服务，可能包含私人内容；不保存截图到磁盘。不能确定是否相关时保持暂停。",
+    "en": "Local mode checks title keywords, not actual browser URLs. Screenshot mode sends the foreground window to your configured AI service and may include private content. Images are not saved to disk. Uncertain results keep the timer paused.",
+    "ja": "ローカルではタイトルのキーワードのみ確認し、実際のURLは確認できません。画面モードは前面のウィンドウを設定済みAIに送り、私的な情報を含む場合があります。画像は保存せず、不明な場合は停止を維持します。"
+  },
+  "请填写有效的 HTTPS 网页或视频地址": {
+    "zh-CN": "请填写有效的 HTTPS 网页或视频地址",
+    "en": "Enter a valid HTTPS webpage or video URL",
+    "ja": "有効なHTTPSのページ・動画URLを入力してください"
+  },
+  "本地检测请填写窗口关键词，或启用截图 AI 检测": {
+    "zh-CN": "本地检测请填写窗口关键词，或启用截图 AI 检测",
+    "en": "Enter title keywords for local checks, or enable AI screenshot checks",
+    "ja": "タイトルのキーワードを入力するか、AI画面確認を有効にしてください"
+  },
+  "截图检测需要先在设置中配置支持图片的 AI 服务": {
+    "zh-CN": "截图检测需要先在设置中配置支持图片的 AI 服务",
+    "en": "Configure a vision-capable AI service in Settings first",
+    "ja": "先に設定で画像対応のAIを設定してください"
+  },
+  "开始前确认任务": {
+    "zh-CN": "开始前确认任务",
+    "en": "Confirm task before starting",
+    "ja": "開始前に作業を確認"
+  },
+  "开始计时": {
+    "zh-CN": "开始计时",
+    "en": "Start timer",
+    "ja": "計時開始"
+  },
+  "已回到相关内容，继续计时": {
+    "zh-CN": "已回到相关内容，继续计时",
+    "en": "Back on task; timer resumed",
+    "ja": "作業に戻りました。計時を再開しました"
+  },
+  "手动暂停中，不自动继续": {
+    "zh-CN": "手动暂停中，不自动继续",
+    "en": "Manually paused; auto-resume disabled",
+    "ja": "手動で停止中。自動再開しません"
+  },
+  "当前内容与任务相关": {
+    "zh-CN": "当前内容与任务相关",
+    "en": "Current content matches the task",
+    "ja": "現在の内容は作業に関連しています"
+  },
+  "当前窗口与任务不一致": {
+    "zh-CN": "当前窗口与任务不一致",
+    "en": "Current window does not match the task",
+    "ja": "現在のウィンドウは作業と一致しません"
+  },
+  "偏离任务，已暂停；等待回到相关内容": {
+    "zh-CN": "偏离任务，已暂停；等待回到相关内容",
+    "en": "Off task; paused until you return",
+    "ja": "作業外のため停止中。関連する内容に戻るのを待っています"
+  },
+  "暂时无法确认任务内容，计时已暂停": {
+    "zh-CN": "暂时无法确认任务内容，计时已暂停",
+    "en": "Unable to verify relevance; timer paused",
+    "ja": "関連性を確認できないため停止中です"
+  },
+  "等待检测到相关内容，计时保持暂停": {
+    "zh-CN": "等待检测到相关内容，计时保持暂停",
+    "en": "Waiting for related content; timer stays paused",
+    "ja": "関連する内容を待っています。計時は停止中です"
+  },
+  "应用内操作，等待回到任务窗口": {
+    "zh-CN": "应用内操作，等待回到任务窗口",
+    "en": "In-app activity; waiting for the task window",
+    "ja": "アプリ内操作中。作業ウィンドウに戻るのを待っています"
+  },
+  "等待确认当前窗口与任务相关": {
+    "zh-CN": "等待确认当前窗口与任务相关",
+    "en": "Waiting to verify the task window",
+    "ja": "作業ウィンドウの確認を待っています"
+  },
+  "回到当前任务": {
+    "zh-CN": "回到当前任务",
+    "en": "Return to your task",
+    "ja": "作業に戻りましょう"
+  },
+  "计时已暂停。回到相关内容后，系统会重新检测并继续计时。": {
+    "zh-CN": "计时已暂停。回到相关内容后，系统会重新检测并继续计时。",
+    "en": "Timer paused. Return to related content for checks to resume the timer.",
+    "ja": "計時を停止しました。関連する内容に戻ると再確認して再開します。"
+  },
+  "知道了": {
+    "zh-CN": "知道了",
+    "en": "Got it",
+    "ja": "わかりました"
+  },
+  "请在主窗口确认学习时长和检测方式": {
+    "zh-CN": "请在主窗口确认学习时长和检测方式",
+    "en": "Confirm duration and monitoring in the main window",
+    "ja": "メイン画面で学習時間と確認方法を設定してください"
+  },
+  "不计收支": {
+    "zh-CN": "不计收支",
+    "en": "Excluded",
+    "ja": "収支対象外"
+  },
+  "待核对": {
+    "zh-CN": "待核对",
+    "en": "Needs review",
+    "ja": "要確認"
+  },
+  "待核对和不计收支的记录暂不进入统计。核对后再确认，避免把重复付款算两遍。": {
+    "zh-CN": "待核对和不计收支的记录暂不进入统计。核对后再确认，避免把重复付款算两遍。",
+    "en": "Pending and excluded entries do not affect totals. Review them to avoid counting payments twice.",
+    "ja": "未確認と対象外の記録は集計しません。重複を避けるため確認してから確定してください。"
+  },
+  "去核对": {
+    "zh-CN": "去核对",
+    "en": "Review",
+    "ja": "確認する"
+  },
+  "核对": {
+    "zh-CN": "核对",
+    "en": "Review",
+    "ja": "確認"
+  },
+  "核对状态": {
+    "zh-CN": "核对状态",
+    "en": "Review status",
+    "ja": "確認状態"
+  },
+  "已确认": {
+    "zh-CN": "已确认",
+    "en": "Confirmed",
+    "ja": "確認済み"
+  },
+  "手动记账": {
+    "zh-CN": "手动记账",
+    "en": "Manual",
+    "ja": "手動記録"
+  },
+  "微信": {
+    "zh-CN": "微信",
+    "en": "WeChat",
+    "ja": "WeChat"
+  },
+  "支付宝": {
+    "zh-CN": "支付宝",
+    "en": "Alipay",
+    "ja": "Alipay"
+  },
+  "银行卡 / CSV": {
+    "zh-CN": "银行卡 / CSV",
+    "en": "Bank / CSV",
+    "ja": "銀行・CSV"
+  },
+  "记录来源": {
+    "zh-CN": "记录来源",
+    "en": "Source",
+    "ja": "記録元"
+  },
+  "搜索备注或交易号": {
+    "zh-CN": "搜索备注或交易号",
+    "en": "Search notes or transaction IDs",
+    "ja": "メモ・取引番号を検索"
+  },
+  "显示更多": {
+    "zh-CN": "显示更多",
+    "en": "Show more",
+    "ja": "さらに表示"
+  },
+  "转账": {
+    "zh-CN": "转账",
+    "en": "Transfer",
+    "ja": "振替"
+  },
+  "导入 / 合并账单": {
+    "zh-CN": "导入 / 合并账单",
+    "en": "Import / merge bills",
+    "ja": "明細を取り込み・統合"
+  },
+  "导出全部账目": {
+    "zh-CN": "导出全部账目",
+    "en": "Export all entries",
+    "ja": "全記録を書き出す"
+  },
+  "导入预览": {
+    "zh-CN": "导入预览",
+    "en": "Import preview",
+    "ja": "取り込みプレビュー"
+  },
+  "选择本地文件": {
+    "zh-CN": "选择本地文件",
+    "en": "Choose a local file",
+    "ja": "端末のファイルを選択"
+  },
+  "选择微信、支付宝 CSV，或学迹独立账本 JSON。只合并账目，不覆盖学习计划。Excel 文件请先另存为 CSV。": {
+    "zh-CN": "选择微信、支付宝 CSV，或学迹独立账本 JSON。只合并账目，不覆盖学习计划。Excel 文件请先另存为 CSV。",
+    "en": "Choose a WeChat or Alipay CSV, or a StudyTrail ledger JSON. Only ledger entries are merged; study plans are preserved. Save Excel files as CSV first.",
+    "ja": "WeChat・AlipayのCSV、または学びのあとの家計簿JSONを選択してください。学習計画は変更しません。Excelは先にCSVで保存してください。"
+  },
+  "可新增": {
+    "zh-CN": "可新增",
+    "en": "New entries",
+    "ja": "追加可能"
+  },
+  "重复跳过": {
+    "zh-CN": "重复跳过",
+    "en": "Duplicates skipped",
+    "ja": "重複をスキップ"
+  },
+  "内容冲突，保留本机": {
+    "zh-CN": "内容冲突，保留本机",
+    "en": "Conflict; keep local",
+    "ja": "競合：端末の内容を保持"
+  },
+  "格式不符，跳过": {
+    "zh-CN": "格式不符，跳过",
+    "en": "Invalid; skip",
+    "ja": "形式不正：スキップ"
+  },
+  "已删除，不恢复": {
+    "zh-CN": "已删除，不恢复",
+    "en": "Deleted; do not restore",
+    "ja": "削除済み：復元しない"
+  },
+  "处理方式": {
+    "zh-CN": "处理方式",
+    "en": "Action",
+    "ja": "処理"
+  },
+  "确认合并": {
+    "zh-CN": "确认合并",
+    "en": "Confirm merge",
+    "ja": "統合する"
+  },
+  "同时导入缺失月份的预算，已有预算保持不变": {
+    "zh-CN": "同时导入缺失月份的预算，已有预算保持不变",
+    "en": "Also import budgets for missing months; preserve existing budgets",
+    "ja": "未設定の月の予算も取り込む（既存の予算は保持）"
+  },
+  "疑似重复或用途不明的交易进入待核对，不计入统计。冲突记录保留本机版本；已删除记录不会因再次导入而恢复。": {
+    "zh-CN": "疑似重复或用途不明的交易进入待核对，不计入统计。冲突记录保留本机版本；已删除记录不会因再次导入而恢复。",
+    "en": "Possible duplicates and unclear transactions require review and are excluded from totals. Conflicts keep the local version. Reimporting does not restore locally deleted entries.",
+    "ja": "重複の疑いや用途が不明な取引は要確認とし、集計しません。競合は端末の内容を保持し、再取り込みで削除済み記録は復元しません。"
+  },
+  "这里只预览前 200 行；合并范围为文件中全部可新增记录。": {
+    "zh-CN": "这里只预览前 200 行；合并范围为文件中全部可新增记录。",
+    "en": "Preview shows the first 200 rows. Merge covers all eligible new entries in the file.",
+    "ja": "先頭200行を表示しています。統合はファイル内の追加可能な全記録が対象です。"
+  },
+  "账目已合并，其他数据保持原样。": {
+    "zh-CN": "账目已合并，其他数据保持原样。",
+    "en": "Ledger merged. Other data is unchanged.",
+    "ja": "家計簿を統合しました。他のデータは変更しません。"
+  },
+  "账本已导出": {
+    "zh-CN": "账本已导出",
+    "en": "Ledger exported",
+    "ja": "家計簿を書き出しました"
+  },
+  "导入失败，请检查文件。": {
+    "zh-CN": "导入失败，请检查文件。",
+    "en": "Import failed. Check the file.",
+    "ja": "取り込めませんでした。ファイルを確認してください。"
+  },
+  "导出失败，请重试。": {
+    "zh-CN": "导出失败，请重试。",
+    "en": "Export failed. Please retry.",
+    "ja": "書き出せませんでした。再試行してください。"
+  },
+  "文件过大，请使用不超过 8 MB 的账单。": {
+    "zh-CN": "文件过大，请使用不超过 8 MB 的账单。",
+    "en": "File too large. Use a bill under 8 MB.",
+    "ja": "8MB以下の明細を使用してください。"
+  },
+  "仅支持 CSV、TSV 或账本 JSON 文件。": {
+    "zh-CN": "仅支持 CSV、TSV 或账本 JSON 文件。",
+    "en": "Only CSV, TSV or ledger JSON files are supported.",
+    "ja": "CSV・TSV・家計簿JSONに対応しています。"
+  },
+  "CSV 引号未闭合，请检查文件格式。": {
+    "zh-CN": "CSV 引号未闭合，请检查文件格式。",
+    "en": "Unclosed CSV quotes. Check the file format.",
+    "ja": "CSVの引用符が閉じていません。形式を確認してください。"
+  },
+  "不是有效的账本 JSON。": {
+    "zh-CN": "不是有效的账本 JSON。",
+    "en": "Invalid ledger JSON.",
+    "ja": "有効な家計簿JSONではありません。"
+  },
+  "请导入学迹独立账本，完整应用备份请在设置中恢复。": {
+    "zh-CN": "请导入学迹独立账本，完整应用备份请在设置中恢复。",
+    "en": "Import a StudyTrail ledger file. Restore full app backups in Settings.",
+    "ja": "家計簿専用ファイルを使用してください。全体バックアップは設定で復元できます。"
+  },
+  "账单超过 10000 行，请按月拆分后导入。": {
+    "zh-CN": "账单超过 10000 行，请按月拆分后导入。",
+    "en": "More than 10,000 rows. Split the bill by month.",
+    "ja": "1万行を超えています。月別に分割してください。"
+  },
+  "账本预算格式无效。": {
+    "zh-CN": "账本预算格式无效。",
+    "en": "Invalid budget format.",
+    "ja": "予算の形式が無効です。"
+  },
+  "没有识别到日期、收支、金额表头；请使用 CSV 或学迹账本 JSON。": {
+    "zh-CN": "没有识别到日期、收支、金额表头；请使用 CSV 或学迹账本 JSON。",
+    "en": "Date, type and amount columns were not found. Use CSV or StudyTrail ledger JSON.",
+    "ja": "日付・収支・金額の列を確認できません。CSVまたは家計簿JSONを使用してください。"
+  },
+  "无效日期、金额或收支类型": {
+    "zh-CN": "无效日期、金额或收支类型",
+    "en": "Invalid date, amount or transaction type",
+    "ja": "日付・金額・収支種別が無効"
+  },
+  "仅支持人民币账单": {
+    "zh-CN": "仅支持人民币账单",
+    "en": "Only CNY bills are supported",
+    "ja": "人民元の明細のみに対応"
+  },
+  "转账、充值等不计入消费": {
+    "zh-CN": "转账、充值等不计入消费",
+    "en": "Transfers and top-ups are excluded from spending",
+    "ja": "振替やチャージは支出に含みません"
+  },
+  "未完成的交易": {
+    "zh-CN": "未完成的交易",
+    "en": "Incomplete transaction",
+    "ja": "未完了の取引"
+  },
+  "退款状态需核对，避免重复冲减": {
+    "zh-CN": "退款状态需核对，避免重复冲减",
+    "en": "Review refund status to avoid double deductions",
+    "ja": "重複控除を避けるため返金状態を確認してください"
+  },
+  "请核对转账或红包的实际用途": {
+    "zh-CN": "请核对转账或红包的实际用途",
+    "en": "Review the purpose of the transfer or gift",
+    "ja": "送金・ギフトの実際の用途を確認してください"
+  },
+  "交易状态需核对": {
+    "zh-CN": "交易状态需核对",
+    "en": "Transaction status needs review",
+    "ja": "取引状態の確認が必要"
+  },
+  "同日同额记录需核对，未自动合并": {
+    "zh-CN": "同日同额记录需核对，未自动合并",
+    "en": "Same-day, same-amount entry needs review; not auto-merged",
+    "ja": "同日同額の記録は要確認とし、自動統合しません"
+  },
+  "请核对记录": {
+    "zh-CN": "请核对记录",
+    "en": "Review this entry",
+    "ja": "この記録を確認してください"
+  },
   "记账": {
     "zh-CN": "记账",
     "en": "Ledger",
