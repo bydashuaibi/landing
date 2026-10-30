@@ -8,7 +8,11 @@ export function createLearning(B){
   function field(id,label,type='text',value=''){return '<div class="field"><label for="'+id+'">'+t(label)+'</label><input id="'+id+'" type="'+type+'" value="'+esc(value)+'" maxlength="300" '+(id==='learn-minutes'?'min="5" max="240" step="1"':'')+'></div>';}
   function form(html,submit){B.open('<form id="learning-form">'+html+'<p id="learning-error" role="alert"></p><button class="primary" type="submit">'+t('保存')+'</button></form>');document.getElementById('learning-form').onsubmit=async e=>{e.preventDefault();try{await submit(id=>document.getElementById(id).value.trim());await B.save();B.close();B.refresh();}catch(err){document.getElementById('learning-error').textContent=err.message;}};}
   function url(s){if(!s)return '';try{const u=new URL(s);if(u.protocol!=='https:'||u.username||u.password)throw Error();return u.href;}catch(_){throw Error(t('请填写有效的 HTTPS 网页或视频地址'));}}
-  function bind(){document.querySelectorAll('[data-learn]').forEach(el=>el.onclick=()=>{
+  function bind(){
+    function addResource(parent,value){if(!value||!parent)return;try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return;const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener';a.textContent=t('打开学习资料');const p=document.createElement('p');p.appendChild(a);parent.appendChild(p);}catch(_){}}
+    document.querySelectorAll('[data-learn=remove]').forEach(el=>addResource(el.closest('.task'),data().tasks.find(x=>x.id===el.dataset.id)?.url));
+    addResource(document.getElementById('study-clock')?.closest('.card'),data().timer?.url);
+    document.querySelectorAll('[data-learn]').forEach(el=>el.onclick=()=>{
     const d=data(),a=el.dataset.learn,id=el.dataset.id;
     if(a==='add')form('<h2>'+t('添加计划')+'</h2>'+field('learn-name','学习内容')+field('learn-step','下一步')+field('learn-url','指定网页 / 视频地址（HTTPS，可选）','url'),get=>{const name=get('learn-name');if(!name)throw Error(t('请填写学习内容'));const resource=url(get('learn-url'));d.tasks.push({id:crypto.randomUUID(),name,step:get('learn-step'),url:resource,done:false});});
     if(a==='start'){if(d.timer){B.toast(t('请先结束当前学习'));return;}const task=d.tasks.find(y=>y.id===id);form('<h2>'+esc(task.name)+'</h2>'+field('learn-minutes','学习时长（分钟）','number','25'),get=>{const minutes=Number(get('learn-minutes'));if(!Number.isInteger(minutes)||minutes<5||minutes>240)throw Error(t('时长请填写 5–240 的整数'));d.timer={id:crypto.randomUUID(),taskId:id,name:task.name,url:task.url,minutes,startedAt:Date.now(),endsAt:Date.now()+minutes*60000,paused:false};});}
