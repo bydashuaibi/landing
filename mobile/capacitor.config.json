@@ -3,5 +3,6 @@
   "appName": "学迹 StudyTrail",
   "webDir": "www",
   "android": {"allowMixedContent": false},
+  "plugins": {"SystemBars": {"insetsHandling": "css", "initialViewportFitValueHint": "cover"}},
   "server": {"androidScheme": "https"}
 }

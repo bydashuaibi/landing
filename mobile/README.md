@@ -41,4 +41,4 @@ Windows 使用 `gradlew.bat`。本地未配置签名环境变量时使用本机�
 
 手动运行 GitHub Actions **Android preview**，从 `StudyTrail-Android-preview` artifact 获取 APK。流程运行 Java 单元测试、编译 APK，并用 apksigner 验证签名，不创建 Release。测试包名：`com.studytrail.mobile.preview`。
 
-本地检查：`tools/verify-mobile.cjs` 10 项手机页面 / 学习流程，`tools/verify-mobile-capture.cjs` 6 项通知入账规则。Android JUnit 另验证 9 项支付解析规则；仍不能替代真机通知和后台测试。
+本地检查：`tools/verify-mobile.cjs` 11 项手机页面 / 学习流程，`tools/verify-mobile-capture.cjs` 6 项通知入账规则。Android JUnit 另验证 9 项支付解析规则；仍不能替代真机通知和后台测试。
