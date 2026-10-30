@@ -1,0 +1,7 @@
+{
+  "appId": "com.studytrail.mobile",
+  "appName": "学迹 StudyTrail",
+  "webDir": "www",
+  "android": {"allowMixedContent": false},
+  "server": {"androidScheme": "https"}
+}

@@ -1,0 +1,19 @@
+{
+  "name": "studytrail-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node tools/build.cjs",
+    "android:add": "npm run build && cap add android",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {"@capacitor/cli": "8.6.0", "esbuild": "0.27.4"},
+  "engines": {"node": ">=22"}
+}

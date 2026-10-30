@@ -9,4 +9,8 @@ community-backend/community.json
 tools/_shots/
 *.jks
 *.keystore
+mobile/www/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/build/
 tools/.translator-page.tmp
